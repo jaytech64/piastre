@@ -1,5 +1,8 @@
-# Build output
-build/
+# Build output. Anchored per-directory rather than as a bare "build/", which
+# would also match any source directory that happens to be named build.
+/build/
+*/build/
+*/*/build/
 .gradle/
 .kotlin/
 local.properties

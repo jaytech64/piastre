@@ -19,27 +19,27 @@ gradlePlugin {
     plugins {
         register("androidApplication") {
             id = "depenses.android.application"
-            implementationClass = "io.github.jaytech64.depenses.build.AndroidApplicationConventionPlugin"
+            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidApplicationConventionPlugin"
         }
         register("androidLibrary") {
             id = "depenses.android.library"
-            implementationClass = "io.github.jaytech64.depenses.build.AndroidLibraryConventionPlugin"
+            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidLibraryConventionPlugin"
         }
         register("androidCompose") {
             id = "depenses.android.compose"
-            implementationClass = "io.github.jaytech64.depenses.build.AndroidComposeConventionPlugin"
+            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidComposeConventionPlugin"
         }
         register("androidHilt") {
             id = "depenses.android.hilt"
-            implementationClass = "io.github.jaytech64.depenses.build.AndroidHiltConventionPlugin"
+            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidHiltConventionPlugin"
         }
         register("androidFeature") {
             id = "depenses.android.feature"
-            implementationClass = "io.github.jaytech64.depenses.build.AndroidFeatureConventionPlugin"
+            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidFeatureConventionPlugin"
         }
         register("jvmLibrary") {
             id = "depenses.jvm.library"
-            implementationClass = "io.github.jaytech64.depenses.build.JvmLibraryConventionPlugin"
+            implementationClass = "io.github.jaytech64.depenses.buildlogic.JvmLibraryConventionPlugin"
         }
     }
 }
