@@ -1,34 +1,39 @@
 # Fixture corpus
 
-## `wallet-en-CA.jsonl` — real, redacted
+Both files are real notifications posted by Google Wallet on an Android phone (Android 16), captured by the Phase 0 spike against a Desrives access card and a Visa.
+Nothing here is written to match the parser.
 
-21 notifications captured by the Phase 0 spike over 7 days on an Android phone (Android 16,
-device locale `en-CA`), against a Desrives access card and a Visa.
+## Redaction
 
-**Redacted before entering the repository.** Merchant names are replaced with
-structurally equivalent stand-ins that preserve the hazards under test — casing,
-double-space and `#` store-number forms, apostrophes, accents — and card digits are
-masked to `0000`. Amounts, timing, notification keys and the duplicate structure are
-untouched, because those are what the parser is tested against.
+Merchant names are replaced with structurally equivalent stand-ins that preserve every hazard under test — casing, the double-space and `#` store-number forms, straight `'` and typographic `’` apostrophes, accents.
+Card labels are replaced with equivalents that keep their own hazards, and card digits are masked to `0000`.
+The same real merchant maps to the same stand-in in both files.
 
-Contains all three noise classes: 9 re-posts, 2 transitional "Preparing your receipt"
-notifications, 2 empty group summaries. 8 distinct transactions, 152,00 $.
+Amounts, timing, notification keys, device locales and the duplicate structure are **untouched**, because those are what the parser is tested against.
 
-## `wallet-fr-CA.jsonl` — synthesized, NOT captured
+## `wallet-week1.jsonl`
 
-Derived from the en-CA rows using the French format the project owner captured
-previously with a Tasker automation:
+21 notifications over 7 days, device locale `en-CA` throughout.
 
-    7,45 $ avec Remise Visa ••0000
-    7,45 $ avec Carte d'accès Desrives ••0000
+Three noise classes: 9 re-posts, 2 transitional "Preparing your receipt" notifications, 2 empty group summaries.
+**8 distinct transactions, 152,00 $.**
 
-The space characters are the one detail his report could not carry, so this file uses
-U+202F (narrow no-break space), which is what CLDR 42+ specifies for French currency.
-`MoneyTextTest` covers U+00A0, U+2009, U+0020 and no-space independently, so the parser
-does not depend on that guess being right.
+## `wallet-week2.jsonl`
 
-The two transitional notifications are **absent** rather than translated: their French
-wording is unknown and inventing it would make the corpus lie.
+24 notifications over 11 days, device locale switched to `fr-CA` partway through — 15 rows `en-CA`, 9 rows `fr-CA`.
 
-**Replace this file with real captures** once the spike has run with the device in
-français, and drop the `version` of the parser by one to force a re-parse.
+**10 distinct transactions, 303,42 $**, with 4 empty group summaries, 2 transitional receipts and 8 re-posts.
+
+What this corpus adds over week one:
+
+- **Real French.** `9,29 $ avec Carte d’accès Coopérative ••0000` — comma decimal, symbol after the amount, `U+00A0` between them.
+  Note that this is **NO-BREAK SPACE, not the `U+202F` NARROW NO-BREAK SPACE** that CLDR 42+ specifies; a fixture synthesized from the specification would have guessed wrong.
+  `MoneyText` normalises every space variant, so the parser never depended on the guess.
+- **Content language does not follow the device.** One row is `$19.99 with ...` on an `fr-CA` device, and another is French text stamped `en-CA` because the listener replayed it 51 hours after posting, by which time the device had been switched back.
+  A parser keyed on `deviceLocale` would mis-read both.
+- **The deterministic re-post.** Wallet rewrites a payment notification roughly 3 seconds after posting it, with an identical tag. Seven of the ten transactions arrived that way.
+- **Replay lag.** Three rows were delivered 22, 22 and 51 hours after they were posted, when the listener rebound.
+  This is why capture time is never transaction time.
+- **The tagless transitional slot.** Both "Preparing your receipt" rows carry notification id `930510` and a null tag, while payments carry id `1001` and a per-transaction tag.
+  One of them sits 52 minutes from any payment.
+  Nothing in the payload links a receipt notification to a purchase — and because identity comes from the tag, a tagless notification can never become a ledger row.
