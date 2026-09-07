@@ -1,0 +1,32 @@
+build:
+  maxIssues: 0
+
+performance:
+  SpreadOperator:
+    # Passing a declared list of migrations to Room's vararg API is what the
+    # spread operator is for, and the array is a handful of elements at startup.
+    active: false
+
+complexity:
+  LongParameterList:
+    # Room entities and transaction drafts are wide by nature; splitting them into
+    # parameter objects would obscure the schema rather than clarify it.
+    active: false
+  TooManyFunctions:
+    thresholdInInterfaces: 20
+
+style:
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+  MaxLineLength:
+    maxLineLength: 120
+  ReturnCount:
+    # A parser that refuses to guess is a wall of guard clauses. Nesting them to
+    # satisfy a return count would make the refusals harder to read, not easier.
+    max: 8
+
+naming:
+  FunctionNaming:
+    # @Composable functions are PascalCase by convention.
+    ignoreAnnotated: ['Composable']

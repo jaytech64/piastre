@@ -1,0 +1,20 @@
+# Build output
+build/
+.gradle/
+.kotlin/
+local.properties
+
+# Signing material never enters the repository
+*.jks
+*.keystore
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Captured spending is personal data and never belongs in git.
+# Only redacted fixtures under src/test/resources are committed.
+captures.jsonl
+sightings.json

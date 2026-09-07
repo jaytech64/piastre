@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      There is deliberately no INTERNET and no ACCESS_NETWORK_STATE permission.
+      Captured notifications are real financial data; without the permission the
+      data physically cannot leave the device, which is a stronger guarantee than
+      a promise not to send it. A build-time check on the merged manifest fails
+      the build if a dependency ever adds one.
+    -->
+
+    <application
+        android:name=".DepensesApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@android:drawable/ic_menu_agenda"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Depenses">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

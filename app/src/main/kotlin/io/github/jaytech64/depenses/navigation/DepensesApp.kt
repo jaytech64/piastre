@@ -1,0 +1,77 @@
+package io.github.jaytech64.depenses.navigation
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import io.github.jaytech64.depenses.R
+import io.github.jaytech64.depenses.feature.ledger.LedgerScreen
+import io.github.jaytech64.depenses.feature.reports.ReportsScreen
+import io.github.jaytech64.depenses.feature.review.ReviewScreen
+import io.github.jaytech64.depenses.feature.settings.SettingsScreen
+
+private enum class Destination(
+    val route: String,
+    val labelRes: Int,
+    val icon: ImageVector,
+) {
+    LEDGER("ledger", R.string.nav_ledger, Icons.Default.ShoppingCart),
+    REPORTS("reports", R.string.nav_reports, Icons.AutoMirrored.Filled.List),
+    REVIEW("review", R.string.nav_review, Icons.Default.Warning),
+    SETTINGS("settings", R.string.nav_settings, Icons.Default.Settings),
+}
+
+@Composable
+fun DepensesApp() {
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                Destination.entries.forEach { destination ->
+                    NavigationBarItem(
+                        selected = currentRoute == destination.route,
+                        onClick = {
+                            navController.navigate(destination.route) {
+                                popUpTo(Destination.LEDGER.route) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                        icon = { Icon(destination.icon, contentDescription = null) },
+                        label = { Text(stringResource(destination.labelRes)) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        NavHost(
+            navController = navController,
+            startDestination = Destination.LEDGER.route,
+            modifier = Modifier.padding(padding),
+        ) {
+            composable(Destination.LEDGER.route) { LedgerScreen() }
+            composable(Destination.REPORTS.route) { ReportsScreen() }
+            composable(Destination.REVIEW.route) { ReviewScreen() }
+            composable(Destination.SETTINGS.route) { SettingsScreen() }
+        }
+    }
+}

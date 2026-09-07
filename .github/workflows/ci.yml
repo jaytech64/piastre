@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Gradle 8.14 does not run on JDK 25, and the toolchain the build compiles
+      # against is declared in gradle/gradle-daemon-jvm.properties.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Formatting
+        run: ./gradlew spotlessCheck
+
+      - name: Static analysis
+        run: ./gradlew detekt
+
+      # check runs Android Lint, every unit test, and the merged-manifest check
+      # that fails the build if anything ever requests a network permission.
+      - name: Tests, lint and the no-network guarantee
+        run: ./gradlew check
+
+      - name: Assemble
+        run: ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reports
+          path: |
+            **/build/reports/**
+          retention-days: 7
