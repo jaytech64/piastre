@@ -25,6 +25,15 @@ allprojects {
                 rootProject.libs.versions.ktlint
                     .get(),
             )
+            // Enforced rather than swept periodically: a file added without the
+            // header fails the build instead of quietly shipping unlicensed.
+            licenseHeader(
+                """
+                // SPDX-FileCopyrightText: ${'$'}YEAR Jérémy Mailhot
+                // SPDX-License-Identifier: GPL-3.0-or-later
+                """.trimIndent(),
+                "package ",
+            )
         }
         kotlinGradle {
             target("*.gradle.kts")

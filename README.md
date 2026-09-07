@@ -69,3 +69,9 @@ Unit tests run on the JVM.
 ```
 
 `:capture:parsing` is tested against the captured fixture corpus, and the corpus test is a contract rather than a smoke test: it asserts the exact number of transactions a week of notifications collapses to, with every rejection attributed to a named reason.
+
+## Licence
+
+GNU General Public License v3.0 — see [LICENSE](LICENSE).
+
+Every source file carries an `SPDX-License-Identifier: GPL-3.0-or-later` header, so the licence travels with the file rather than only with the repository.
