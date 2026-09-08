@@ -36,6 +36,7 @@ class ParsePipeline
         private val events: RawNotificationEventDao,
         private val transactions: TransactionDao,
         private val registry: ParserRegistry,
+        private val merchants: MerchantRepository,
         private val zoneId: Provider<ZoneId>,
     ) {
         suspend fun parse(eventId: Long) {
@@ -89,7 +90,9 @@ class ParsePipeline
             status: TransactionStatus,
             confidence: Float,
         ) {
-            transactions.insertOrUpdate(event.toTransaction(parser, draft, status, confidence))
+            transactions.insertOrUpdate(
+                event.toTransaction(parser, draft, status, confidence, merchants.resolve(draft.merchantRaw)),
+            )
             events.markParsed(event.id, ParseState.PARSED, parser?.version)
         }
 
@@ -103,6 +106,7 @@ class ParsePipeline
             draft: TransactionDraft,
             status: TransactionStatus,
             confidence: Float,
+            merchantId: Long?,
         ): ExpenseTransactionEntity {
             val zone = zoneId.get()
             return ExpenseTransactionEntity(
@@ -112,8 +116,7 @@ class ParsePipeline
                 occurredAtUtcMillis = draft.occurredAtUtcMillis,
                 zoneId = zone.id,
                 localDateEpochDay = localDateEpochDay(draft.occurredAtUtcMillis, zone),
-                // Resolved by the merchant pass, which owns alias creation.
-                merchantId = null,
+                merchantId = merchantId,
                 merchantRaw = draft.merchantRaw,
                 categoryId = null,
                 source = TransactionSource.NOTIFICATION,

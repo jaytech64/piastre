@@ -27,13 +27,13 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun reportDao(): ReportDao
 
     companion object {
-        const val VERSION: Int = 2
+        const val VERSION: Int = 3
 
         /**
          * Migrations are listed here rather than passed at the call site so that
          * adding one cannot be forgotten in a second place.
          */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2)
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 
         const val NAME: String = "depenses.db"
     }
@@ -64,6 +64,29 @@ private val MIGRATION_1_2 =
                 "CREATE UNIQUE INDEX IF NOT EXISTS " +
                     "index_raw_notification_event_sourcePackage_notificationKey_postedAtUtcMillis " +
                     "ON raw_notification_event (sourcePackage, notificationKey, postedAtUtcMillis)",
+            )
+        }
+    }
+
+/**
+ * Schema 3 makes a merchant's normalised name its identity.
+ *
+ * Nothing has written to the merchant table before this version, so there is
+ * nothing to collapse first — but the sweep is kept anyway, because a migration
+ * that assumes an empty table is a migration that fails the one time it is wrong.
+ */
+private val MIGRATION_2_3 =
+    object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                DELETE FROM merchant
+                WHERE id NOT IN (SELECT MIN(id) FROM merchant GROUP BY normalisedName)
+                """.trimIndent(),
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS index_merchant_normalisedName " +
+                    "ON merchant (normalisedName)",
             )
         }
     }

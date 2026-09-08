@@ -38,16 +38,19 @@ class ParsePipelineTest {
     private lateinit var pipeline: ParsePipeline
     private lateinit var capture: NotificationCapture
     private lateinit var rawEvents: RawEventRepository
+    private lateinit var merchants: MerchantRepository
 
     @Before
     fun open() {
         database = inMemoryDatabase()
         rawEvents = RawEventRepository(database.rawNotificationEventDao())
+        merchants = MerchantRepository(database.merchantDao())
         pipeline =
             ParsePipeline(
                 events = database.rawNotificationEventDao(),
                 transactions = database.transactionDao(),
                 registry = ParserRegistry(listOf(GoogleWalletParser())),
+                merchants = merchants,
                 zoneId = Provider { ZONE },
             )
         capture = NotificationCapture(rawEvents, pipeline)
@@ -164,6 +167,48 @@ class ParsePipelineTest {
             assertTrue("every transaction needs a resolved local day", days.all { it > 0 })
         }
 
+    @Test
+    fun `every purchase resolves to a merchant, and branches of one chain share it`() =
+        runTest {
+            captureAll(corpus())
+
+            val transactions = database.transactionDao().all().first()
+            val resolved = transactions.mapNotNull { it.merchantId }
+
+            assertEquals("every purchase needs a merchant", PURCHASES, resolved.size)
+            assertEquals(MERCHANTS, merchants.all().first().size)
+        }
+
+    /**
+     * The question "where does my money go" is about chains, not storefronts, so a
+     * ranking that listed each branch separately would answer the wrong one.
+     */
+    @Test
+    fun `the ranking sums the chain rather than the storefront`() =
+        runTest {
+            captureAll(corpus())
+
+            val ranking = database.reportDao().topMerchants(0, MAX_DAY, Money.CAD, limit = MERCHANTS).first()
+
+            assertEquals(MERCHANTS, ranking.size)
+            assertEquals(TOTAL_MINOR, ranking.sumOf { it.totalMinor })
+            assertTrue(
+                "a ranking must be ordered",
+                ranking.map { it.totalMinor } == ranking.map { it.totalMinor }.sortedDescending(),
+            )
+        }
+
+    @Test
+    fun `a merchant seen again is the same merchant, not a second one`() =
+        runTest {
+            captureAll(corpus())
+            val before = merchants.all().first().size
+
+            captureAll(corpus())
+
+            assertEquals(before, merchants.all().first().size)
+        }
+
     private suspend fun captureAll(notifications: List<RawNotification>) =
         notifications.forEach { capture.capture(it, NO_EXTRAS) }
 
@@ -194,6 +239,10 @@ class ParsePipelineTest {
         const val OVERLAP = 1
 
         const val TOTAL_MINOR = 43_543L
+
+        /** Nine distinct chains across the two weeks, after branch numbers collapse. */
+        const val MERCHANTS = 9
+        const val MAX_DAY = 99_999
         const val NO_EXTRAS = "{}"
         val ZONE: ZoneId = ZoneId.of("America/Toronto")
 

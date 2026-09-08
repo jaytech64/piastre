@@ -52,6 +52,33 @@ class DepensesDatabaseMigrationTest {
         assertEquals(1, migrated.rawEventCount())
     }
 
+    /**
+     * What a phone that installed the first release and then updated actually does.
+     * Each migration is correct in isolation above; this is the only test that
+     * proves the chain lands on the schema Room expects.
+     */
+    @Test
+    fun `a database from the first release migrates all the way to the current schema`() {
+        helper.createDatabase(NAME, 1).use { database ->
+            database.insertRawEvent(postedAtUtcMillis = FIRST_POST)
+            database.insertRawEvent(postedAtUtcMillis = RE_POST)
+            database.execSQL(
+                "INSERT INTO merchant (displayName, normalisedName) VALUES ('Marché St-Joseph', 'MARCHE ST JOSEPH')",
+            )
+        }
+
+        val migrated =
+            helper.runMigrationsAndValidate(
+                NAME,
+                DepensesDatabase.VERSION,
+                true,
+                *DepensesDatabase.MIGRATIONS,
+            )
+
+        assertEquals(2, migrated.rawEventCount())
+        assertEquals(1, migrated.count("merchant"))
+    }
+
     private fun SupportSQLiteDatabase.insertRawEvent(
         postedAtUtcMillis: Long,
         orIgnore: Boolean = false,
@@ -63,8 +90,10 @@ class DepensesDatabaseMigrationTest {
         arrayOf<Any>(WALLET, KEY, postedAtUtcMillis, "fr-CA", "MARCHE ST JOSEPH  1234", "23,42 $ avec"),
     )
 
-    private fun SupportSQLiteDatabase.rawEventCount(): Int =
-        query("SELECT COUNT(*) FROM raw_notification_event").use { cursor ->
+    private fun SupportSQLiteDatabase.rawEventCount(): Int = count("raw_notification_event")
+
+    private fun SupportSQLiteDatabase.count(table: String): Int =
+        query("SELECT COUNT(*) FROM $table").use { cursor ->
             cursor.moveToFirst()
             cursor.getInt(0)
         }

@@ -87,7 +87,18 @@ data class ExpenseTransactionEntity(
     val note: String?,
 )
 
-@Entity(tableName = "merchant")
+/**
+ * The canonical merchant a raw string resolves to.
+ *
+ * [normalisedName] is unique because it *is* the identity: without the
+ * constraint two sightings of one chain arriving close together would each fail
+ * to find the other and create a second merchant, quietly splitting the ranking
+ * the merchant table exists to make correct.
+ */
+@Entity(
+    tableName = "merchant",
+    indices = [Index(value = ["normalisedName"], unique = true)],
+)
 data class MerchantEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val displayName: String,
