@@ -3,12 +3,14 @@
 package io.github.jaytech64.depenses.core.database
 
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -92,10 +94,33 @@ interface TransactionDao {
     ): ExpenseTransactionEntity?
 
     @Query("SELECT * FROM expense_transaction WHERE status = :status ORDER BY occurredAtUtcMillis DESC")
-    fun byStatus(status: String): Flow<List<ExpenseTransactionEntity>>
+    fun byStatus(status: TransactionStatus): Flow<List<ExpenseTransactionEntity>>
+
+    @Query("SELECT COUNT(*) FROM expense_transaction WHERE status = :status")
+    fun countByStatus(status: TransactionStatus): Flow<Int>
 
     @Query("SELECT * FROM expense_transaction ORDER BY occurredAtUtcMillis DESC")
     fun all(): Flow<List<ExpenseTransactionEntity>>
+
+    /**
+     * The ledger reads this rather than [all]: it needs the canonical merchant, and
+     * a screen that joined the merchant table itself would be reimplementing the
+     * chain-collapsing rules in Kotlin.
+     *
+     * The join is a left join because a transaction whose merchant could not be
+     * resolved still has to appear — losing a purchase is worse than showing it
+     * under its raw string.
+     */
+    @Query(
+        """
+        SELECT t.*, m.displayName AS merchantName
+        FROM expense_transaction t
+        LEFT JOIN merchant m ON m.id = t.merchantId
+        WHERE t.status = :status
+        ORDER BY t.occurredAtUtcMillis DESC
+        """,
+    )
+    fun withMerchantByStatus(status: TransactionStatus): Flow<List<TransactionWithMerchant>>
 
     @Query("SELECT COUNT(*) FROM expense_transaction")
     fun count(): Flow<Int>
@@ -121,6 +146,12 @@ interface MerchantDao {
     @Query("SELECT * FROM merchant ORDER BY displayName")
     fun all(): Flow<List<MerchantEntity>>
 }
+
+/** A transaction with the display name of the merchant it resolved to. */
+data class TransactionWithMerchant(
+    @Embedded val transaction: ExpenseTransactionEntity,
+    val merchantName: String?,
+)
 
 /** A daily total, one row per local day. */
 data class DailyTotal(

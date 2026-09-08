@@ -1,0 +1,13 @@
+<resources>
+    <string name="ledger_today">Today</string>
+    <string name="ledger_yesterday">Yesterday</string>
+    <string name="ledger_spent_today">Spent today</string>
+    <string name="ledger_manual_entry">manual entry</string>
+    <string name="ledger_unknown_merchant">Unknown merchant</string>
+    <string name="ledger_empty_title">No expenses yet</string>
+    <string name="ledger_empty_body">A payment made with Google Wallet appears here on its own, within seconds.</string>
+    <plurals name="ledger_needs_review">
+        <item quantity="one">%d to review</item>
+        <item quantity="other">%d to review</item>
+    </plurals>
+</resources>

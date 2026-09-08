@@ -32,12 +32,20 @@ data class Transaction(
     val localDate: LocalDate,
     val merchantRaw: String?,
     val merchantId: Long?,
+    val merchantName: String?,
     val source: TransactionSource,
     val status: TransactionStatus,
     val cardLabel: String?,
     val cardLast4: String?,
     val note: String?,
-)
+) {
+    /**
+     * What to put on screen. The canonical merchant if the raw string resolved to
+     * one, the raw string if it did not, and null only when the notification
+     * carried no merchant at all — which is a case the review inbox owns.
+     */
+    val displayMerchant: String? get() = merchantName ?: merchantRaw
+}
 
 data class Merchant(
     val id: Long,

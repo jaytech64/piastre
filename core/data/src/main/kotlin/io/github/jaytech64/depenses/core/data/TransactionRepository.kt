@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
-import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.ReportDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
+import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
+import io.github.jaytech64.depenses.core.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.Instant
@@ -26,7 +27,25 @@ class TransactionRepository
         private val transactions: TransactionDao,
         private val reports: ReportDao,
     ) {
-        fun all(): Flow<List<Transaction>> = transactions.all().map { rows -> rows.map(::toDomain) }
+        /**
+         * What the ledger shows: purchases you have agreed to, newest first.
+         *
+         * Unreviewed transactions are deliberately absent. Every amount on screen is
+         * one you accepted, which is only honest as long as [needsReviewCount] is
+         * surfaced beside it — a total that quietly omits rows is worse than one
+         * that admits it.
+         */
+        fun confirmed(): Flow<List<Transaction>> =
+            transactions
+                .withMerchantByStatus(TransactionStatus.CONFIRMED)
+                .map { rows -> rows.map(::toDomain) }
+
+        fun needsReview(): Flow<List<Transaction>> =
+            transactions
+                .withMerchantByStatus(TransactionStatus.NEEDS_REVIEW)
+                .map { rows -> rows.map(::toDomain) }
+
+        fun needsReviewCount(): Flow<Int> = transactions.countByStatus(TransactionStatus.NEEDS_REVIEW)
 
         fun count(): Flow<Int> = transactions.count()
 
@@ -51,18 +70,21 @@ class TransactionRepository
                 .map { Money(it ?: 0L, currency) }
     }
 
-internal fun toDomain(entity: ExpenseTransactionEntity): Transaction =
-    Transaction(
-        id = entity.id,
-        amount = Money(entity.amountMinor, entity.currency),
-        occurredAt = Instant.ofEpochMilli(entity.occurredAtUtcMillis),
-        zoneId = ZoneId.of(entity.zoneId),
-        localDate = LocalDate.ofEpochDay(entity.localDateEpochDay.toLong()),
-        merchantRaw = entity.merchantRaw,
-        merchantId = entity.merchantId,
-        source = entity.source,
-        status = entity.status,
-        cardLabel = entity.cardLabel,
-        cardLast4 = entity.cardLast4,
-        note = entity.note,
-    )
+internal fun toDomain(row: TransactionWithMerchant): Transaction =
+    with(row.transaction) {
+        Transaction(
+            id = id,
+            amount = Money(amountMinor, currency),
+            occurredAt = Instant.ofEpochMilli(occurredAtUtcMillis),
+            zoneId = ZoneId.of(zoneId),
+            localDate = LocalDate.ofEpochDay(localDateEpochDay.toLong()),
+            merchantRaw = merchantRaw,
+            merchantId = merchantId,
+            merchantName = row.merchantName,
+            source = source,
+            status = status,
+            cardLabel = cardLabel,
+            cardLast4 = cardLast4,
+            note = note,
+        )
+    }
