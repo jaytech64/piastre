@@ -45,19 +45,21 @@ fun DepensesApp() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
+    fun open(destination: Destination) {
+        navController.navigate(destination.route) {
+            popUpTo(Destination.LEDGER.route) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
                 Destination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = currentRoute == destination.route,
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                popUpTo(Destination.LEDGER.route) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { open(destination) },
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(stringResource(destination.labelRes)) },
                     )
@@ -70,7 +72,9 @@ fun DepensesApp() {
             startDestination = Destination.LEDGER.route,
             modifier = Modifier.padding(padding),
         ) {
-            composable(Destination.LEDGER.route) { LedgerScreen() }
+            composable(Destination.LEDGER.route) {
+                LedgerScreen(onReviewClick = { open(Destination.REVIEW) })
+            }
             composable(Destination.REPORTS.route) { ReportsScreen() }
             composable(Destination.REVIEW.route) { ReviewScreen() }
             composable(Destination.SETTINGS.route) { SettingsScreen() }

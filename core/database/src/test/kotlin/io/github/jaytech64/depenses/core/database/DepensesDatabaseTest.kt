@@ -138,6 +138,8 @@ class DepensesDatabaseTest {
         categoryId = null,
         source = TransactionSource.NOTIFICATION,
         status = status,
+        reviewReason = null,
+        reviewedAtUtcMillis = null,
         confidence = 1f,
         parserId = "google-wallet",
         parserVersion = 1,

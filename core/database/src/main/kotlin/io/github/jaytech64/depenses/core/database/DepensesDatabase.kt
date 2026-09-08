@@ -27,13 +27,13 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun reportDao(): ReportDao
 
     companion object {
-        const val VERSION: Int = 4
+        const val VERSION: Int = 5
 
         /**
          * Migrations are listed here rather than passed at the call site so that
          * adding one cannot be forgotten in a second place.
          */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
         const val NAME: String = "depenses.db"
     }
@@ -116,3 +116,21 @@ private val MIGRATION_3_4 =
 
 /** The only package any parser claimed when schema 4 was written. */
 private const val WALLET_PACKAGE = "com.google.android.apps.walletnfcrel"
+
+/**
+ * Schema 5 gives the review inbox the two columns it needs: why the parser
+ * declined, and whether a human has since ruled.
+ *
+ * Existing rows get nulls rather than guesses. A row already waiting for review
+ * was parsed before the column existed, and inventing MISSING_MERCHANT for it
+ * would put a sentence on screen the parser never said. A null review time is
+ * equally honest: nothing has been ruled on yet, so the parser still owns
+ * every one of these rows.
+ */
+private val MIGRATION_4_5 =
+    object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE expense_transaction ADD COLUMN reviewReason TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE expense_transaction ADD COLUMN reviewedAtUtcMillis INTEGER DEFAULT NULL")
+        }
+    }

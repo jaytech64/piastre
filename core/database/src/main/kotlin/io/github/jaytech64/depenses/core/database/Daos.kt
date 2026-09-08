@@ -65,12 +65,19 @@ interface TransactionDao {
      * Fields the user owns — their note, their category — survive a re-parse.
      * Everything the parser owns is overwritten, which is what makes fixing a
      * parser repair history.
+     *
+     * A row a human has already ruled on is left entirely alone: without that,
+     * the next re-post would silently undo the correction made in the review
+     * inbox, using the very notification the correction was about. A later parser
+     * fix does not reopen it either, which is the point — your ruling is evidence
+     * about the purchase, not a guess to be improved on.
      */
     @Transaction
     suspend fun insertOrUpdate(transaction: ExpenseTransactionEntity): Long {
         val existing =
             bySourceKey(transaction.sourcePackage, transaction.sourceKey)
                 ?: return insert(transaction)
+        if (existing.reviewedAtUtcMillis != null) return existing.id
         update(
             transaction.copy(
                 id = existing.id,
@@ -122,6 +129,31 @@ interface TransactionDao {
     )
     fun withMerchantByStatus(status: TransactionStatus): Flow<List<TransactionWithMerchant>>
 
+    /**
+     * The review queue, carrying the notification the row was read from.
+     *
+     * The raw title and text ride along because the inbox shows them verbatim:
+     * the question it asks is "did the parser read this correctly", which cannot
+     * be answered from the parser's own output. The join is a left join so that a
+     * row whose raw event has since been purged is still reviewable — without the
+     * evidence, but not lost.
+     */
+    @Query(
+        """
+        SELECT t.*, m.displayName AS merchantName,
+               r.title AS rawTitle, r.text AS rawText, r.postedAtUtcMillis AS rawPostedAtUtcMillis
+        FROM expense_transaction t
+        LEFT JOIN merchant m ON m.id = t.merchantId
+        LEFT JOIN raw_notification_event r ON r.id = t.rawEventId
+        WHERE t.status = :status
+        ORDER BY t.occurredAtUtcMillis DESC
+        """,
+    )
+    fun reviewQueue(status: TransactionStatus): Flow<List<TransactionForReview>>
+
+    @Query("SELECT * FROM expense_transaction WHERE id = :id")
+    suspend fun byId(id: Long): ExpenseTransactionEntity?
+
     @Query("SELECT COUNT(*) FROM expense_transaction")
     fun count(): Flow<Int>
 
@@ -137,6 +169,15 @@ interface MerchantDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAlias(alias: MerchantAliasEntity): Long
 
+    /**
+     * Writes an alias that must win, replacing whatever mapping was there.
+     *
+     * [insertAlias] is right for the parser, which should never overwrite a
+     * decision; this is right for the user, whose correction is the decision.
+     */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAlias(alias: MerchantAliasEntity): Long
+
     @Query("SELECT * FROM merchant WHERE normalisedName = :normalisedName")
     suspend fun byNormalisedName(normalisedName: String): MerchantEntity?
 
@@ -151,6 +192,15 @@ interface MerchantDao {
 data class TransactionWithMerchant(
     @Embedded val transaction: ExpenseTransactionEntity,
     val merchantName: String?,
+)
+
+/** A transaction awaiting review, with the notification it was read from. */
+data class TransactionForReview(
+    @Embedded val transaction: ExpenseTransactionEntity,
+    val merchantName: String?,
+    val rawTitle: String?,
+    val rawText: String?,
+    val rawPostedAtUtcMillis: Long?,
 )
 
 /** A daily total, one row per local day. */

@@ -41,12 +41,19 @@ import java.time.LocalDate
 import java.util.Locale
 
 @Composable
-fun LedgerScreen(viewModel: LedgerViewModel = hiltViewModel()) {
+fun LedgerScreen(
+    onReviewClick: () -> Unit,
+    viewModel: LedgerViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val today = state.today
 
     Column(Modifier.fillMaxSize()) {
-        TodayHeader(spent = state.spentToday, needsReview = state.needsReview)
+        TodayHeader(
+            spent = state.spentToday,
+            needsReview = state.needsReview,
+            onReviewClick = onReviewClick,
+        )
 
         when {
             state.isEmpty -> EmptyLedger()
@@ -59,6 +66,7 @@ fun LedgerScreen(viewModel: LedgerViewModel = hiltViewModel()) {
 private fun TodayHeader(
     spent: Money,
     needsReview: Int,
+    onReviewClick: () -> Unit,
 ) {
     Card(
         Modifier
@@ -75,10 +83,11 @@ private fun TodayHeader(
             Text(Formatters.money(spent), style = MaterialTheme.typography.headlineMedium)
 
             // Shown only when there is something to say. Totals exclude unreviewed
-            // purchases, so without this a low number would be a silent lie.
+            // purchases, so without this a low number would be a silent lie — and
+            // saying it without offering the way to fix it would only be half honest.
             if (needsReview > 0) {
                 AssistChip(
-                    onClick = {},
+                    onClick = onReviewClick,
                     label = { Text(pluralStringResource(R.plurals.ledger_needs_review, needsReview, needsReview)) },
                     colors = AssistChipDefaults.assistChipColors(labelColor = MaterialTheme.colorScheme.tertiary),
                 )

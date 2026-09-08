@@ -110,6 +110,27 @@ class DepensesDatabaseMigrationTest {
         assertEquals(1, migrated.count("expense_transaction"))
     }
 
+    /**
+     * An `ALTER TABLE` is the migration most likely to be waved through unread,
+     * and the one that silently empties a ledger when it is wrong.
+     */
+    @Test
+    fun `migrating to schema 5 adds the review columns without touching the ledger`() {
+        helper.createDatabase(NAME, 4).use { database ->
+            database.insertTransaction()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 5, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(1, migrated.count("expense_transaction"))
+        assertEquals(6554, migrated.singleInt("SELECT amountMinor FROM expense_transaction"))
+        assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE reviewReason IS NOT NULL"))
+        assertEquals(
+            0,
+            migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE reviewedAtUtcMillis IS NOT NULL"),
+        )
+    }
+
     private fun SupportSQLiteDatabase.insertRawEvent(
         postedAtUtcMillis: Long,
         sourcePackage: String = WALLET,
@@ -140,6 +161,12 @@ class DepensesDatabaseMigrationTest {
         }
 
     private fun SupportSQLiteDatabase.rawEventCount(): Int = count("raw_notification_event")
+
+    private fun SupportSQLiteDatabase.singleInt(sql: String): Int =
+        query(sql).use { cursor ->
+            cursor.moveToFirst()
+            cursor.getInt(0)
+        }
 
     private fun SupportSQLiteDatabase.count(table: String): Int =
         query("SELECT COUNT(*) FROM $table").use { cursor ->

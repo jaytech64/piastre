@@ -1,0 +1,19 @@
+<resources>
+    <string name="review_empty_title">Nothing to review</string>
+    <string name="review_empty_body">Purchases only land here when the parser could not read a notification with confidence.</string>
+    <string name="review_unknown_merchant">Missing merchant</string>
+    <string name="review_confirm">Confirm</string>
+    <string name="review_edit">Edit</string>
+    <string name="review_dismiss">Dismiss</string>
+    <string name="review_save">Save</string>
+    <string name="review_cancel">Cancel</string>
+    <string name="review_edit_title">Correct this purchase</string>
+    <string name="review_amount">Amount</string>
+    <string name="review_merchant">Merchant</string>
+    <string name="review_amount_invalid">Enter an amount</string>
+    <string name="review_reason_unrecognised_format">Card unreadable — the amount was read, the rest was not</string>
+    <string name="review_reason_missing_merchant">The notification carried no merchant name</string>
+    <string name="review_reason_missing_source_key">No stable identity — this purchase cannot be de-duplicated</string>
+    <string name="review_reason_unknown">Read before this app recorded reasons</string>
+    <string name="review_raw_missing">The notification behind this row is no longer stored.</string>
+</resources>

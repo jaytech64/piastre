@@ -103,6 +103,48 @@ class FormattersTest {
         assertNull(Formatters.cardMask(null))
     }
 
+    /**
+     * The habit case: a fr-CA phone, and a person who types the decimal point
+     * anyway. Reading that as 12 rather than 12,50 loses fifty cents in silence,
+     * which is the one failure a money field must not have.
+     */
+    @Test
+    fun `an amount is read the same whether it was typed with a comma or a point`() {
+        assertEquals(1_250L, Formatters.parseMoney("12,50")?.minor)
+        assertEquals(1_250L, Formatters.parseMoney("12.50")?.minor)
+    }
+
+    @Test
+    fun `grouping marks are not mistaken for decimals`() {
+        assertEquals(123_456L, Formatters.parseMoney("1 234,56")?.minor)
+        assertEquals(123_456L, Formatters.parseMoney("1\u202F234,56")?.minor)
+        assertEquals(123_456L, Formatters.parseMoney("1,234.56")?.minor)
+        assertEquals(123_400L, Formatters.parseMoney("1.234")?.minor)
+    }
+
+    @Test
+    fun `an amount survives the symbol and spacing the app itself prints`() {
+        val printed = Formatters.money(Money(6_554, Money.CAD), Locale.CANADA_FRENCH)
+
+        assertEquals(6_554L, Formatters.parseMoney(printed)?.minor)
+    }
+
+    @Test
+    fun `a typed refund keeps its sign`() {
+        assertEquals(-1_250L, Formatters.parseMoney("-12,50")?.minor)
+    }
+
+    @Test
+    fun `text with no digits is not an amount`() {
+        assertNull(Formatters.parseMoney(""))
+        assertNull(Formatters.parseMoney("  $ "))
+    }
+
+    @Test
+    fun `a bare amount is whole dollars, not cents`() {
+        assertEquals(1_200L, Formatters.parseMoney("12")?.minor)
+    }
+
     private companion object {
         val LABELS = Formatters.RelativeDayLabels(today = "Aujourd'hui", yesterday = "Hier")
     }

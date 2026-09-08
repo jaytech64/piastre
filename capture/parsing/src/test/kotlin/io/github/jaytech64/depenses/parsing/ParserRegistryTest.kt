@@ -26,6 +26,12 @@ class ParserRegistryTest {
     }
 
     @Test
+    fun `names the app a package belongs to, and falls back to the package itself`() {
+        assertEquals("Google Wallet", registry.sourceName("com.google.android.apps.walletnfcrel"))
+        assertEquals("ch.protonmail.android", registry.sourceName("ch.protonmail.android"))
+    }
+
+    @Test
     fun `every watched package has a parser that claims it`() {
         registry.watchedPackages.forEach { watched ->
             val notification =

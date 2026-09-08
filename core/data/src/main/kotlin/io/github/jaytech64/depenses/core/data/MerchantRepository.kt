@@ -48,6 +48,33 @@ class MerchantRepository
             return merchant.id
         }
 
+        /**
+         * Points a raw merchant string at a merchant you named, and remembers it.
+         *
+         * The alias is written with [AliasOrigin.USER] and replaces whatever the
+         * normaliser had inferred, so the next notification carrying the same string
+         * resolves the way you corrected it rather than the way the rules read it.
+         * Correcting one purchase is how the app learns a merchant.
+         */
+        suspend fun assign(
+            raw: String?,
+            displayName: String,
+        ): Long? {
+            val name = MerchantNormaliser.normalise(displayName) ?: return null
+            val merchant = findOrCreate(name.displayName, name.normalisedName) ?: return null
+            if (!raw.isNullOrBlank()) {
+                merchants.upsertAlias(
+                    MerchantAliasEntity(
+                        merchantId = merchant.id,
+                        pattern = raw,
+                        matchType = MatchType.EXACT,
+                        createdBy = AliasOrigin.USER,
+                    ),
+                )
+            }
+            return merchant.id
+        }
+
         fun all(): Flow<List<Merchant>> =
             merchants.all().map { rows ->
                 rows.map { Merchant(id = it.id, displayName = it.displayName, normalisedName = it.normalisedName) }

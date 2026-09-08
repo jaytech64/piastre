@@ -24,6 +24,15 @@ interface NotificationParser {
      */
     val packages: Set<String>
 
+    /**
+     * What to call the app these notifications come from, on screen.
+     *
+     * Named here because the parser is the only thing that knows: deriving it from
+     * the package gives "walletnfcrel", and a screen that kept its own mapping
+     * would be a second list to forget to update.
+     */
+    val sourceName: String
+
     fun handles(notification: RawNotification): Boolean
 
     fun parse(notification: RawNotification): ParseResult
@@ -35,6 +44,10 @@ class ParserRegistry(
 ) {
     /** Every package any parser claims — the listener's allowlist. */
     val watchedPackages: Set<String> = parsers.flatMapTo(mutableSetOf()) { it.packages }
+
+    /** What to call [sourcePackage] on screen, or the package itself if none claims it. */
+    fun sourceName(sourcePackage: String): String =
+        parsers.firstOrNull { sourcePackage in it.packages }?.sourceName ?: sourcePackage
 
     fun parse(notification: RawNotification): ParseResult =
         parsers

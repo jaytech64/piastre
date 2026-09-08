@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.parsing
 
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.ReviewReason
 
 /**
  * What the parser proposes for one notification. [sourceKey] is the transaction's
@@ -18,17 +19,6 @@ data class TransactionDraft(
     val cardLast4: String? = null,
     val occurredAtUtcMillis: Long,
 )
-
-enum class ReviewReason {
-    /** Amount read, but the surrounding format was not fully recognised. */
-    UNRECOGNISED_FORMAT,
-
-    /** No merchant in the notification. */
-    MISSING_MERCHANT,
-
-    /** The transaction has no stable identity, so it cannot be de-duplicated safely. */
-    MISSING_SOURCE_KEY,
-}
 
 enum class IgnoreReason {
     /** Android's empty roll-up of a notification group. */

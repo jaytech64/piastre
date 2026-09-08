@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.database.RawNotificationEventDao
 import io.github.jaytech64.depenses.core.database.RawNotificationEventEntity
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.ReviewReason
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.model.localDateEpochDay
@@ -69,7 +70,16 @@ class ParsePipeline
 
                 is ParseResult.NeedsReview -> {
                     result.draft
-                        ?.let { record(event, parser, it, TransactionStatus.NEEDS_REVIEW, UNCONFIRMED) }
+                        ?.let {
+                            record(
+                                event,
+                                parser,
+                                it,
+                                TransactionStatus.NEEDS_REVIEW,
+                                UNCONFIRMED,
+                                result.reason,
+                            )
+                        }
                         ?: events.markParsed(event.id, ParseState.UNPARSED, parser?.version)
                 }
 
@@ -89,9 +99,17 @@ class ParsePipeline
             draft: TransactionDraft,
             status: TransactionStatus,
             confidence: Float,
+            reviewReason: ReviewReason? = null,
         ) {
             transactions.insertOrUpdate(
-                event.toTransaction(parser, draft, status, confidence, merchants.resolve(draft.merchantRaw)),
+                event.toTransaction(
+                    parser,
+                    draft,
+                    status,
+                    confidence,
+                    reviewReason,
+                    merchants.resolve(draft.merchantRaw),
+                ),
             )
             events.markParsed(event.id, ParseState.PARSED, parser?.version)
         }
@@ -106,6 +124,7 @@ class ParsePipeline
             draft: TransactionDraft,
             status: TransactionStatus,
             confidence: Float,
+            reviewReason: ReviewReason?,
             merchantId: Long?,
         ): ExpenseTransactionEntity {
             val zone = zoneId.get()
@@ -121,6 +140,8 @@ class ParsePipeline
                 categoryId = null,
                 source = TransactionSource.NOTIFICATION,
                 status = status,
+                reviewReason = reviewReason,
+                reviewedAtUtcMillis = null,
                 confidence = confidence,
                 parserId = parser?.id,
                 parserVersion = parser?.version,

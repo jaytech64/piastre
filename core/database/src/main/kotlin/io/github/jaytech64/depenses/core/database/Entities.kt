@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
 import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.MatchType
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.ReviewReason
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 
@@ -77,6 +78,13 @@ data class ExpenseTransactionEntity(
     val categoryId: Long?,
     val source: TransactionSource,
     val status: TransactionStatus,
+    /** Set only while [status] is NEEDS_REVIEW; cleared once a human has ruled. */
+    val reviewReason: ReviewReason?,
+    /**
+     * When a human last ruled on this row. Non-null freezes the parser out: see
+     * [TransactionDao.insertOrUpdate].
+     */
+    val reviewedAtUtcMillis: Long?,
     val confidence: Float,
     val parserId: String?,
     val parserVersion: Int?,
