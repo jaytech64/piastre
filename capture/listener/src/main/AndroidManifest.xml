@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+
+        <!--
+          Exported because the system's notification manager binds it from outside
+          the app. That is safe only because of android:permission below: the
+          BIND_NOTIFICATION_LISTENER_SERVICE permission is signature-level and held
+          by the platform alone, so no other app can bind this service.
+        -->
+        <service
+            android:name=".DepensesListenerService"
+            android:exported="true"
+            android:label="@string/capture_service_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+    </application>
+</manifest>

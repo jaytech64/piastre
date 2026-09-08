@@ -18,10 +18,22 @@ import io.github.jaytech64.depenses.core.model.TransactionStatus
  * This is what makes the pipeline re-runnable: a parser fix re-reads history
  * instead of only improving the future, and a payload no parser handles today is
  * still on disk when one is written for it.
+ *
+ * The unique index separates two things that look identical and are not. A
+ * *replay* is one post delivered twice, because the listener rebinds and hands
+ * back everything still on the shade — measured at up to 51 hours of backlog —
+ * and it must collapse. A *re-post* is Wallet publishing the same purchase again
+ * with a fresh `postTime`, which is real evidence of how Wallet behaves and must
+ * be kept. Keying on the post time is what tells them apart.
  */
 @Entity(
     tableName = "raw_notification_event",
-    indices = [Index("notificationKey"), Index("postedAtUtcMillis"), Index("parseState")],
+    indices = [
+        Index(value = ["sourcePackage", "notificationKey", "postedAtUtcMillis"], unique = true),
+        Index("notificationKey"),
+        Index("postedAtUtcMillis"),
+        Index("parseState"),
+    ],
 )
 data class RawNotificationEventEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

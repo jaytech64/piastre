@@ -13,7 +13,12 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface RawNotificationEventDao {
-    @Insert
+    /**
+     * Returns the new row id, or [INSERT_IGNORED] when this exact post is already
+     * recorded — which is the normal outcome every time the listener rebinds and
+     * replays the shade.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(event: RawNotificationEventEntity): Long
 
     @Query("SELECT * FROM raw_notification_event WHERE parseState = :state ORDER BY postedAtUtcMillis")
@@ -32,6 +37,11 @@ interface RawNotificationEventDao {
 
     @Query("SELECT COUNT(*) FROM raw_notification_event")
     fun count(): Flow<Int>
+
+    companion object {
+        /** What SQLite's `INSERT OR IGNORE` returns when the row was already there. */
+        const val INSERT_IGNORED: Long = -1L
+    }
 }
 
 @Dao
