@@ -31,6 +31,8 @@ class GoogleWalletParser : NotificationParser {
     override val id: String = PARSER_ID
     override val version: Int = 1
 
+    override val packages: Set<String> = setOf(WALLET_PACKAGE)
+
     override fun handles(notification: RawNotification): Boolean = notification.sourcePackage == WALLET_PACKAGE
 
     override fun parse(notification: RawNotification): ParseResult {

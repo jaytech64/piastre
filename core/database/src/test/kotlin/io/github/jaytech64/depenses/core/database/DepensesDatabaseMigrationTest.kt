@@ -79,16 +79,65 @@ class DepensesDatabaseMigrationTest {
         assertEquals(1, migrated.count("merchant"))
     }
 
+    /**
+     * The purge is the one migration that deletes data the user can never get
+     * back, so it is tested for what it spares as much as for what it removes.
+     */
+    @Test
+    fun `migrating to schema 4 deletes every notification no parser claimed`() {
+        helper.createDatabase(NAME, 3).use { database ->
+            database.insertRawEvent(postedAtUtcMillis = FIRST_POST)
+            database.insertRawEvent(postedAtUtcMillis = FIRST_POST, sourcePackage = "ch.protonmail.android")
+            database.insertRawEvent(postedAtUtcMillis = RE_POST, sourcePackage = "com.android.systemui")
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 4, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(1, migrated.rawEventCount())
+        assertEquals(WALLET, migrated.singleRawEventPackage())
+    }
+
+    @Test
+    fun `the purge leaves the ledger alone`() {
+        helper.createDatabase(NAME, 3).use { database ->
+            database.insertRawEvent(postedAtUtcMillis = FIRST_POST, sourcePackage = "ch.protonmail.android")
+            database.insertTransaction()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 4, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(0, migrated.rawEventCount())
+        assertEquals(1, migrated.count("expense_transaction"))
+    }
+
     private fun SupportSQLiteDatabase.insertRawEvent(
         postedAtUtcMillis: Long,
+        sourcePackage: String = WALLET,
         orIgnore: Boolean = false,
     ) = execSQL(
         "INSERT ${if (orIgnore) "OR IGNORE " else ""}INTO raw_notification_event " +
             "(sourcePackage, notificationKey, postedAtUtcMillis, deviceLocale, title, text, " +
             "bigText, subText, isGroupSummary, extrasJson, parseState, parsedByVersion) " +
             "VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, 0, '{}', 'PENDING', NULL)",
-        arrayOf<Any>(WALLET, KEY, postedAtUtcMillis, "fr-CA", "MARCHE ST JOSEPH  1234", "23,42 $ avec"),
+        arrayOf<Any>(sourcePackage, KEY, postedAtUtcMillis, "fr-CA", "MARCHE ST JOSEPH  1234", "23,42 $ avec"),
     )
+
+    private fun SupportSQLiteDatabase.insertTransaction() =
+        execSQL(
+            "INSERT INTO expense_transaction " +
+                "(rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay, " +
+                "merchantId, merchantRaw, categoryId, source, status, confidence, parserId, parserVersion, " +
+                "sourcePackage, sourceKey, cardLabel, cardLast4, note) " +
+                "VALUES (NULL, 6554, 'CAD', ?, 'America/Toronto', 20707, NULL, 'MARCHE ST DAVID', NULL, " +
+                "'NOTIFICATION', 'CONFIRMED', 1.0, 'google-wallet', 1, ?, 'tag-1', NULL, '1011', NULL)",
+            arrayOf<Any>(FIRST_POST, WALLET),
+        )
+
+    private fun SupportSQLiteDatabase.singleRawEventPackage(): String =
+        query("SELECT sourcePackage FROM raw_notification_event").use { cursor ->
+            cursor.moveToFirst()
+            cursor.getString(0)
+        }
 
     private fun SupportSQLiteDatabase.rawEventCount(): Int = count("raw_notification_event")
 

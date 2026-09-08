@@ -13,6 +13,17 @@ interface NotificationParser {
      */
     val version: Int
 
+    /**
+     * The packages this parser reads, declared rather than inferred so the
+     * listener can reject a notification before it opens the bundle.
+     *
+     * [handles] decides whether a payload is this parser's; this decides whether
+     * the payload is ever read at all. The distinction is the whole of the app's
+     * data minimisation: a notification from a package no parser named leaves no
+     * trace, not even a discarded row.
+     */
+    val packages: Set<String>
+
     fun handles(notification: RawNotification): Boolean
 
     fun parse(notification: RawNotification): ParseResult
@@ -22,6 +33,9 @@ interface NotificationParser {
 class ParserRegistry(
     private val parsers: List<NotificationParser>,
 ) {
+    /** Every package any parser claims — the listener's allowlist. */
+    val watchedPackages: Set<String> = parsers.flatMapTo(mutableSetOf()) { it.packages }
+
     fun parse(notification: RawNotification): ParseResult =
         parsers
             .firstOrNull { it.handles(notification) }

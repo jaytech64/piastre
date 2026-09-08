@@ -8,6 +8,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.github.jaytech64.depenses.core.data.CaptureCatchUp
 import io.github.jaytech64.depenses.core.data.NotificationCapture
 import io.github.jaytech64.depenses.core.data.SettingsRepository
+import io.github.jaytech64.depenses.parsing.ParserRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -33,6 +34,9 @@ class DepensesListenerService : NotificationListenerService() {
 
     @Inject
     lateinit var catchUp: CaptureCatchUp
+
+    @Inject
+    lateinit var registry: ParserRegistry
 
     /**
      * Survives an individual callback but not the service. A write already handed
@@ -74,11 +78,17 @@ class DepensesListenerService : NotificationListenerService() {
      * listener that is slow to return, so the only work done here is reading a
      * bundle. Serialising, checking the setting and writing all happen after the
      * callback has already given the thread back.
+     *
+     * Notifications from packages no parser claims are dropped before the bundle
+     * is opened. Android hands this service every notification on the device —
+     * mail subjects, message previews, everything — and the only way not to hold
+     * that data is never to read it.
      */
     private fun record(notifications: List<StatusBarNotification>) {
-        if (notifications.isEmpty()) return
+        val watched = notifications.filter { it.packageName in registry.watchedPackages }
+        if (watched.isEmpty()) return
         val locale = resources.configuration.locales[0].toLanguageTag()
-        val payloads = notifications.map { it.toCapture(locale) }
+        val payloads = watched.map { it.toCapture(locale) }
         scope.launch {
             if (!settings.captureEnabled.first()) return@launch
             payloads.forEach { capture.capture(it.notification, it.extrasJson()) }

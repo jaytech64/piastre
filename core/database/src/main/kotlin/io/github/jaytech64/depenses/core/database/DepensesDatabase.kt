@@ -27,13 +27,13 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun reportDao(): ReportDao
 
     companion object {
-        const val VERSION: Int = 3
+        const val VERSION: Int = 4
 
         /**
          * Migrations are listed here rather than passed at the call site so that
          * adding one cannot be forgotten in a second place.
          */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
         const val NAME: String = "depenses.db"
     }
@@ -90,3 +90,29 @@ private val MIGRATION_2_3 =
             )
         }
     }
+
+/**
+ * Schema 4 deletes raw events this app should never have kept.
+ *
+ * Until this version the listener recorded every notification on the device,
+ * content included, and only decided afterwards that a mail subject was not a
+ * payment. The listener now filters by package before it reads the bundle, which
+ * stops the collection — this stops the retention.
+ *
+ * The package list is written out here rather than read from the parser registry
+ * on purpose. A migration is a historical record of what one upgrade did; wiring
+ * it to a list that grows would silently change what an old upgrade means, and a
+ * parser added next year must not be able to reach back and alter this delete.
+ */
+private val MIGRATION_3_4 =
+    object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "DELETE FROM raw_notification_event WHERE sourcePackage NOT IN (?)",
+                arrayOf(WALLET_PACKAGE),
+            )
+        }
+    }
+
+/** The only package any parser claimed when schema 4 was written. */
+private const val WALLET_PACKAGE = "com.google.android.apps.walletnfcrel"
