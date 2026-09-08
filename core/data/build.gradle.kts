@@ -14,4 +14,8 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(project(":core:testing"))
+    testImplementation(testFixtures(project(":capture:parsing")))
+    testImplementation(libs.robolectric)
 }

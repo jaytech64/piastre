@@ -38,7 +38,7 @@ class CapturedNotificationTest {
 
     @Test
     fun `a wallet payment keeps the fields the parser reads`() {
-        val captured = walletPayment().capture(LOCALE)
+        val captured = walletPayment().toCapture(LOCALE)
 
         with(captured.notification) {
             assertEquals(WALLET, sourcePackage)
@@ -53,7 +53,7 @@ class CapturedNotificationTest {
     /** Identity comes from the tag, so a key the parser cannot split is a lost transaction. */
     @Test
     fun `the notification key carries the tag wallet uses as a transaction id`() {
-        val key = walletPayment().capture(LOCALE).notification.notificationKey
+        val key = walletPayment().toCapture(LOCALE).notification.notificationKey
 
         assertTrue("key was '$key'", key.split('|').contains(TAG))
     }
@@ -66,7 +66,7 @@ class CapturedNotificationTest {
                 putString("com.example.unrelated", "kept out because it is not an android key")
             }
 
-        val captured = walletPayment(extras).capture(LOCALE).extras
+        val captured = walletPayment(extras).toCapture(LOCALE).extras
 
         assertEquals(TITLE, captured[Notification.EXTRA_TITLE])
         assertNull(captured[Notification.EXTRA_PROGRESS])
@@ -76,14 +76,14 @@ class CapturedNotificationTest {
     @Test
     fun `two identical notifications serialise to the same json`() {
         assertEquals(
-            walletPayment().capture(LOCALE).extrasJson(),
-            walletPayment().capture(LOCALE).extrasJson(),
+            walletPayment().toCapture(LOCALE).extrasJson(),
+            walletPayment().toCapture(LOCALE).extrasJson(),
         )
     }
 
     @Test
     fun `accents and apostrophes survive serialisation`() {
-        val json = walletPayment().capture(LOCALE).extrasJson()
+        val json = walletPayment().toCapture(LOCALE).extrasJson()
 
         assertTrue(json, json.contains("Carte d'accès Coopérative"))
     }
@@ -97,7 +97,7 @@ class CapturedNotificationTest {
                 .setGroupSummary(true)
                 .build()
 
-        assertTrue(statusBarNotification(summary).capture(LOCALE).notification.isGroupSummary)
+        assertTrue(statusBarNotification(summary).toCapture(LOCALE).notification.isGroupSummary)
     }
 
     private fun walletPayment(extras: Bundle = Bundle.EMPTY): StatusBarNotification =

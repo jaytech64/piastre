@@ -21,6 +21,9 @@ interface RawNotificationEventDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(event: RawNotificationEventEntity): Long
 
+    @Query("SELECT * FROM raw_notification_event WHERE id = :id")
+    suspend fun byId(id: Long): RawNotificationEventEntity?
+
     @Query("SELECT * FROM raw_notification_event WHERE parseState = :state ORDER BY postedAtUtcMillis")
     suspend fun byState(state: ParseState): List<RawNotificationEventEntity>
 
@@ -28,11 +31,12 @@ interface RawNotificationEventDao {
     @Query("SELECT * FROM raw_notification_event WHERE parsedByVersion IS NULL OR parsedByVersion < :version")
     suspend fun parsedBelowVersion(version: Int): List<RawNotificationEventEntity>
 
+    /** [version] is null when no parser claimed the notification, so none read it. */
     @Query("UPDATE raw_notification_event SET parseState = :state, parsedByVersion = :version WHERE id = :id")
     suspend fun markParsed(
         id: Long,
         state: ParseState,
-        version: Int,
+        version: Int?,
     )
 
     @Query("SELECT COUNT(*) FROM raw_notification_event")

@@ -5,7 +5,8 @@ package io.github.jaytech64.depenses.capture.listener
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import dagger.hilt.android.AndroidEntryPoint
-import io.github.jaytech64.depenses.core.data.RawEventRepository
+import io.github.jaytech64.depenses.core.data.CaptureCatchUp
+import io.github.jaytech64.depenses.core.data.NotificationCapture
 import io.github.jaytech64.depenses.core.data.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,10 +26,13 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class DepensesListenerService : NotificationListenerService() {
     @Inject
-    lateinit var rawEvents: RawEventRepository
+    lateinit var capture: NotificationCapture
 
     @Inject
     lateinit var settings: SettingsRepository
+
+    @Inject
+    lateinit var catchUp: CaptureCatchUp
 
     /**
      * Survives an individual callback but not the service. A write already handed
@@ -44,9 +48,13 @@ class DepensesListenerService : NotificationListenerService() {
      * The gap can be long: the capture spike measured backlogs of 22, 22 and 51
      * hours after a rebind. Skipping this replay is how a week of spending
      * silently goes missing.
+     *
+     * A rebind is also the moment a row can be left recorded but unparsed, so the
+     * catch-up pass is scheduled from the same place.
      */
     override fun onListenerConnected() {
         super.onListenerConnected()
+        catchUp.schedule()
         record(activeNotifications?.asList().orEmpty())
     }
 
@@ -70,10 +78,10 @@ class DepensesListenerService : NotificationListenerService() {
     private fun record(notifications: List<StatusBarNotification>) {
         if (notifications.isEmpty()) return
         val locale = resources.configuration.locales[0].toLanguageTag()
-        val captured = notifications.map { it.capture(locale) }
+        val payloads = notifications.map { it.toCapture(locale) }
         scope.launch {
             if (!settings.captureEnabled.first()) return@launch
-            captured.forEach { rawEvents.record(it.notification, it.extrasJson()) }
+            payloads.forEach { capture.capture(it.notification, it.extrasJson()) }
         }
     }
 }

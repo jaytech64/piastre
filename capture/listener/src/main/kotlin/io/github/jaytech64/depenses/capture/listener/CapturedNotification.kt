@@ -31,7 +31,7 @@ internal data class CapturedNotification(
  * [Bundle] is a map lookup, and nothing here parses, allocates a regex, or
  * touches disk.
  */
-internal fun StatusBarNotification.capture(deviceLocale: String): CapturedNotification {
+internal fun StatusBarNotification.toCapture(deviceLocale: String): CapturedNotification {
     val extras = notification.extras ?: Bundle.EMPTY
     return CapturedNotification(
         notification =
