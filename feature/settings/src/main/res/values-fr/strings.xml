@@ -44,4 +44,42 @@
     <string name="onboarding_control_body">Un seul interrupteur, dans les Réglages, interrompt la capture, et tout effacer se fait en une action.</string>
     <string name="onboarding_grant">Autoriser l\'accès aux notifications</string>
     <string name="onboarding_later">Plus tard</string>
+
+    <string name="settings_data_section">Vos données · Loi 25</string>
+    <string name="settings_export">Exporter</string>
+    <string name="settings_export_body">CSV et JSON, vers un fichier que vous choisissez.</string>
+    <string name="settings_export_csv">CSV</string>
+    <string name="settings_export_json">JSON</string>
+    <plurals name="settings_export_done">
+        <item quantity="one">Exporté : %d dépense</item>
+        <item quantity="other">Exporté : %d dépenses</item>
+    </plurals>
+    <string name="settings_export_failed">L\'exportation a échoué : %1$s</string>
+    <string name="settings_export_failed_unknown">L\'exportation a échoué. Le fichier n\'a pas pu être écrit.</string>
+
+    <string name="settings_clear_raw">Effacer le journal brut</string>
+    <string name="settings_clear_raw_body">Vos dépenses sont conservées. Une correction future de l\'analyseur ne pourra plus relire ce qui est supprimé ici.</string>
+    <string name="settings_clear_raw_title">Effacer le journal brut ?</string>
+    <string name="settings_clear_raw_action">Effacer</string>
+    <string name="settings_clear_raw_done">Le journal brut a été effacé.</string>
+
+    <string name="settings_erase">Tout effacer</string>
+    <string name="settings_erase_body">Irréversible.</string>
+    <string name="settings_erase_title">Tout effacer ?</string>
+    <string name="settings_erase_message">Toutes vos dépenses, vos marchands et les notifications conservées seront supprimés définitivement. Tapez %1$s pour confirmer.</string>
+    <string name="settings_erase_keyword">EFFACER</string>
+    <string name="settings_erase_action">Tout effacer</string>
+    <string name="settings_erase_done">Tout a été effacé.</string>
+
+    <string name="settings_cancel">Annuler</string>
+
+    <string name="export_column_date">date</string>
+    <string name="export_column_time">heure</string>
+    <string name="export_column_merchant">marchand</string>
+    <string name="export_column_amount">montant</string>
+    <string name="export_column_currency">devise</string>
+    <string name="export_column_source">source</string>
+    <string name="export_column_status">statut</string>
+    <string name="export_column_card">carte</string>
+    <string name="export_column_note">note</string>
 </resources>

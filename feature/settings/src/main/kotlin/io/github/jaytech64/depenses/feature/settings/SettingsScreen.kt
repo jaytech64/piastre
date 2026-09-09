@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -33,6 +34,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val health by healthViewModel.uiState.collectAsStateWithLifecycle()
+    val lastAction by viewModel.lastAction.collectAsStateWithLifecycle()
 
     Column(
         Modifier
@@ -64,6 +66,8 @@ fun SettingsScreen(
             title = stringResource(R.string.settings_raw_log),
             body = pluralStringResource(R.plurals.settings_raw_log_count, state.rawEventCount, state.rawEventCount),
         )
+
+        DataSection(lastAction = lastAction, viewModel = viewModel)
 
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
@@ -117,7 +121,7 @@ private fun CaptureHealthRow(
 }
 
 @Composable
-private fun SectionHeader(label: String) {
+internal fun SectionHeader(label: String) {
     Text(
         label.uppercase(),
         style = MaterialTheme.typography.labelMedium,
@@ -127,9 +131,10 @@ private fun SectionHeader(label: String) {
 }
 
 @Composable
-private fun SettingRow(
+internal fun SettingRow(
     title: String,
     body: String,
+    titleColor: Color = Color.Unspecified,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     Row(
@@ -140,7 +145,7 @@ private fun SettingRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
             Text(
                 body,
                 style = MaterialTheme.typography.bodySmall,

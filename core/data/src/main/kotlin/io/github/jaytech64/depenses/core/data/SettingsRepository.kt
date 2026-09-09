@@ -71,6 +71,14 @@ class SettingsRepository
             store.edit { it[LAST_LISTENER_EVENT] = at.toEpochMilli() }
         }
 
+        /**
+         * Drops the heartbeat, so health starts again from "waiting" rather than
+         * from a moment that belongs to data you asked to have erased.
+         */
+        suspend fun forgetListenerEvent() {
+            store.edit { it.remove(LAST_LISTENER_EVENT) }
+        }
+
         private companion object {
             val CAPTURE_ENABLED = booleanPreferencesKey("capture_enabled")
             val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")

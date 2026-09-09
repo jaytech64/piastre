@@ -44,4 +44,42 @@
     <string name="onboarding_control_body">One switch in Settings stops the capture, and erasing everything is one action away.</string>
     <string name="onboarding_grant">Allow notification access</string>
     <string name="onboarding_later">Later</string>
+
+    <string name="settings_data_section">Your data · Law 25</string>
+    <string name="settings_export">Export</string>
+    <string name="settings_export_body">CSV and JSON, into a file you choose.</string>
+    <string name="settings_export_csv">CSV</string>
+    <string name="settings_export_json">JSON</string>
+    <plurals name="settings_export_done">
+        <item quantity="one">Exported: %d expense</item>
+        <item quantity="other">Exported: %d expenses</item>
+    </plurals>
+    <string name="settings_export_failed">Export failed: %1$s</string>
+    <string name="settings_export_failed_unknown">Export failed. The file could not be written.</string>
+
+    <string name="settings_clear_raw">Clear the raw log</string>
+    <string name="settings_clear_raw_body">Your expenses are kept. A later parser fix will no longer be able to re-read what this deletes.</string>
+    <string name="settings_clear_raw_title">Clear the raw log?</string>
+    <string name="settings_clear_raw_action">Clear</string>
+    <string name="settings_clear_raw_done">The raw log has been cleared.</string>
+
+    <string name="settings_erase">Erase everything</string>
+    <string name="settings_erase_body">Irreversible.</string>
+    <string name="settings_erase_title">Erase everything?</string>
+    <string name="settings_erase_message">Every expense, merchant and kept notification is deleted for good. Type %1$s to confirm.</string>
+    <string name="settings_erase_keyword">ERASE</string>
+    <string name="settings_erase_action">Erase everything</string>
+    <string name="settings_erase_done">Everything has been erased.</string>
+
+    <string name="settings_cancel">Cancel</string>
+
+    <string name="export_column_date">date</string>
+    <string name="export_column_time">time</string>
+    <string name="export_column_merchant">merchant</string>
+    <string name="export_column_amount">amount</string>
+    <string name="export_column_currency">currency</string>
+    <string name="export_column_source">source</string>
+    <string name="export_column_status">status</string>
+    <string name="export_column_card">card</string>
+    <string name="export_column_note">note</string>
 </resources>

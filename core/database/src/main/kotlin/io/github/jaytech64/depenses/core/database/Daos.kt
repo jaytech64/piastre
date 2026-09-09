@@ -44,6 +44,17 @@ interface RawNotificationEventDao {
     @Query("SELECT COUNT(*) FROM raw_notification_event")
     fun count(): Flow<Int>
 
+    /**
+     * Drops the whole raw log, keeping the ledger.
+     *
+     * This is the sensitive half of the database and the half you can delete
+     * without losing history: the transactions read out of these rows stay, they
+     * just stop being re-derivable, and the review inbox shows a ruled row
+     * without the notification behind it.
+     */
+    @Query("DELETE FROM raw_notification_event")
+    suspend fun deleteAll()
+
     companion object {
         /** What SQLite's `INSERT OR IGNORE` returns when the row was already there. */
         const val INSERT_IGNORED: Long = -1L
@@ -157,6 +168,21 @@ interface TransactionDao {
     @Query("SELECT COUNT(*) FROM expense_transaction")
     fun count(): Flow<Int>
 
+    /**
+     * Every transaction with its canonical merchant, oldest first — the shape an
+     * export wants. Ascending because a spreadsheet is read downward through
+     * time, where a screen is read newest first.
+     */
+    @Query(
+        """
+        SELECT t.*, m.displayName AS merchantName
+        FROM expense_transaction t
+        LEFT JOIN merchant m ON m.id = t.merchantId
+        ORDER BY t.occurredAtUtcMillis
+        """,
+    )
+    suspend fun allWithMerchant(): List<TransactionWithMerchant>
+
     @Query("DELETE FROM expense_transaction")
     suspend fun deleteAll()
 }
@@ -186,6 +212,12 @@ interface MerchantDao {
 
     @Query("SELECT * FROM merchant ORDER BY displayName")
     fun all(): Flow<List<MerchantEntity>>
+
+    @Query("SELECT * FROM merchant ORDER BY id")
+    suspend fun allOnce(): List<MerchantEntity>
+
+    @Query("SELECT * FROM merchant_alias ORDER BY id")
+    suspend fun allAliases(): List<MerchantAliasEntity>
 }
 
 /** A transaction with the display name of the merchant it resolved to. */
