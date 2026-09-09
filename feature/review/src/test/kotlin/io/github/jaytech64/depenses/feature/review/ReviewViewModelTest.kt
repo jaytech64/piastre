@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.review
 
-import app.cash.turbine.test
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.NotificationCapture
 import io.github.jaytech64.depenses.core.data.ParsePipeline
@@ -16,8 +15,8 @@ import io.github.jaytech64.depenses.parsing.GoogleWalletParser
 import io.github.jaytech64.depenses.parsing.ParserRegistry
 import io.github.jaytech64.depenses.parsing.RawNotification
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -76,10 +75,7 @@ class ReviewViewModelTest {
     @Test
     fun `an empty queue says so instead of showing a blank list`() =
         runTest {
-            viewModel.uiState.test {
-                assertTrue(settled().isEmpty)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertTrue(settled().isEmpty)
         }
 
     @Test
@@ -87,14 +83,11 @@ class ReviewViewModelTest {
         runTest {
             captureUnnamedMerchant()
 
-            viewModel.uiState.test {
-                val item = settled().items.single()
+            val item = settled().items.single()
 
-                assertEquals(ReviewReason.MISSING_MERCHANT, item.reason)
-                assertEquals(UNNAMED_TEXT, item.rawText)
-                assertEquals(10_200L, item.transaction.amount.minor)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(ReviewReason.MISSING_MERCHANT, item.reason)
+            assertEquals(UNNAMED_TEXT, item.rawText)
+            assertEquals(10_200L, item.transaction.amount.minor)
         }
 
     @Test
@@ -102,46 +95,47 @@ class ReviewViewModelTest {
         runTest {
             captureUnnamedMerchant()
 
-            viewModel.uiState.test {
-                val item = settled().items.single()
-                viewModel.confirm(item.transaction.id)
-                advanceUntilIdle()
+            viewModel.confirm(
+                settled()
+                    .items
+                    .single()
+                    .transaction.id,
+            )
 
-                assertTrue(awaitItem().items.isEmpty())
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertTrue(
+                viewModel.uiState
+                    .first { it.items.isEmpty() }
+                    .items
+                    .isEmpty(),
+            )
         }
 
     @Test
     fun `a correction leaves the queue and keeps what was typed`() =
         runTest {
             captureUnnamedMerchant()
-            var id = 0L
+            val id =
+                settled()
+                    .items
+                    .single()
+                    .transaction.id
 
-            viewModel.uiState.test {
-                id =
-                    settled()
-                        .items
-                        .single()
-                        .transaction.id
-                viewModel.correct(id, Money(1_250, Money.CAD), "Dépanneur du coin")
-                advanceUntilIdle()
-
-                assertTrue(awaitItem().items.isEmpty())
-                cancelAndIgnoreRemainingEvents()
-            }
+            viewModel.correct(id, Money(1_250, Money.CAD), "Dépanneur du coin")
+            viewModel.uiState.first { it.items.isEmpty() }
 
             val corrected = database.transactionDao().byId(id)
             assertEquals(1_250L, corrected?.amountMinor)
             assertNotNull(corrected?.merchantId)
         }
 
-    /** The first emission is the placeholder the flow starts with; the next is real. */
-    private suspend fun app.cash.turbine.TurbineTestContext<ReviewUiState>.settled(): ReviewUiState {
-        var state = awaitItem()
-        while (state.loading) state = awaitItem()
-        return state
-    }
+    /**
+     * The state once the database has answered, awaited rather than polled.
+     *
+     * Turbine's timeouts run on the test scheduler's virtual clock, which jumps
+     * the moment nothing is queued — so a wait that starts before the flow has
+     * been subscribed times out instantly rather than waiting at all.
+     */
+    private suspend fun settled(): ReviewUiState = viewModel.uiState.first { !it.loading }
 
     private suspend fun captureUnnamedMerchant() =
         capture.capture(
