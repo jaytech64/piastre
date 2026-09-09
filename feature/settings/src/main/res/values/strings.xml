@@ -1,0 +1,47 @@
+<resources>
+    <string name="settings_title">Settings</string>
+
+    <string name="settings_capture_section">Capture</string>
+    <string name="settings_capture_toggle">Capture notifications</string>
+    <string name="settings_capture_toggle_body">Reads Google Wallet payment notifications and records them here.</string>
+    <string name="settings_raw_log">Raw log</string>
+    <plurals name="settings_raw_log_count">
+        <item quantity="one">%d notification kept</item>
+        <item quantity="other">%d notifications kept</item>
+    </plurals>
+    <string name="settings_no_network">No data leaves this device. The app does not have permission to use the internet.</string>
+
+    <string name="health_listening">Capture active</string>
+    <string name="health_paused">Capture paused</string>
+    <string name="health_paused_body">You turned capture off. Nothing is being recorded.</string>
+    <string name="health_interrupted">Capture interrupted</string>
+    <string name="health_revoked_body">Notification access has been revoked. No payment can be recorded.</string>
+    <string name="health_silent_body">No notification received in %1$s. Notification access may have been revoked by the system.</string>
+    <string name="health_last_event">Last notification received %1$s</string>
+    <string name="health_never">Waiting for the first notification</string>
+    <string name="health_reactivate">Reactivate</string>
+
+    <string name="health_ago_now">just now</string>
+    <plurals name="health_ago_minutes">
+        <item quantity="one">%d minute ago</item>
+        <item quantity="other">%d minutes ago</item>
+    </plurals>
+    <plurals name="health_ago_hours">
+        <item quantity="one">%d hour ago</item>
+        <item quantity="other">%d hours ago</item>
+    </plurals>
+    <plurals name="health_ago_days">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
+
+    <string name="onboarding_title">Welcome to Dépenses</string>
+    <string name="onboarding_capture_title">Your payments, recorded on their own</string>
+    <string name="onboarding_capture_body">The app reads Google Wallet payment notifications and takes the amount, the merchant and the time from them.</string>
+    <string name="onboarding_private_title">Nothing leaves your phone</string>
+    <string name="onboarding_private_body">Dépenses does not even have permission to use the internet. Everything stays in this device\'s storage.</string>
+    <string name="onboarding_control_title">You stay in control</string>
+    <string name="onboarding_control_body">One switch in Settings stops the capture, and erasing everything is one action away.</string>
+    <string name="onboarding_grant">Allow notification access</string>
+    <string name="onboarding_later">Later</string>
+</resources>

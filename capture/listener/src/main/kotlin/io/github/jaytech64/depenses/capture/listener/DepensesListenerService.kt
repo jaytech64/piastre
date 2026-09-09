@@ -15,6 +15,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.time.Clock
 import javax.inject.Inject
 
 /**
@@ -38,6 +39,9 @@ class DepensesListenerService : NotificationListenerService() {
     @Inject
     lateinit var registry: ParserRegistry
 
+    @Inject
+    lateinit var clock: Clock
+
     /**
      * Survives an individual callback but not the service. A write already handed
      * to the database is not interrupted by cancellation; one still queued is
@@ -58,17 +62,32 @@ class DepensesListenerService : NotificationListenerService() {
      */
     override fun onListenerConnected() {
         super.onListenerConnected()
+        noteAlive()
         catchUp.schedule()
         record(activeNotifications?.asList().orEmpty())
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        noteAlive()
         record(listOfNotNull(sbn))
     }
 
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
+    }
+
+    /**
+     * Marks the pipe open, whatever came through it.
+     *
+     * This runs before the package filter and stores only a timestamp — no
+     * package, no count, nothing read from the bundle. Restricting it to Wallet
+     * would make a fortnight of cooking at home indistinguishable from a listener
+     * the system quietly unbound, which is the whole thing being guarded against.
+     */
+    private fun noteAlive() {
+        val now = clock.instant()
+        scope.launch { settings.noteListenerEvent(now) }
     }
 
     /**

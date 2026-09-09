@@ -1,0 +1,47 @@
+<resources>
+    <string name="settings_title">Réglages</string>
+
+    <string name="settings_capture_section">Capture</string>
+    <string name="settings_capture_toggle">Capter les notifications</string>
+    <string name="settings_capture_toggle_body">Lit les notifications de paiement de Google Wallet et les inscrit ici.</string>
+    <string name="settings_raw_log">Journal brut</string>
+    <plurals name="settings_raw_log_count">
+        <item quantity="one">%d notification conservée</item>
+        <item quantity="other">%d notifications conservées</item>
+    </plurals>
+    <string name="settings_no_network">Aucune donnée ne quitte l\'appareil. L\'application n\'a pas la permission d\'accéder à Internet.</string>
+
+    <string name="health_listening">Capture active</string>
+    <string name="health_paused">Capture en pause</string>
+    <string name="health_paused_body">Vous avez interrompu la capture. Rien n\'est enregistré.</string>
+    <string name="health_interrupted">Capture interrompue</string>
+    <string name="health_revoked_body">L\'accès aux notifications a été révoqué. Aucun paiement ne peut être enregistré.</string>
+    <string name="health_silent_body">Aucune notification reçue depuis %1$s. L\'accès aux notifications a peut-être été révoqué par le système.</string>
+    <string name="health_last_event">Dernière notification reçue %1$s</string>
+    <string name="health_never">En attente de la première notification</string>
+    <string name="health_reactivate">Réactiver</string>
+
+    <string name="health_ago_now">à l\'instant</string>
+    <plurals name="health_ago_minutes">
+        <item quantity="one">il y a %d minute</item>
+        <item quantity="other">il y a %d minutes</item>
+    </plurals>
+    <plurals name="health_ago_hours">
+        <item quantity="one">il y a %d heure</item>
+        <item quantity="other">il y a %d heures</item>
+    </plurals>
+    <plurals name="health_ago_days">
+        <item quantity="one">il y a %d jour</item>
+        <item quantity="other">il y a %d jours</item>
+    </plurals>
+
+    <string name="onboarding_title">Bienvenue dans Dépenses</string>
+    <string name="onboarding_capture_title">Vos paiements, inscrits tout seuls</string>
+    <string name="onboarding_capture_body">L\'application lit les notifications de paiement de Google Wallet et en tire le montant, le marchand et l\'heure.</string>
+    <string name="onboarding_private_title">Rien ne sort de votre téléphone</string>
+    <string name="onboarding_private_body">Dépenses n\'a même pas la permission d\'accéder à Internet. Tout reste dans la mémoire de l\'appareil.</string>
+    <string name="onboarding_control_title">Vous gardez la main</string>
+    <string name="onboarding_control_body">Un seul interrupteur, dans les Réglages, interrompt la capture, et tout effacer se fait en une action.</string>
+    <string name="onboarding_grant">Autoriser l\'accès aux notifications</string>
+    <string name="onboarding_later">Plus tard</string>
+</resources>
