@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
-import app.cash.turbine.test
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
+import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
@@ -13,6 +13,7 @@ import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -40,10 +41,18 @@ class LedgerViewModelTest {
         database = inMemoryDatabase()
         viewModel =
             LedgerViewModel(
-                repository = TransactionRepository(database.transactionDao(), database.reportDao()),
+                repository = transactionRepository(),
                 ticker = LocalDateTicker(Provider { ZONE }),
             )
     }
+
+    private fun transactionRepository() =
+        TransactionRepository(
+            transactions = database.transactionDao(),
+            reports = database.reportDao(),
+            merchants = MerchantRepository(database.merchantDao()),
+            zoneId = Provider { ZONE },
+        )
 
     @After
     fun tearDown() {
@@ -54,10 +63,7 @@ class LedgerViewModelTest {
     @Test
     fun `an untouched ledger says so instead of showing a blank list`() =
         runTest {
-            viewModel.uiState.test {
-                assertTrue(settled().isEmpty)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertTrue(settled().isEmpty)
         }
 
     @Test
@@ -66,14 +72,10 @@ class LedgerViewModelTest {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 2_342, day = TODAY)
             insert(amountMinor = 3_180, day = YESTERDAY)
+            val state = settled()
 
-            viewModel.uiState.test {
-                val state = settled()
-
-                assertEquals(listOf(TODAY, YESTERDAY), state.days.map { it.date })
-                assertEquals(listOf(2, 1), state.days.map { it.transactions.size })
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(listOf(TODAY, YESTERDAY), state.days.map { it.date })
+            assertEquals(listOf(2, 1), state.days.map { it.transactions.size })
         }
 
     @Test
@@ -82,29 +84,21 @@ class LedgerViewModelTest {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 2_342, day = TODAY)
             insert(amountMinor = 3_180, day = YESTERDAY)
+            val state = settled()
 
-            viewModel.uiState.test {
-                val state = settled()
-
-                assertEquals(Money(3_417, Money.CAD), state.days.first().total)
-                assertEquals(Money(3_180, Money.CAD), state.days.last().total)
-                assertEquals(Money(3_417, Money.CAD), state.spentToday)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(Money(3_417, Money.CAD), state.days.first().total)
+            assertEquals(Money(3_180, Money.CAD), state.days.last().total)
+            assertEquals(Money(3_417, Money.CAD), state.spentToday)
         }
 
     @Test
     fun `a day with no spending shows a zero headline rather than the last day's`() =
         runTest {
             insert(amountMinor = 3_180, day = YESTERDAY)
+            val state = settled()
 
-            viewModel.uiState.test {
-                val state = settled()
-
-                assertEquals(Money(0, Money.CAD), state.spentToday)
-                assertFalse(state.isEmpty)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(Money(0, Money.CAD), state.spentToday)
+            assertFalse(state.isEmpty)
         }
 
     /**
@@ -116,20 +110,16 @@ class LedgerViewModelTest {
         runTest {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 9_999, day = TODAY, status = TransactionStatus.NEEDS_REVIEW)
+            val state = settled()
 
-            viewModel.uiState.test {
-                val state = settled()
-
-                assertEquals(Money(1_075, Money.CAD), state.spentToday)
-                assertEquals(
-                    1,
-                    state.days
-                        .single()
-                        .transactions.size,
-                )
-                assertEquals(1, state.needsReview)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(Money(1_075, Money.CAD), state.spentToday)
+            assertEquals(
+                1,
+                state.days
+                    .single()
+                    .transactions.size,
+            )
+            assertEquals(1, state.needsReview)
         }
 
     @Test
@@ -140,46 +130,40 @@ class LedgerViewModelTest {
                     MerchantEntity(displayName = "MARCHE ST JOSEPH", normalisedName = "MARCHE ST JOSEPH"),
                 )
             insert(amountMinor = 2_342, day = TODAY, merchantId = merchantId)
+            val transaction =
+                settled()
+                    .days
+                    .single()
+                    .transactions
+                    .single()
 
-            viewModel.uiState.test {
-                val transaction =
-                    settled()
-                        .days
-                        .single()
-                        .transactions
-                        .single()
-
-                assertEquals("MARCHE ST JOSEPH", transaction.displayMerchant)
-                assertEquals("MARCHE ST JOSEPH  1234", transaction.merchantRaw)
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals("MARCHE ST JOSEPH", transaction.displayMerchant)
+            assertEquals("MARCHE ST JOSEPH  1234", transaction.merchantRaw)
         }
 
     @Test
     fun `a purchase whose merchant never resolved still appears, under its raw name`() =
         runTest {
             insert(amountMinor = 2_342, day = TODAY, merchantId = null)
-
-            viewModel.uiState.test {
-                assertEquals(
-                    "MARCHE ST JOSEPH  1234",
-                    settled()
-                        .days
-                        .single()
-                        .transactions
-                        .single()
-                        .displayMerchant,
-                )
-                cancelAndIgnoreRemainingEvents()
-            }
+            assertEquals(
+                "MARCHE ST JOSEPH  1234",
+                settled()
+                    .days
+                    .single()
+                    .transactions
+                    .single()
+                    .displayMerchant,
+            )
         }
 
-    /** The first emission is the placeholder the flow starts with; the next is real. */
-    private suspend fun app.cash.turbine.TurbineTestContext<LedgerUiState>.settled(): LedgerUiState {
-        var state = awaitItem()
-        while (state.loading) state = awaitItem()
-        return state
-    }
+    /**
+     * The state once the database has answered, awaited rather than polled.
+     *
+     * Turbine's timeouts run on the test scheduler's virtual clock, which jumps the
+     * moment nothing is queued — so a wait that starts before the flow has been
+     * subscribed times out instantly rather than waiting at all.
+     */
+    private suspend fun settled(): LedgerUiState = viewModel.uiState.first { !it.loading }
 
     private suspend fun insert(
         amountMinor: Long,

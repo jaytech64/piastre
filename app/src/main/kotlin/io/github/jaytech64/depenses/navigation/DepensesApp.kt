@@ -24,6 +24,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.jaytech64.depenses.R
 import io.github.jaytech64.depenses.feature.ledger.LedgerScreen
+import io.github.jaytech64.depenses.feature.ledger.ManualEntryScreen
 import io.github.jaytech64.depenses.feature.reports.ReportsScreen
 import io.github.jaytech64.depenses.feature.review.ReviewScreen
 import io.github.jaytech64.depenses.feature.settings.SettingsScreen
@@ -73,7 +74,13 @@ fun DepensesApp() {
             modifier = Modifier.padding(padding),
         ) {
             composable(Destination.LEDGER.route) {
-                LedgerScreen(onReviewClick = { open(Destination.REVIEW) })
+                LedgerScreen(
+                    onReviewClick = { open(Destination.REVIEW) },
+                    onAddClick = { navController.navigate(MANUAL_ENTRY_ROUTE) },
+                )
+            }
+            composable(MANUAL_ENTRY_ROUTE) {
+                ManualEntryScreen(onDone = { navController.popBackStack() })
             }
             composable(Destination.REPORTS.route) { ReportsScreen() }
             composable(Destination.REVIEW.route) { ReviewScreen() }
@@ -81,3 +88,6 @@ fun DepensesApp() {
         }
     }
 }
+
+/** Not a tab: it is reached from the ledger and returns to it. */
+private const val MANUAL_ENTRY_ROUTE = "ledger/add"

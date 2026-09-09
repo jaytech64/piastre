@@ -10,4 +10,11 @@
         <item quantity="one">%d à réviser</item>
         <item quantity="other">%d à réviser</item>
     </plurals>
+    <string name="manual_add">Ajouter une dépense</string>
+    <string name="manual_title">Ajouter une dépense</string>
+    <string name="manual_amount">Montant</string>
+    <string name="manual_merchant">Marchand</string>
+    <string name="manual_note">Note (facultatif)</string>
+    <string name="manual_save">Enregistrer</string>
+    <string name="manual_cancel">Annuler</string>
 </resources>

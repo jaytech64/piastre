@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,10 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,21 +48,34 @@ import java.util.Locale
 @Composable
 fun LedgerScreen(
     onReviewClick: () -> Unit,
+    onAddClick: () -> Unit,
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val today = state.today
 
-    Column(Modifier.fillMaxSize()) {
-        TodayHeader(
-            spent = state.spentToday,
-            needsReview = state.needsReview,
-            onReviewClick = onReviewClick,
-        )
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            TodayHeader(
+                spent = state.spentToday,
+                needsReview = state.needsReview,
+                onReviewClick = onReviewClick,
+            )
 
-        when {
-            state.isEmpty -> EmptyLedger()
-            today != null -> DayList(state.days, today)
+            when {
+                state.isEmpty -> EmptyLedger()
+                today != null -> DayList(state.days, today)
+            }
+        }
+
+        FloatingActionButton(
+            onClick = onAddClick,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp),
+        ) {
+            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.manual_add))
         }
     }
 }
