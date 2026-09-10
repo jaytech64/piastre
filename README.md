@@ -7,11 +7,14 @@ The app has no `INTERNET` permission and no network code, and the build fails if
 
 ## Status
 
-Phase 1 — skeleton.
-The module graph, build logic, database, theme and navigation are in place and the app installs and runs.
-Capture itself is Phase 2; the ledger is empty by design until then.
+Phase 2 — capture.
+Google Wallet payment notifications are captured, parsed and recorded, and the app has been run against real spending on a device.
+The ledger, the review inbox, manual entry, capture-health onboarding, export and erasure are in place.
 
-The Wallet parser is already written and tested against a corpus captured over two weeks on a real device.
+The Wallet parser is tested against a corpus captured over two weeks on a real device, and the raw notification log lets a parser fix repair history rather than only improve the future.
+
+Not built yet: the reports screen is a placeholder, though the queries behind it are written and tested.
+Categories, budgets and any payment source other than Wallet are out of scope so far.
 
 ## Requirements
 
