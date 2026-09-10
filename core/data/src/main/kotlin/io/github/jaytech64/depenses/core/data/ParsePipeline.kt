@@ -60,37 +60,62 @@ class ParsePipeline
             return pending.size
         }
 
-        private suspend fun interpret(event: RawNotificationEventEntity) {
+        /**
+         * Re-reads every recorded notification an older parser version produced, and
+         * returns how many rows that was.
+         *
+         * This is the raw log paying for itself. A parser fix repairs the history it
+         * got wrong instead of only improving the future, because the payload is
+         * still on disk exactly as it arrived — which is the entire argument for
+         * keeping the most sensitive table in the app at all.
+         */
+        suspend fun resweep(): Int {
+            val stale = registry.reach.flatMap { events.parsedBelowVersion(it.packages, it.version) }
+            stale.forEach { event -> transactions.deleteSupersededBy(event.id, interpret(event)) }
+            return stale.size
+        }
+
+        /**
+         * Reads one recorded notification and returns the ledger row it produced, or
+         * [TransactionDao.NOTHING_RECORDED] if it produced none.
+         *
+         * Only [resweep] acts on that id. On the two paths that read an event for the
+         * first time nothing can already point at it, so the tidy-up would be a table
+         * scan per captured notification to delete nothing.
+         */
+        private suspend fun interpret(event: RawNotificationEventEntity): Long {
             val notification = event.toRawNotification()
             val parser = registry.parserFor(notification)
-            when (val result = registry.parse(notification)) {
-                is ParseResult.Parsed -> {
-                    record(event, parser, result.draft, TransactionStatus.CONFIRMED, result.confidence)
-                }
+            val recorded =
+                when (val result = registry.parse(notification)) {
+                    is ParseResult.Parsed -> {
+                        record(event, parser, result.draft, TransactionStatus.CONFIRMED, result.confidence)
+                    }
 
-                is ParseResult.NeedsReview -> {
-                    result.draft
-                        ?.let {
-                            record(
-                                event,
-                                parser,
-                                it,
-                                TransactionStatus.NEEDS_REVIEW,
-                                UNCONFIRMED,
-                                result.reason,
-                            )
-                        }
-                        ?: events.markParsed(event.id, ParseState.UNPARSED, parser?.version)
-                }
+                    is ParseResult.NeedsReview -> {
+                        result.draft?.let {
+                            record(event, parser, it, TransactionStatus.NEEDS_REVIEW, UNCONFIRMED, result.reason)
+                        } ?: markUnread(event, parser?.version)
+                    }
 
-                is ParseResult.Ignored -> {
-                    events.markParsed(event.id, ParseState.IGNORED, parser?.version)
-                }
+                    is ParseResult.Ignored -> {
+                        events.markParsed(event.id, ParseState.IGNORED, parser?.version)
+                        TransactionDao.NOTHING_RECORDED
+                    }
 
-                ParseResult.NotApplicable -> {
-                    events.markParsed(event.id, ParseState.UNPARSED, null)
+                    ParseResult.NotApplicable -> {
+                        markUnread(event, version = null)
+                    }
                 }
-            }
+            return recorded
+        }
+
+        private suspend fun markUnread(
+            event: RawNotificationEventEntity,
+            version: Int?,
+        ): Long {
+            events.markParsed(event.id, ParseState.UNPARSED, version)
+            return TransactionDao.NOTHING_RECORDED
         }
 
         private suspend fun record(
@@ -100,18 +125,20 @@ class ParsePipeline
             status: TransactionStatus,
             confidence: Float,
             reviewReason: ReviewReason? = null,
-        ) {
-            transactions.insertOrUpdate(
-                event.toTransaction(
-                    parser,
-                    draft,
-                    status,
-                    confidence,
-                    reviewReason,
-                    merchants.resolve(draft.merchantRaw),
-                ),
-            )
+        ): Long {
+            val id =
+                transactions.insertOrUpdate(
+                    event.toTransaction(
+                        parser,
+                        draft,
+                        status,
+                        confidence,
+                        reviewReason,
+                        merchants.resolve(draft.merchantRaw),
+                    ),
+                )
             events.markParsed(event.id, ParseState.PARSED, parser?.version)
+            return id
         }
 
         /**

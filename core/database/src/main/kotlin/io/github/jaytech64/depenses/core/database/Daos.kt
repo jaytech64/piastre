@@ -29,9 +29,27 @@ interface RawNotificationEventDao {
     @Query("SELECT * FROM raw_notification_event WHERE parseState = :state ORDER BY postedAtUtcMillis")
     suspend fun byState(state: ParseState): List<RawNotificationEventEntity>
 
-    /** Backs the re-parse pass after a parser fix: rows an older version produced. */
-    @Query("SELECT * FROM raw_notification_event WHERE parsedByVersion IS NULL OR parsedByVersion < :version")
-    suspend fun parsedBelowVersion(version: Int): List<RawNotificationEventEntity>
+    /**
+     * Backs the re-parse pass after a parser fix: rows an older version of this
+     * parser read, and rows nothing has ever read.
+     *
+     * The null case is not an edge: a parser gains a payload type about as often
+     * as it loses a bug, and the rows it used to walk past carry no version at
+     * all. Scoped to the packages the parser actually claims, so bumping one
+     * parser does not drag another app's notifications back through it.
+     */
+    @Query(
+        """
+        SELECT * FROM raw_notification_event
+        WHERE sourcePackage IN (:packages)
+          AND (parsedByVersion IS NULL OR parsedByVersion < :version)
+        ORDER BY postedAtUtcMillis
+        """,
+    )
+    suspend fun parsedBelowVersion(
+        packages: Set<String>,
+        version: Int,
+    ): List<RawNotificationEventEntity>
 
     /** [version] is null when no parser claimed the notification, so none read it. */
     @Query("UPDATE raw_notification_event SET parseState = :state, parsedByVersion = :version WHERE id = :id")
@@ -104,6 +122,32 @@ interface TransactionDao {
 
     @Update
     suspend fun update(transaction: ExpenseTransactionEntity)
+
+    /**
+     * Drops what an earlier reading of [rawEventId] left in the ledger and the
+     * current one no longer produces, keeping the row identified by [keepId].
+     *
+     * Overwriting in place covers a parser that reads the same purchase better;
+     * it cannot cover a parser that now reads a different purchase, or none at
+     * all. A fix to how a source key is derived would otherwise leave the old row
+     * beside the new one, and a payload reclassified as "not a payment" would
+     * leave its phantom in the ledger for good — both of them silently, which is
+     * the worst way for a ledger to be wrong.
+     *
+     * Pass [NOTHING_RECORDED] when the re-parse produced no row. A row a human
+     * has ruled on is left alone, for the same reason [insertOrUpdate] leaves it
+     * alone.
+     */
+    @Query(
+        """
+        DELETE FROM expense_transaction
+        WHERE rawEventId = :rawEventId AND id != :keepId AND reviewedAtUtcMillis IS NULL
+        """,
+    )
+    suspend fun deleteSupersededBy(
+        rawEventId: Long,
+        keepId: Long,
+    )
 
     @Query("SELECT * FROM expense_transaction WHERE sourcePackage = :sourcePackage AND sourceKey = :sourceKey")
     suspend fun bySourceKey(
@@ -185,6 +229,11 @@ interface TransactionDao {
 
     @Query("DELETE FROM expense_transaction")
     suspend fun deleteAll()
+
+    companion object {
+        /** No row survived the re-parse, so every row from that event is superseded. */
+        const val NOTHING_RECORDED: Long = 0
+    }
 }
 
 @Dao

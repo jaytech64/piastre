@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.Module
 import dagger.Provides
@@ -46,12 +47,23 @@ class SettingsRepository
         /** False until the first run has explained itself and been dismissed. */
         val onboardingCompleted: Flow<Boolean> = store.data.map { it[ONBOARDING_COMPLETED] ?: false }
 
+        /**
+         * The parser line-up the raw log was last read with, or null on a fresh
+         * install. Comparing it is what keeps the re-parse sweep off the launch path
+         * on the launches — nearly all of them — where no parser has moved.
+         */
+        val lastParserFingerprint: Flow<String?> = store.data.map { it[PARSER_FINGERPRINT] }
+
         suspend fun setCaptureEnabled(enabled: Boolean) {
             store.edit { it[CAPTURE_ENABLED] = enabled }
         }
 
         suspend fun setOnboardingCompleted() {
             store.edit { it[ONBOARDING_COMPLETED] = true }
+        }
+
+        suspend fun setParserFingerprint(fingerprint: String) {
+            store.edit { it[PARSER_FINGERPRINT] = fingerprint }
         }
 
         /**
@@ -83,6 +95,7 @@ class SettingsRepository
             val CAPTURE_ENABLED = booleanPreferencesKey("capture_enabled")
             val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
             val LAST_LISTENER_EVENT = longPreferencesKey("last_listener_event_utc_millis")
+            val PARSER_FINGERPRINT = stringPreferencesKey("parser_fingerprint")
 
             /** Coarse enough to be cheap, fine enough to be honest against a 48-hour rule. */
             val HEARTBEAT_RESOLUTION: Duration = Duration.ofMinutes(5)
