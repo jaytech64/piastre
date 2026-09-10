@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.parsing
 
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.ReviewReason
 
 /**
  * Parses Google Wallet tap-to-pay notifications.
@@ -30,6 +31,10 @@ import io.github.jaytech64.depenses.core.model.Money
 class GoogleWalletParser : NotificationParser {
     override val id: String = PARSER_ID
     override val version: Int = 1
+
+    override val packages: Set<String> = setOf(WALLET_PACKAGE)
+
+    override val sourceName: String = "Google Wallet"
 
     override fun handles(notification: RawNotification): Boolean = notification.sourcePackage == WALLET_PACKAGE
 

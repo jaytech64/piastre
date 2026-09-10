@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.navigation
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -18,14 +19,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.jaytech64.depenses.R
 import io.github.jaytech64.depenses.feature.ledger.LedgerScreen
+import io.github.jaytech64.depenses.feature.ledger.ManualEntryScreen
 import io.github.jaytech64.depenses.feature.reports.ReportsScreen
 import io.github.jaytech64.depenses.feature.review.ReviewScreen
+import io.github.jaytech64.depenses.feature.settings.CaptureHealthBanner
+import io.github.jaytech64.depenses.feature.settings.OnboardingScreen
+import io.github.jaytech64.depenses.feature.settings.OnboardingViewModel
 import io.github.jaytech64.depenses.feature.settings.SettingsScreen
 
 private enum class Destination(
@@ -39,11 +46,36 @@ private enum class Destination(
     SETTINGS("settings", R.string.nav_settings, Icons.Default.Settings),
 }
 
+/**
+ * The first run explains itself before anything else; every run after it goes
+ * straight to the ledger.
+ */
 @Composable
-fun DepensesApp() {
+fun DepensesApp(viewModel: OnboardingViewModel = hiltViewModel()) {
+    when (viewModel.completed.collectAsStateWithLifecycle().value) {
+        // Still being read off disk. A frame of nothing beats a frame of the
+        // welcome screen shown to someone who onboarded months ago.
+        null -> Unit
+
+        false -> OnboardingScreen(onDone = viewModel::complete)
+
+        true -> MainShell()
+    }
+}
+
+@Composable
+private fun MainShell() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+
+    fun open(destination: Destination) {
+        navController.navigate(destination.route) {
+            popUpTo(Destination.LEDGER.route) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -51,13 +83,7 @@ fun DepensesApp() {
                 Destination.entries.forEach { destination ->
                     NavigationBarItem(
                         selected = currentRoute == destination.route,
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                popUpTo(Destination.LEDGER.route) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { open(destination) },
                         icon = { Icon(destination.icon, contentDescription = null) },
                         label = { Text(stringResource(destination.labelRes)) },
                     )
@@ -65,15 +91,32 @@ fun DepensesApp() {
             }
         },
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = Destination.LEDGER.route,
-            modifier = Modifier.padding(padding),
-        ) {
-            composable(Destination.LEDGER.route) { LedgerScreen() }
-            composable(Destination.REPORTS.route) { ReportsScreen() }
-            composable(Destination.REVIEW.route) { ReviewScreen() }
-            composable(Destination.SETTINGS.route) { SettingsScreen() }
+        Column(Modifier.padding(padding)) {
+            // Above the NavHost rather than on the ledger: a capture that has
+            // stopped makes every number in the app quietly wrong, not the ones
+            // on one screen.
+            CaptureHealthBanner()
+
+            NavHost(
+                navController = navController,
+                startDestination = Destination.LEDGER.route,
+            ) {
+                composable(Destination.LEDGER.route) {
+                    LedgerScreen(
+                        onReviewClick = { open(Destination.REVIEW) },
+                        onAddClick = { navController.navigate(MANUAL_ENTRY_ROUTE) },
+                    )
+                }
+                composable(MANUAL_ENTRY_ROUTE) {
+                    ManualEntryScreen(onDone = { navController.popBackStack() })
+                }
+                composable(Destination.REPORTS.route) { ReportsScreen() }
+                composable(Destination.REVIEW.route) { ReviewScreen() }
+                composable(Destination.SETTINGS.route) { SettingsScreen() }
+            }
         }
     }
 }
+
+/** Not a tab: it is reached from the ledger and returns to it. */
+private const val MANUAL_ENTRY_ROUTE = "ledger/add"

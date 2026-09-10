@@ -1,0 +1,19 @@
+<resources>
+    <string name="review_empty_title">Rien à vérifier</string>
+    <string name="review_empty_body">Une dépense n\'arrive ici que si l\'analyseur n\'a pas pu lire la notification avec certitude.</string>
+    <string name="review_unknown_merchant">Marchand manquant</string>
+    <string name="review_confirm">Confirmer</string>
+    <string name="review_edit">Modifier</string>
+    <string name="review_dismiss">Ignorer</string>
+    <string name="review_save">Enregistrer</string>
+    <string name="review_cancel">Annuler</string>
+    <string name="review_edit_title">Corriger cette dépense</string>
+    <string name="review_amount">Montant</string>
+    <string name="review_merchant">Marchand</string>
+    <string name="review_amount_invalid">Entrez un montant</string>
+    <string name="review_reason_unrecognised_format">Carte illisible — le montant a été lu, le reste non</string>
+    <string name="review_reason_missing_merchant">La notification ne portait aucun nom de marchand</string>
+    <string name="review_reason_missing_source_key">Aucune identité stable — cette dépense ne peut pas être dédoublonnée</string>
+    <string name="review_reason_unknown">Lue avant que l\'application n\'enregistre les raisons</string>
+    <string name="review_raw_missing">La notification derrière cette ligne n\'est plus conservée.</string>
+</resources>

@@ -7,11 +7,14 @@ The app has no `INTERNET` permission and no network code, and the build fails if
 
 ## Status
 
-Phase 1 — skeleton.
-The module graph, build logic, database, theme and navigation are in place and the app installs and runs.
-Capture itself is Phase 2; the ledger is empty by design until then.
+Phase 2 — capture.
+Google Wallet payment notifications are captured, parsed and recorded, and the app has been run against real spending on a device.
+The ledger, the review inbox, manual entry, capture-health onboarding, export and erasure are in place.
 
-The Wallet parser is already written and tested against a corpus captured over two weeks on a real device.
+The Wallet parser is tested against a corpus captured over two weeks on a real device, and the raw notification log lets a parser fix repair history rather than only improve the future.
+
+Not built yet: the reports screen is a placeholder, though the queries behind it are written and tested.
+Categories, budgets and any payment source other than Wallet are out of scope so far.
 
 ## Requirements
 
@@ -59,6 +62,12 @@ The ledger is financial data about one person, and it is treated that way.
   `allowBackup="false"` plus `data_extraction_rules.xml` excluding every domain.
 - **Real spending never enters the repository.**
   Test fixtures are redacted captures: the structure, timing and duplicate pattern are real, the merchants and card digits are not.
+
+## Decisions
+
+Decisions that would be expensive to reverse are recorded in [`docs/adr/`](docs/adr/), one file each, with what they cost as well as what they bought.
+
+Engineering decisions that only make sense next to the code — parsing inline with a catch-up pass, the raw log's uniqueness rule, the `extrasJson` allowlist — live in the KDoc of the class that implements them instead.
 
 ## Testing
 

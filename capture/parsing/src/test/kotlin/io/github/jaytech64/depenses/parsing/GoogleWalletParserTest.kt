@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.parsing
 
+import io.github.jaytech64.depenses.core.model.ReviewReason
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs

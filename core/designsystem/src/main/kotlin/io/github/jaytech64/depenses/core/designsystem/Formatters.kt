@@ -3,9 +3,13 @@
 package io.github.jaytech64.depenses.core.designsystem
 
 import io.github.jaytech64.depenses.core.model.Money
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.NumberFormat
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Currency
@@ -54,4 +58,93 @@ object Formatters {
         date: LocalDate,
         locale: Locale = Locale.getDefault(),
     ): String = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale).format(date)
+
+    /**
+     * The time of day, in the zone the purchase happened in rather than the one the
+     * phone is in now. Reading a Montréal coffee back as 03:47 from Lisbon would be
+     * technically true and useless.
+     */
+    fun time(
+        instant: Instant,
+        zone: ZoneId,
+        locale: Locale = Locale.getDefault(),
+    ): String =
+        DateTimeFormatter
+            .ofLocalizedTime(FormatStyle.SHORT)
+            .withLocale(locale)
+            .format(instant.atZone(zone))
+
+    /**
+     * A day heading that says how long ago it was when that is what you actually
+     * think in, and names the day otherwise.
+     *
+     * The relative labels are the caller's, because the words belong to the screen's
+     * resources and this module has none.
+     */
+    fun dayHeader(
+        date: LocalDate,
+        today: LocalDate,
+        labels: RelativeDayLabels,
+        locale: Locale = Locale.getDefault(),
+    ): String =
+        when (date) {
+            today -> labels.today
+            today.minusDays(1) -> labels.yesterday
+            else -> DAY_AND_MONTH.withLocale(locale).format(date)
+        }
+
+    /** Wording for the two days a person names rather than dates. */
+    data class RelativeDayLabels(
+        val today: String,
+        val yesterday: String,
+    )
+
+    /** Weekday, day, month — never the year, which on a ledger is always this one. */
+    private val DAY_AND_MONTH = DateTimeFormatter.ofPattern("EEEE d MMMM")
+
+    /** The two bullets Wallet itself uses ahead of the last four digits. */
+    fun cardMask(last4: String?): String? = last4?.let { "\u2022\u2022$it" }
+
+    /**
+     * Reads an amount a person typed, in whichever convention they typed it.
+     *
+     * Locale-driven parsing is not enough here. A Quebec phone is set to fr-CA,
+     * where the decimal mark is a comma and the group separator a space, but the
+     * same person types "12.50" out of habit half the time — and fr-CA parsing
+     * reads that as 12, losing fifty cents in silence. So the separators are
+     * resolved from the text itself: whichever mark sits ahead of the last one or
+     * two digits is the decimal one, and everything else is grouping.
+     *
+     * Returns null rather than zero when nothing numeric was typed, so a caller
+     * can keep the field in an error state instead of saving a free purchase.
+     */
+    fun parseMoney(
+        text: String,
+        currency: String = Money.CAD,
+    ): Money? {
+        // Trimmed at both ends because the app's own output ends in a separator:
+        // "65,54 $" keeps its non-breaking space, which would otherwise read as the
+        // last mark and turn the amount into 655 400 cents.
+        val digitsAndMarks =
+            text
+                .filter { it.isDigit() || it in SEPARATORS }
+                .trim { it in SEPARATORS }
+        if (digitsAndMarks.none { it.isDigit() }) return null
+
+        val lastMark = digitsAndMarks.indexOfLast { it in SEPARATORS }
+        val decimalsTyped = digitsAndMarks.length - lastMark - 1
+        val hasDecimalMark = lastMark >= 0 && decimalsTyped in 1..MAX_DECIMALS
+
+        val whole = (if (hasDecimalMark) digitsAndMarks.take(lastMark) else digitsAndMarks).filter(Char::isDigit)
+        val fraction = if (hasDecimalMark) digitsAndMarks.substring(lastMark + 1) else ""
+
+        val amount = BigDecimal(whole.ifEmpty { "0" } + "." + fraction.padEnd(MAX_DECIMALS, '0'))
+        val minor = amount.movePointRight(MAX_DECIMALS).setScale(0, RoundingMode.HALF_UP).toLong()
+        return Money(if (text.trimStart().startsWith('-')) -minor else minor, currency)
+    }
+
+    /** Both marks are accepted wherever the phone is set, so both are stripped. */
+    private const val SEPARATORS = ",.\u00A0\u202F\u2009\u2007 "
+
+    private const val MAX_DECIMALS = 2
 }

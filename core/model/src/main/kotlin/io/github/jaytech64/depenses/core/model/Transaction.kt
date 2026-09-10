@@ -15,6 +15,25 @@ enum class TransactionSource { NOTIFICATION, MANUAL }
  */
 enum class TransactionStatus { CONFIRMED, NEEDS_REVIEW, DISMISSED }
 
+/**
+ * Why a parser declined to enter a purchase in the ledger unattended.
+ *
+ * Persisted on the transaction rather than recomputed when the review inbox is
+ * opened: it is what the parser actually decided at the time, and re-deriving it
+ * later would mean reimplementing the parser's judgement in the screen that
+ * exists to question it.
+ */
+enum class ReviewReason {
+    /** Amount read, but the surrounding format was not fully recognised. */
+    UNRECOGNISED_FORMAT,
+
+    /** No merchant in the notification. */
+    MISSING_MERCHANT,
+
+    /** The transaction has no stable identity, so it cannot be de-duplicated safely. */
+    MISSING_SOURCE_KEY,
+}
+
 /** How far a raw notification has travelled through the parse pipeline. */
 enum class ParseState { PENDING, PARSED, UNPARSED, IGNORED }
 
@@ -32,11 +51,36 @@ data class Transaction(
     val localDate: LocalDate,
     val merchantRaw: String?,
     val merchantId: Long?,
+    val merchantName: String?,
     val source: TransactionSource,
     val status: TransactionStatus,
     val cardLabel: String?,
     val cardLast4: String?,
     val note: String?,
+) {
+    /**
+     * What to put on screen. The canonical merchant if the raw string resolved to
+     * one, the raw string if it did not, and null only when the notification
+     * carried no merchant at all — which is a case the review inbox owns.
+     */
+    val displayMerchant: String? get() = merchantName ?: merchantRaw
+}
+
+/**
+ * One purchase waiting for a human, with the notification it was read from.
+ *
+ * The raw title and text are carried verbatim and never cleaned up on the way
+ * through: the inbox exists to ask whether the parser read them correctly, and a
+ * tidied string cannot answer that. It is also what makes a correction
+ * reproducible as a parser fixture afterwards.
+ */
+data class ReviewItem(
+    val transaction: Transaction,
+    val reason: ReviewReason?,
+    val sourceName: String,
+    val rawTitle: String?,
+    val rawText: String?,
+    val postedAt: Instant?,
 )
 
 data class Merchant(

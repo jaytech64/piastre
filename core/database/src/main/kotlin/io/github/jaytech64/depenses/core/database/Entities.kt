@@ -8,6 +8,7 @@ import androidx.room.PrimaryKey
 import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.MatchType
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.ReviewReason
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 
@@ -18,10 +19,26 @@ import io.github.jaytech64.depenses.core.model.TransactionStatus
  * This is what makes the pipeline re-runnable: a parser fix re-reads history
  * instead of only improving the future, and a payload no parser handles today is
  * still on disk when one is written for it.
+ *
+ * It is also the most sensitive table in the app, so the content does not stay
+ * forever: see [RawNotificationEventDao.redactOlderThan] and
+ * `docs/adr/0001-raw-log-90-day-purge.md`.
+ *
+ * The unique index separates two things that look identical and are not. A
+ * *replay* is one post delivered twice, because the listener rebinds and hands
+ * back everything still on the shade — measured at up to 51 hours of backlog —
+ * and it must collapse. A *re-post* is Wallet publishing the same purchase again
+ * with a fresh `postTime`, which is real evidence of how Wallet behaves and must
+ * be kept. Keying on the post time is what tells them apart.
  */
 @Entity(
     tableName = "raw_notification_event",
-    indices = [Index("notificationKey"), Index("postedAtUtcMillis"), Index("parseState")],
+    indices = [
+        Index(value = ["sourcePackage", "notificationKey", "postedAtUtcMillis"], unique = true),
+        Index("notificationKey"),
+        Index("postedAtUtcMillis"),
+        Index("parseState"),
+    ],
 )
 data class RawNotificationEventEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -37,6 +54,16 @@ data class RawNotificationEventEntity(
     val extrasJson: String,
     val parseState: ParseState,
     val parsedByVersion: Int?,
+    /**
+     * When the 90-day sweep stripped this row's content, or null while the
+     * payload is still here.
+     *
+     * A marker rather than an inference. "Old and empty" is not the same fact as
+     * "redacted" — a notification can genuinely arrive with no text — and the
+     * re-parse sweep has to tell them apart: re-reading a row whose payload is
+     * gone would conclude it was never a payment and take its transaction with it.
+     */
+    val redactedAtUtcMillis: Long? = null,
 )
 
 /**
@@ -65,6 +92,13 @@ data class ExpenseTransactionEntity(
     val categoryId: Long?,
     val source: TransactionSource,
     val status: TransactionStatus,
+    /** Set only while [status] is NEEDS_REVIEW; cleared once a human has ruled. */
+    val reviewReason: ReviewReason?,
+    /**
+     * When a human last ruled on this row. Non-null freezes the parser out: see
+     * [TransactionDao.insertOrUpdate].
+     */
+    val reviewedAtUtcMillis: Long?,
     val confidence: Float,
     val parserId: String?,
     val parserVersion: Int?,
@@ -75,7 +109,18 @@ data class ExpenseTransactionEntity(
     val note: String?,
 )
 
-@Entity(tableName = "merchant")
+/**
+ * The canonical merchant a raw string resolves to.
+ *
+ * [normalisedName] is unique because it *is* the identity: without the
+ * constraint two sightings of one chain arriving close together would each fail
+ * to find the other and create a second merchant, quietly splitting the ranking
+ * the merchant table exists to make correct.
+ */
+@Entity(
+    tableName = "merchant",
+    indices = [Index(value = ["normalisedName"], unique = true)],
+)
 data class MerchantEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val displayName: String,

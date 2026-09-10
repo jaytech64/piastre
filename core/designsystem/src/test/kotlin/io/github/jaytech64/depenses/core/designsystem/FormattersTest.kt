@@ -6,8 +6,12 @@ import io.github.jaytech64.depenses.core.model.Money
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Locale
 
 class FormattersTest {
@@ -53,5 +57,95 @@ class FormattersTest {
     @Test
     fun `minor units are never truncated to whole dollars`() {
         assertEquals("$0.07", Formatters.money(Money(7, Money.CAD), Locale.CANADA))
+    }
+
+    @Test
+    fun `today and yesterday are named rather than dated`() {
+        val today = LocalDate.of(2026, 9, 7)
+
+        assertEquals("Aujourd'hui", Formatters.dayHeader(today, today, LABELS, Locale.CANADA_FRENCH))
+        assertEquals("Hier", Formatters.dayHeader(today.minusDays(1), today, LABELS, Locale.CANADA_FRENCH))
+    }
+
+    @Test
+    fun `an older day is named in the reader's language, without the year`() {
+        val today = LocalDate.of(2026, 9, 7)
+
+        val header = Formatters.dayHeader(LocalDate.of(2026, 9, 4), today, LABELS, Locale.CANADA_FRENCH)
+
+        assertTrue(header, header.contains("septembre"))
+        assertFalse(header, header.contains("2026"))
+    }
+
+    /**
+     * A purchase belongs to the clock it was made under. Reading a Montréal coffee
+     * back from another zone must not move it.
+     */
+    @Test
+    fun `the time of a purchase is the time where it happened`() {
+        val montreal = ZoneId.of("America/Toronto")
+        val noonInMontreal =
+            LocalDate
+                .of(2026, 9, 7)
+                .atTime(12, 47)
+                .atZone(montreal)
+                .toInstant()
+
+        val shown = Formatters.time(noonInMontreal, montreal, Locale.CANADA_FRENCH)
+
+        assertTrue(shown, shown.contains("12"))
+        assertTrue(shown, shown.contains("47"))
+    }
+
+    @Test
+    fun `a card is masked the way wallet masks it`() {
+        assertEquals("\u2022\u20226262", Formatters.cardMask("6262"))
+        assertNull(Formatters.cardMask(null))
+    }
+
+    /**
+     * The habit case: a fr-CA phone, and a person who types the decimal point
+     * anyway. Reading that as 12 rather than 12,50 loses fifty cents in silence,
+     * which is the one failure a money field must not have.
+     */
+    @Test
+    fun `an amount is read the same whether it was typed with a comma or a point`() {
+        assertEquals(1_250L, Formatters.parseMoney("12,50")?.minor)
+        assertEquals(1_250L, Formatters.parseMoney("12.50")?.minor)
+    }
+
+    @Test
+    fun `grouping marks are not mistaken for decimals`() {
+        assertEquals(123_456L, Formatters.parseMoney("1 234,56")?.minor)
+        assertEquals(123_456L, Formatters.parseMoney("1\u202F234,56")?.minor)
+        assertEquals(123_456L, Formatters.parseMoney("1,234.56")?.minor)
+        assertEquals(123_400L, Formatters.parseMoney("1.234")?.minor)
+    }
+
+    @Test
+    fun `an amount survives the symbol and spacing the app itself prints`() {
+        val printed = Formatters.money(Money(6_554, Money.CAD), Locale.CANADA_FRENCH)
+
+        assertEquals(6_554L, Formatters.parseMoney(printed)?.minor)
+    }
+
+    @Test
+    fun `a typed refund keeps its sign`() {
+        assertEquals(-1_250L, Formatters.parseMoney("-12,50")?.minor)
+    }
+
+    @Test
+    fun `text with no digits is not an amount`() {
+        assertNull(Formatters.parseMoney(""))
+        assertNull(Formatters.parseMoney("  $ "))
+    }
+
+    @Test
+    fun `a bare amount is whole dollars, not cents`() {
+        assertEquals(1_200L, Formatters.parseMoney("12")?.minor)
+    }
+
+    private companion object {
+        val LABELS = Formatters.RelativeDayLabels(today = "Aujourd'hui", yesterday = "Hier")
     }
 }

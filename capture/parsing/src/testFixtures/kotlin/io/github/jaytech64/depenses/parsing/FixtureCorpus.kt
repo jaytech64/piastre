@@ -6,7 +6,13 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-/** Reads the captured JSONL corpus into parser input. Test-only. */
+/**
+ * Reads the captured JSONL corpus into parser input.
+ *
+ * Published as a test fixture: the corpus is what proves the ledger collapses
+ * re-posts the same way the parser does, and that test lives in the module that
+ * owns the database, not this one.
+ */
 object FixtureCorpus {
     fun load(name: String): List<RawNotification> {
         val stream =

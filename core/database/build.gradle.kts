@@ -6,7 +6,20 @@ plugins {
 
 android {
     namespace = "io.github.jaytech64.depenses.core.database"
+
+    // MigrationTestHelper reads the exported schemas through the asset manager, so
+    // the committed JSON has to be reachable as an asset for the JVM tests too.
+    // The Room plugin wires this up for instrumented tests only.
+    sourceSets.getByName("test") { assets.srcDir("$projectDir/schemas") }
 }
+
+// Without this the asset merge can run before the schema for the version being
+// added has been written, and the migration test fails on a clean checkout while
+// passing on every incremental build after it — which is the worst way for a
+// migration test to behave.
+tasks
+    .matching { it.name.startsWith("merge") && it.name.endsWith("UnitTestAssets") }
+    .configureEach { dependsOn("copyRoomSchemas") }
 
 room {
     // Committed to the repository: a schema you can diff is what makes a
