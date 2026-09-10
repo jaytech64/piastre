@@ -28,6 +28,10 @@ import javax.inject.Singleton
  * drain the pending rows check whether the parsers have moved, and re-read the
  * raw log when they have.
  *
+ * And it is where the raw log stops growing: the retention sweep runs last, so a
+ * parser fix always gets to repair history before the payload it would have read
+ * is stripped.
+ *
  * This was going to be a WorkManager job. WorkManager declares
  * `ACCESS_NETWORK_STATE`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` and
  * `FOREGROUND_SERVICE` in its own manifest, and the merged-manifest check caught
@@ -43,6 +47,7 @@ class CaptureCatchUp
     constructor(
         private val pipeline: ParsePipeline,
         private val registry: ParserRegistry,
+        private val retention: RawLogRetention,
         private val settings: SettingsRepository,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -60,6 +65,8 @@ class CaptureCatchUp
                     if (drained > 0) Log.i(TAG, "parsed $drained notification(s) the listener never reached")
                     val reread = resweepIfParsersChanged()
                     if (reread > 0) Log.i(TAG, "re-read $reread notification(s) after a parser change")
+                    val redacted = retention.purgeExpired()
+                    if (redacted > 0) Log.i(TAG, "stripped the content of $redacted notification(s) over 90 days old")
                 } catch (error: SQLiteException) {
                     Log.e(TAG, "could not catch up on the raw events; the next bind will retry", error)
                 } catch (error: IOException) {

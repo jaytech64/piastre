@@ -37,11 +37,19 @@ interface RawNotificationEventDao {
      * as it loses a bug, and the rows it used to walk past carry no version at
      * all. Scoped to the packages the parser actually claims, so bumping one
      * parser does not drag another app's notifications back through it.
+     *
+     * Redacted rows are excluded, and that exclusion is load-bearing rather than
+     * an optimisation. Re-reading a row whose payload the retention sweep has
+     * stripped would find no payment in it, and the tidy-up that follows a
+     * re-parse would then delete the transaction it produced back when the text
+     * was still there — a parser fix would quietly erase everything older than
+     * 90 days.
      */
     @Query(
         """
         SELECT * FROM raw_notification_event
         WHERE sourcePackage IN (:packages)
+          AND redactedAtUtcMillis IS NULL
           AND (parsedByVersion IS NULL OR parsedByVersion < :version)
         ORDER BY postedAtUtcMillis
         """,
@@ -58,6 +66,38 @@ interface RawNotificationEventDao {
         state: ParseState,
         version: Int?,
     )
+
+    /**
+     * Strips the content of rows older than the cutoff, and returns how many rows
+     * that changed.
+     *
+     * The skeleton stays: id, key, post time and parse state. Deleting the row
+     * outright would break the uniqueness rule that collapses replays, and a
+     * notification the shade hands back two years later would reappear as a new
+     * purchase.
+     *
+     * [exempt] is the states whose rows are kept whole — a payload no parser
+     * could read is the raw material for the parser that will one day read it,
+     * and stripping it would destroy the only copy.
+     *
+     * The `redactedAtUtcMillis IS NULL` clause makes the count honest: a second
+     * sweep over the same rows reports nothing rather than counting them again.
+     */
+    @Query(
+        """
+        UPDATE raw_notification_event
+        SET title = NULL, text = NULL, bigText = NULL, subText = NULL,
+            extrasJson = '{}', redactedAtUtcMillis = :redactedAtUtcMillis
+        WHERE postedAtUtcMillis < :cutoffUtcMillis
+          AND redactedAtUtcMillis IS NULL
+          AND parseState NOT IN (:exempt)
+        """,
+    )
+    suspend fun redactOlderThan(
+        cutoffUtcMillis: Long,
+        redactedAtUtcMillis: Long,
+        exempt: List<ParseState>,
+    ): Int
 
     @Query("SELECT COUNT(*) FROM raw_notification_event")
     fun count(): Flow<Int>

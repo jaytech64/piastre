@@ -1,7 +1,6 @@
 # 1. Raw log: 90-day purge, unparsed rows kept
 
-- **Status:** Accepted — **not yet implemented**.
-  No code in the tree enforces this rule today.
+- **Status:** Accepted — implemented in Phase 2.
 - **Decided:** 2026-09-07, during Phase 2 planning (`32caf07`).
 - **Touches:** `:core:database` (`raw_notification_event`), `:core:data`.
 
@@ -40,7 +39,16 @@ The inbox's join is a left join for this reason: the ruling stays possible, with
 
 ## Where this lives in the code
 
-Nowhere yet.
-When it is built it belongs beside the other pass that runs on app launch and listener bind, `CaptureCatchUp` in `:core:data` — the same two moments, and the same argument against WorkManager recorded in that class's KDoc.
+- `core/data/src/main/kotlin/.../RawLogRetention.kt` — the 90 days, and the exempt states.
+- `RawNotificationEventDao.redactOlderThan` — the sweep itself.
+- `CaptureCatchUp.schedule()` runs it on app launch and listener bind, **last**, so a parser fix always gets to repair history before the payload it would have read is stripped.
 
-Until then this record is the only place the rule exists, and the raw log grows without bound.
+Two implementation notes worth having here rather than only in KDoc.
+
+`extrasJson` is set to `{}` rather than null, because the column is not nullable and making it so would mean rebuilding the table for no gain.
+Emptiness is not the marker.
+
+The marker is a new column, `redactedAtUtcMillis` (schema 6).
+It exists because "old and empty" and "redacted" are different facts — a notification can genuinely arrive with no text — and the re-parse sweep must tell them apart.
+Without it, re-reading a stripped row would find no payment, and the tidy-up that follows a re-parse would delete the transaction that row produced back when the text was still there: one parser bump silently erasing every purchase older than 90 days.
+`parsedBelowVersion` therefore excludes redacted rows, and a test holds that line.

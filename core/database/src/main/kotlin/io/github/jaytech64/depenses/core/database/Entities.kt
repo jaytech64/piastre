@@ -20,6 +20,10 @@ import io.github.jaytech64.depenses.core.model.TransactionStatus
  * instead of only improving the future, and a payload no parser handles today is
  * still on disk when one is written for it.
  *
+ * It is also the most sensitive table in the app, so the content does not stay
+ * forever: see [RawNotificationEventDao.redactOlderThan] and
+ * `docs/adr/0001-raw-log-90-day-purge.md`.
+ *
  * The unique index separates two things that look identical and are not. A
  * *replay* is one post delivered twice, because the listener rebinds and hands
  * back everything still on the shade — measured at up to 51 hours of backlog —
@@ -50,6 +54,16 @@ data class RawNotificationEventEntity(
     val extrasJson: String,
     val parseState: ParseState,
     val parsedByVersion: Int?,
+    /**
+     * When the 90-day sweep stripped this row's content, or null while the
+     * payload is still here.
+     *
+     * A marker rather than an inference. "Old and empty" is not the same fact as
+     * "redacted" — a notification can genuinely arrive with no text — and the
+     * re-parse sweep has to tell them apart: re-reading a row whose payload is
+     * gone would conclude it was never a payment and take its transaction with it.
+     */
+    val redactedAtUtcMillis: Long? = null,
 )
 
 /**

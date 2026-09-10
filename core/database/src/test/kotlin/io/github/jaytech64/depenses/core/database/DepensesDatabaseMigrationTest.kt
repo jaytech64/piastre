@@ -131,6 +131,30 @@ class DepensesDatabaseMigrationTest {
         )
     }
 
+    /**
+     * The column the retention sweep writes, and the one the re-parse sweep reads
+     * to know a payload is gone. A row that still holds its text must arrive on
+     * schema 6 with a null here, or a parser fix would skip history it can repair.
+     */
+    @Test
+    fun `migrating to schema 6 marks nothing as already redacted`() {
+        helper.createDatabase(NAME, 5).use { database ->
+            database.insertRawEvent(postedAtUtcMillis = FIRST_POST)
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 6, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(1, migrated.rawEventCount())
+        assertEquals(
+            0,
+            migrated.singleInt("SELECT COUNT(*) FROM raw_notification_event WHERE redactedAtUtcMillis IS NOT NULL"),
+        )
+        assertEquals(
+            1,
+            migrated.singleInt("SELECT COUNT(*) FROM raw_notification_event WHERE title IS NOT NULL"),
+        )
+    }
+
     private fun SupportSQLiteDatabase.insertRawEvent(
         postedAtUtcMillis: Long,
         sourcePackage: String = WALLET,

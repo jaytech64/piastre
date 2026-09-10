@@ -10,7 +10,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 
 | # | Decision | Status |
 |---|---|---|
-| [0001](0001-raw-log-90-day-purge.md) | Raw log: 90-day purge, unparsed rows kept | Accepted — **not yet implemented** |
+| [0001](0001-raw-log-90-day-purge.md) | Raw log: 90-day purge, unparsed rows kept | Accepted — implemented |
 | [0002](0002-totals-exclude-unreviewed-rows.md) | Totals exclude unreviewed rows | Accepted — implemented |
 | [0003](0003-export-writes-csv-and-json.md) | Export writes both CSV and JSON | Accepted — implemented |
 | [0004](0004-capture-health-banner-without-a-notification.md) | A banner for broken capture, and no notification | Accepted, revised — implemented |

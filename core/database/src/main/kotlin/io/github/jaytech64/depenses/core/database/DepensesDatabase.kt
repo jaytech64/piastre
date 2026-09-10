@@ -27,13 +27,14 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun reportDao(): ReportDao
 
     companion object {
-        const val VERSION: Int = 5
+        const val VERSION: Int = 6
 
         /**
          * Migrations are listed here rather than passed at the call site so that
          * adding one cannot be forgotten in a second place.
          */
-        val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+        val MIGRATIONS: Array<Migration> =
+            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 
         const val NAME: String = "depenses.db"
     }
@@ -132,5 +133,20 @@ private val MIGRATION_4_5 =
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE expense_transaction ADD COLUMN reviewReason TEXT DEFAULT NULL")
             db.execSQL("ALTER TABLE expense_transaction ADD COLUMN reviewedAtUtcMillis INTEGER DEFAULT NULL")
+        }
+    }
+
+/**
+ * Schema 6 records when a raw row's content was stripped by the retention sweep.
+ *
+ * Existing rows get null, which is the truth: nothing has been stripped yet, and
+ * the first sweep after this upgrade will redact whatever is already over 90 days
+ * old. Backfilling a redaction time for rows that still hold their payload would
+ * make the re-parse sweep skip history it can still repair.
+ */
+private val MIGRATION_5_6 =
+    object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE raw_notification_event ADD COLUMN redactedAtUtcMillis INTEGER DEFAULT NULL")
         }
     }

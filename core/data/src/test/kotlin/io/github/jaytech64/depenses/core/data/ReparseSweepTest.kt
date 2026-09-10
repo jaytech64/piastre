@@ -21,7 +21,11 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Clock
+import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 import javax.inject.Provider
 
 /**
@@ -193,6 +197,38 @@ class ReparseSweepTest {
             assertTrue(database.rawNotificationEventDao().byState(ParseState.UNPARSED).isEmpty())
         }
 
+    /**
+     * The interaction that would have been catastrophic and silent.
+     *
+     * After 90 days the retention sweep strips a row's payload. A parser handed
+     * that empty row concludes it was never a payment, and the tidy-up after a
+     * re-parse would then delete the purchase it produced back when the text was
+     * still there — one parser bump erasing every purchase older than 90 days.
+     */
+    @Test
+    fun `a purchase whose notification has been redacted survives a parser fix`() =
+        runTest {
+            captureWith(misreading(version = 1))
+            RawLogRetention(
+                database.rawNotificationEventDao(),
+                Clock.fixed(Instant.ofEpochMilli(POSTED_AT).plus(Duration.ofDays(91)), ZoneOffset.UTC),
+            ).purgeExpired()
+
+            val reread = pipelineWith(readingRealText(version = 2)).resweep()
+
+            assertEquals(0, reread)
+            assertEquals(1, database.transactionDao().count().first())
+            assertEquals(
+                MISREAD_MINOR,
+                database
+                    .transactionDao()
+                    .all()
+                    .first()
+                    .single()
+                    .amountMinor,
+            )
+        }
+
     private suspend fun captureWith(parser: NotificationParser) =
         NotificationCapture(RawEventRepository(database.rawNotificationEventDao()), pipelineWith(parser))
             .capture(PAYMENT, NO_EXTRAS)
@@ -213,6 +249,14 @@ class ReparseSweepTest {
         version: Int,
         sourceKey: String = SOURCE_KEY,
     ) = StubParser(PAY_PACKAGE, version) { parsed(AMOUNT_MINOR, sourceKey) }
+
+    /** Like a real parser: no text, no payment. */
+    private fun readingRealText(version: Int) =
+        StubParser(PAY_PACKAGE, version) { notification ->
+            notification.text
+                ?.let { parsed(AMOUNT_MINOR, SOURCE_KEY) }
+                ?: ParseResult.Ignored(IgnoreReason.NOT_A_PAYMENT)
+        }
 
     private fun ignoring(version: Int) =
         StubParser(PAY_PACKAGE, version) { ParseResult.Ignored(IgnoreReason.NOT_A_PAYMENT) }
