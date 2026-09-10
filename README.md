@@ -60,6 +60,12 @@ The ledger is financial data about one person, and it is treated that way.
 - **Real spending never enters the repository.**
   Test fixtures are redacted captures: the structure, timing and duplicate pattern are real, the merchants and card digits are not.
 
+## Decisions
+
+Decisions that would be expensive to reverse are recorded in [`docs/adr/`](docs/adr/), one file each, with what they cost as well as what they bought.
+
+Engineering decisions that only make sense next to the code — parsing inline with a catch-up pass, the raw log's uniqueness rule, the `extrasJson` allowlist — live in the KDoc of the class that implements them instead.
+
 ## Testing
 
 Unit tests run on the JVM.
