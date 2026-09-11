@@ -17,4 +17,8 @@
     <string name="manual_note">Note (optional)</string>
     <string name="manual_save">Save</string>
     <string name="manual_cancel">Cancel</string>
+    <string name="edit_title">Edit expense</string>
+    <string name="edit_delete">Delete</string>
+    <string name="edit_delete_title">Delete this expense?</string>
+    <string name="edit_delete_body">It will no longer appear in the ledger or in any total.</string>
 </resources>

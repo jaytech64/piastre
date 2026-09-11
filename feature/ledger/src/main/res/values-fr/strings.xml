@@ -17,4 +17,8 @@
     <string name="manual_note">Note (facultatif)</string>
     <string name="manual_save">Enregistrer</string>
     <string name="manual_cancel">Annuler</string>
+    <string name="edit_title">Modifier la dépense</string>
+    <string name="edit_delete">Supprimer</string>
+    <string name="edit_delete_title">Supprimer cette dépense ?</string>
+    <string name="edit_delete_body">Elle n\'apparaîtra plus dans vos dépenses ni dans aucun total.</string>
 </resources>

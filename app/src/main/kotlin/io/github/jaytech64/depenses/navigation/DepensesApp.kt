@@ -21,13 +21,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import io.github.jaytech64.depenses.R
-import io.github.jaytech64.depenses.feature.ledger.LedgerScreen
+import io.github.jaytech64.depenses.feature.ledger.EXPENSE_ID_ARG
 import io.github.jaytech64.depenses.feature.ledger.ExpenseFormScreen
+import io.github.jaytech64.depenses.feature.ledger.LedgerScreen
 import io.github.jaytech64.depenses.feature.reports.ReportsScreen
 import io.github.jaytech64.depenses.feature.review.ReviewScreen
 import io.github.jaytech64.depenses.feature.settings.CaptureHealthBanner
@@ -104,10 +107,17 @@ private fun MainShell() {
                 composable(Destination.LEDGER.route) {
                     LedgerScreen(
                         onReviewClick = { open(Destination.REVIEW) },
-                        onAddClick = { navController.navigate(MANUAL_ENTRY_ROUTE) },
+                        onAddClick = { navController.navigate(ADD_EXPENSE_ROUTE) },
+                        onTransactionClick = { id -> navController.navigate(editExpenseRoute(id)) },
                     )
                 }
-                composable(MANUAL_ENTRY_ROUTE) {
+                composable(ADD_EXPENSE_ROUTE) {
+                    ExpenseFormScreen(onDone = { navController.popBackStack() })
+                }
+                composable(
+                    EDIT_EXPENSE_ROUTE,
+                    arguments = listOf(navArgument(EXPENSE_ID_ARG) { type = NavType.LongType }),
+                ) {
                     ExpenseFormScreen(onDone = { navController.popBackStack() })
                 }
                 composable(Destination.REPORTS.route) { ReportsScreen() }
@@ -118,5 +128,8 @@ private fun MainShell() {
     }
 }
 
-/** Not a tab: it is reached from the ledger and returns to it. */
-private const val MANUAL_ENTRY_ROUTE = "ledger/add"
+/** Not tabs: both are reached from the ledger and return to it. */
+private const val ADD_EXPENSE_ROUTE = "ledger/add"
+private const val EDIT_EXPENSE_ROUTE = "ledger/edit/{$EXPENSE_ID_ARG}"
+
+private fun editExpenseRoute(id: Long) = "ledger/edit/$id"

@@ -104,6 +104,8 @@ class TransactionRepository
             )
         }
 
+        suspend fun byId(id: Long): Transaction? = transactions.withMerchantById(id)?.let(::toDomain)
+
         private companion object {
             /** Not a package name, and deliberately not one: no parser can claim it. */
             const val MANUAL_SOURCE = "manual"

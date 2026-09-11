@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +50,7 @@ import java.util.Locale
 fun LedgerScreen(
     onReviewClick: () -> Unit,
     onAddClick: () -> Unit,
+    onTransactionClick: (Long) -> Unit,
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -64,7 +66,7 @@ fun LedgerScreen(
 
             when {
                 state.isEmpty -> EmptyLedger()
-                today != null -> DayList(state.days, today)
+                today != null -> DayList(state.days, today, onTransactionClick)
             }
         }
 
@@ -118,6 +120,7 @@ private fun TodayHeader(
 private fun DayList(
     days: List<LedgerDay>,
     today: LocalDate,
+    onTransactionClick: (Long) -> Unit,
 ) {
     val locale = currentLocale()
     val labels =
@@ -134,7 +137,9 @@ private fun DayList(
                     total = day.total,
                 )
             }
-            items(day.transactions, key = { it.id }) { TransactionRow(it, locale) }
+            items(day.transactions, key = { it.id }) { transaction ->
+                TransactionRow(transaction, locale, onClick = { onTransactionClick(transaction.id) })
+            }
         }
     }
 }
@@ -168,10 +173,12 @@ private fun DayHeader(
 private fun TransactionRow(
     transaction: Transaction,
     locale: Locale,
+    onClick: () -> Unit,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
