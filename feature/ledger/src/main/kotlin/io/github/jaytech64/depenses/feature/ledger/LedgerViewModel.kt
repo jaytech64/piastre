@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import javax.inject.Inject
 
-/** One local day of spending, with the day's own total. */
+/** One local day, with its balance: what came in minus what went out. */
 data class LedgerDay(
     val date: LocalDate,
     val total: Money,
@@ -27,7 +27,8 @@ data class LedgerUiState(
     val days: List<LedgerDay> = emptyList(),
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
-    val spentToday: Money = Money(0, Money.CAD),
+    /** Negative on a day you only spent, which is most days. */
+    val balanceToday: Money = Money(0, Money.CAD),
     val needsReview: Int = 0,
     val loading: Boolean = true,
 ) {
@@ -56,7 +57,7 @@ class LedgerViewModel
                 LedgerUiState(
                     days = days,
                     today = today,
-                    spentToday = days.firstOrNull { it.date == today }?.total ?: Money(0, Money.CAD),
+                    balanceToday = days.firstOrNull { it.date == today }?.total ?: Money(0, Money.CAD),
                     needsReview = needsReview,
                     loading = false,
                 )
@@ -76,7 +77,7 @@ class LedgerViewModel
                 .map { (date, forDay) ->
                     LedgerDay(
                         date = date,
-                        total = forDay.map { it.amount }.reduce(Money::plus),
+                        total = forDay.map { it.signedAmount }.reduce(Money::plus),
                         transactions = forDay,
                     )
                 }.sortedByDescending { it.date }

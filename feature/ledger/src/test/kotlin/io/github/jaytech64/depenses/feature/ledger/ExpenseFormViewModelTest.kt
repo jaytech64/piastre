@@ -9,6 +9,7 @@ import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -218,6 +219,39 @@ class ExpenseFormViewModelTest {
             awaitDone()
         }
 
+    @Test
+    fun `money received is saved as income`() =
+        runTest {
+            viewModel.onKindChange(TransactionKind.INCOME)
+            viewModel.onAmountChange("150,00")
+            viewModel.onMerchantChange("Acme inc.")
+            viewModel.save()
+            awaitDone()
+
+            val stored = repository.confirmed().first().single()
+            assertEquals(TransactionKind.INCOME, stored.kind)
+            assertEquals(15_000L, stored.amount.minor)
+        }
+
+    @Test
+    fun `editing opens on the kind that was saved`() =
+        runTest {
+            viewModel.onKindChange(TransactionKind.INCOME)
+            viewModel.onAmountChange("150,00")
+            viewModel.save()
+            awaitDone()
+            val id =
+                repository
+                    .confirmed()
+                    .first()
+                    .single()
+                    .id
+
+            viewModel = newViewModel(editing = id)
+
+            assertEquals(TransactionKind.INCOME, viewModel.uiState.first { !it.loading }.kind)
+        }
+
     private suspend fun addCashPurchase(): Long =
         repository.addManual(
             amount = Money(1_250, Money.CAD),
@@ -229,6 +263,7 @@ class ExpenseFormViewModelTest {
                     .atZone(ZONE)
                     .toInstant(),
             note = "Argent comptant",
+            kind = TransactionKind.EXPENSE,
         )
 
     /**

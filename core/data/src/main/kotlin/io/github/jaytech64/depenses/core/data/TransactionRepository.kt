@@ -8,6 +8,7 @@ import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.model.localDateEpochDay
@@ -57,8 +58,8 @@ class TransactionRepository
         fun count(): Flow<Int> = transactions.count()
 
         /**
-         * Records a purchase no notification will ever describe — cash, Interac, a
-         * card this phone does not carry.
+         * Records a transaction no notification will ever describe — cash, Interac,
+         * a card this phone does not carry, or money coming in.
          *
          * Such a row has no natural identity, so it is given one: a random key under
          * a source package no parser claims. That keeps the uniqueness constraint
@@ -74,6 +75,7 @@ class TransactionRepository
             merchantName: String?,
             occurredAt: Instant,
             note: String?,
+            kind: TransactionKind,
         ): Long {
             val zone = zoneId.get()
             val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
@@ -100,6 +102,7 @@ class TransactionRepository
                     cardLabel = null,
                     cardLast4 = null,
                     note = note?.takeIf { it.isNotBlank() }?.trim(),
+                    kind = kind,
                 ),
             )
         }

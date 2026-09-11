@@ -23,6 +23,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,6 +47,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Merchant
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -51,7 +55,8 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 /**
- * Adds a purchase, or corrects one already in the ledger.
+ * Adds a transaction — money spent or received — or corrects one already in the
+ * ledger.
  *
  * Cash and Interac never post a notification, so they are typed. Only the amount
  * is required: a purchase you half-remember is still worth more in the ledger
@@ -142,6 +147,8 @@ private fun EntryForm(
             style = MaterialTheme.typography.titleLarge,
         )
 
+        KindToggle(kind = state.kind, onChange = viewModel::onKindChange)
+
         OutlinedTextField(
             value = state.amountText,
             onValueChange = viewModel::onAmountChange,
@@ -155,7 +162,7 @@ private fun EntryForm(
         OutlinedTextField(
             value = state.merchantText,
             onValueChange = viewModel::onMerchantChange,
-            label = { Text(stringResource(R.string.manual_merchant)) },
+            label = { Text(stringResource(merchantLabel(state.kind))) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -209,6 +216,40 @@ private fun FormActions(
         }
     }
 }
+
+/**
+ * Expense or income, first on the form because it changes what the rest of it
+ * asks: income comes from a source, not a merchant.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KindToggle(
+    kind: TransactionKind,
+    onChange: (TransactionKind) -> Unit,
+) {
+    val options =
+        listOf(
+            TransactionKind.EXPENSE to R.string.form_kind_expense,
+            TransactionKind.INCOME to R.string.form_kind_income,
+        )
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (option, label) ->
+            SegmentedButton(
+                selected = kind == option,
+                onClick = { onChange(option) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+            ) {
+                Text(stringResource(label))
+            }
+        }
+    }
+}
+
+private fun merchantLabel(kind: TransactionKind): Int =
+    when (kind) {
+        TransactionKind.EXPENSE -> R.string.manual_merchant
+        TransactionKind.INCOME -> R.string.form_source
+    }
 
 /** Defaults to now, because that is when almost every cash purchase is entered. */
 @Composable

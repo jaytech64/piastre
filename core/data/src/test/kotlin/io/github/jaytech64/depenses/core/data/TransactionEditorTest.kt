@@ -5,6 +5,7 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import io.github.jaytech64.depenses.parsing.GoogleWalletParser
@@ -75,7 +76,14 @@ class TransactionEditorTest {
             captureCoffee()
             val id = capturedId()
 
-            editor.edit(id, Money(700, Money.CAD), MERCHANT_RAW, occurredAt(), note = "Avec un croissant")
+            editor.edit(
+                id,
+                Money(700, Money.CAD),
+                TransactionKind.EXPENSE,
+                MERCHANT_RAW,
+                occurredAt(),
+                note = "Avec un croissant",
+            )
             captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
 
             val stored = repository.byId(id)
@@ -91,7 +99,7 @@ class TransactionEditorTest {
             captureCoffee()
             val id = capturedId()
 
-            editor.edit(id, Money(625, Money.CAD), "Café Olimpico", occurredAt(), note = null)
+            editor.edit(id, Money(625, Money.CAD), TransactionKind.EXPENSE, "Café Olimpico", occurredAt(), note = null)
 
             val stored = repository.byId(id)
             assertEquals("Café Olimpico", stored?.displayMerchant)
@@ -110,7 +118,7 @@ class TransactionEditorTest {
             val id = capturedId()
             val shownAs = repository.byId(id)?.displayMerchant
 
-            editor.edit(id, Money(625, Money.CAD), shownAs, occurredAt(), note = "Réunion")
+            editor.edit(id, Money(625, Money.CAD), TransactionKind.EXPENSE, shownAs, occurredAt(), note = "Réunion")
 
             val alias = database.merchantDao().allAliases().single { it.pattern == MERCHANT_RAW }
             assertEquals(AliasOrigin.AUTO, alias.createdBy)
@@ -123,7 +131,7 @@ class TransactionEditorTest {
             val id = capturedId()
             val before = repository.byId(id)?.merchantId
 
-            editor.edit(id, Money(625, Money.CAD), "  ", occurredAt(), note = null)
+            editor.edit(id, Money(625, Money.CAD), TransactionKind.EXPENSE, "  ", occurredAt(), note = null)
 
             assertEquals(before, repository.byId(id)?.merchantId)
         }
@@ -133,7 +141,7 @@ class TransactionEditorTest {
         runTest {
             val id = addManual(merchant = "Dépanneur du coin")
 
-            editor.edit(id, Money(1_250, Money.CAD), "", occurredAt(), note = null)
+            editor.edit(id, Money(1_250, Money.CAD), TransactionKind.EXPENSE, "", occurredAt(), note = null)
 
             assertNull(repository.byId(id)?.displayMerchant)
         }
@@ -155,7 +163,7 @@ class TransactionEditorTest {
                     .atZone(ZONE)
                     .toInstant()
 
-            editor.edit(id, Money(625, Money.CAD), MERCHANT_RAW, lateEvening, note = null)
+            editor.edit(id, Money(625, Money.CAD), TransactionKind.EXPENSE, MERCHANT_RAW, lateEvening, note = null)
 
             val stored = repository.byId(id)
             assertEquals(LocalDate.of(2026, 9, 5), stored?.localDate)
@@ -191,6 +199,39 @@ class TransactionEditorTest {
             assertEquals(2, database.rawNotificationEventDao().count().first())
         }
 
+    @Test
+    fun `turning a captured purchase into income survives Wallet posting it again`() =
+        runTest {
+            captureCoffee()
+            val id = capturedId()
+
+            editor.edit(
+                id,
+                Money(625, Money.CAD),
+                TransactionKind.INCOME,
+                MERCHANT_RAW,
+                occurredAt(),
+                note = "Remboursé",
+            )
+            captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
+
+            assertEquals(TransactionKind.INCOME, repository.byId(id)?.kind)
+        }
+
+    /** Even a row nobody has ruled on keeps a kind you set, the way it keeps your note. */
+    @Test
+    fun `a re-parse keeps the kind of a row nobody has ruled on`() =
+        runTest {
+            captureCoffee()
+            val id = capturedId()
+            val dao = database.transactionDao()
+            dao.update(dao.byId(id)!!.copy(kind = TransactionKind.INCOME))
+
+            captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
+
+            assertEquals(TransactionKind.INCOME, dao.byId(id)?.kind)
+        }
+
     private suspend fun capturedId(): Long =
         repository
             .confirmed()
@@ -199,7 +240,13 @@ class TransactionEditorTest {
             .id
 
     private suspend fun addManual(merchant: String?): Long =
-        repository.addManual(Money(1_250, Money.CAD), merchant, occurredAt(), note = null)
+        repository.addManual(
+            Money(1_250, Money.CAD),
+            merchant,
+            occurredAt(),
+            note = null,
+            kind = TransactionKind.EXPENSE,
+        )
 
     private fun occurredAt(): Instant = Instant.ofEpochMilli(POSTED_AT)
 

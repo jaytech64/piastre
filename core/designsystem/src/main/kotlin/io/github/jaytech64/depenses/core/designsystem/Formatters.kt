@@ -51,6 +51,15 @@ object Formatters {
         return format.format(amount.minor.toDouble() / Money.MINOR_UNITS)
     }
 
+    /**
+     * A balance, which unlike a price has a direction worth stating: a gain
+     * carries an explicit plus, a loss the locale's minus, and zero neither.
+     */
+    fun signedMoney(
+        amount: Money,
+        locale: Locale = Locale.getDefault(),
+    ): String = if (amount.minor > 0) "+" + money(amount, locale) else money(amount, locale)
+
     /** Currencies this app treats as local, and the symbol to write them with. */
     private val HOME_SYMBOLS = mapOf(Money.CAD to "$")
 

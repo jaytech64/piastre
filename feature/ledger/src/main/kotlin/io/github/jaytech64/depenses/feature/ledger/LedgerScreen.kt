@@ -59,7 +59,7 @@ fun LedgerScreen(
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TodayHeader(
-                spent = state.spentToday,
+                balance = state.balanceToday,
                 needsReview = state.needsReview,
                 onReviewClick = onReviewClick,
             )
@@ -84,7 +84,7 @@ fun LedgerScreen(
 
 @Composable
 private fun TodayHeader(
-    spent: Money,
+    balance: Money,
     needsReview: Int,
     onReviewClick: () -> Unit,
 ) {
@@ -96,11 +96,11 @@ private fun TodayHeader(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                stringResource(R.string.ledger_spent_today),
+                stringResource(R.string.ledger_balance_today),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(Formatters.money(spent), style = MaterialTheme.typography.headlineMedium)
+            Text(Formatters.signedMoney(balance), style = MaterialTheme.typography.headlineMedium)
 
             // Shown only when there is something to say. Totals exclude unreviewed
             // purchases, so without this a low number would be a silent lie — and
@@ -162,7 +162,7 @@ private fun DayHeader(
             modifier = Modifier.weight(1f),
         )
         Text(
-            Formatters.money(total),
+            Formatters.signedMoney(total),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

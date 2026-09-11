@@ -9,6 +9,7 @@ import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -86,9 +87,9 @@ class LedgerViewModelTest {
             insert(amountMinor = 3_180, day = YESTERDAY)
             val state = settled()
 
-            assertEquals(Money(3_417, Money.CAD), state.days.first().total)
-            assertEquals(Money(3_180, Money.CAD), state.days.last().total)
-            assertEquals(Money(3_417, Money.CAD), state.spentToday)
+            assertEquals(Money(-3_417, Money.CAD), state.days.first().total)
+            assertEquals(Money(-3_180, Money.CAD), state.days.last().total)
+            assertEquals(Money(-3_417, Money.CAD), state.balanceToday)
         }
 
     @Test
@@ -97,7 +98,7 @@ class LedgerViewModelTest {
             insert(amountMinor = 3_180, day = YESTERDAY)
             val state = settled()
 
-            assertEquals(Money(0, Money.CAD), state.spentToday)
+            assertEquals(Money(0, Money.CAD), state.balanceToday)
             assertFalse(state.isEmpty)
         }
 
@@ -112,7 +113,7 @@ class LedgerViewModelTest {
             insert(amountMinor = 9_999, day = TODAY, status = TransactionStatus.NEEDS_REVIEW)
             val state = settled()
 
-            assertEquals(Money(1_075, Money.CAD), state.spentToday)
+            assertEquals(Money(-1_075, Money.CAD), state.balanceToday)
             assertEquals(
                 1,
                 state.days
@@ -156,6 +157,18 @@ class LedgerViewModelTest {
             )
         }
 
+    /** Income and spending on one day meet in one signed balance, not two figures. */
+    @Test
+    fun `income lifts the day's balance above zero`() =
+        runTest {
+            insert(amountMinor = 15_000, day = TODAY, kind = TransactionKind.INCOME)
+            insert(amountMinor = 4_210, day = TODAY)
+            val state = settled()
+
+            assertEquals(Money(10_790, Money.CAD), state.balanceToday)
+            assertEquals(Money(10_790, Money.CAD), state.days.single().total)
+        }
+
     /**
      * The state once the database has answered, awaited rather than polled.
      *
@@ -170,6 +183,7 @@ class LedgerViewModelTest {
         day: LocalDate,
         status: TransactionStatus = TransactionStatus.CONFIRMED,
         merchantId: Long? = null,
+        kind: TransactionKind = TransactionKind.EXPENSE,
     ) = database.transactionDao().insertOrUpdate(
         ExpenseTransactionEntity(
             rawEventId = null,
@@ -198,6 +212,7 @@ class LedgerViewModelTest {
             cardLabel = "Récompenses Visa",
             cardLast4 = "0000",
             note = null,
+            kind = kind,
         ),
     )
 

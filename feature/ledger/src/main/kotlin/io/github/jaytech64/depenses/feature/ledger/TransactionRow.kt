@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Transaction
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import java.util.Locale
 
@@ -59,24 +60,41 @@ internal fun TransactionRow(
             )
         }
 
+        TransactionAmount(transaction, locale)
+    }
+}
+
+/** Income says so twice, with a plus and a colour: a misread sign is a misread balance. */
+@Composable
+private fun TransactionAmount(
+    transaction: Transaction,
+    locale: Locale,
+) {
+    if (transaction.kind == TransactionKind.INCOME) {
+        Text(
+            Formatters.signedMoney(transaction.amount, locale),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.tertiary,
+        )
+    } else {
         Text(Formatters.money(transaction.amount, locale), style = MaterialTheme.typography.bodyLarge)
     }
 }
 
 /**
- * The time, then whichever of the card or the manual marker applies — enough to
- * tell two purchases at one merchant apart without a detail screen.
+ * The time, then what kind of entry it is — income, a manual entry, or the card
+ * it was paid with. Enough to tell two purchases at one merchant apart without a
+ * detail screen.
  */
 @Composable
 private fun Transaction.subtitle(locale: Locale): String {
-    val manual = stringResource(R.string.ledger_manual_entry)
-    val parts =
-        listOfNotNull(
-            Formatters.time(occurredAt, zoneId, locale),
-            Formatters.cardMask(cardLast4),
-            manual.takeIf { source == TransactionSource.MANUAL },
-        )
-    return parts.joinToString(SEPARATOR)
+    val method =
+        when {
+            kind == TransactionKind.INCOME -> stringResource(R.string.ledger_income)
+            source == TransactionSource.MANUAL -> stringResource(R.string.ledger_manual_entry)
+            else -> Formatters.cardMask(cardLast4)
+        }
+    return listOfNotNull(Formatters.time(occurredAt, zoneId, locale), method).joinToString(SEPARATOR)
 }
 
 @Composable

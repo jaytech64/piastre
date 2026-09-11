@@ -429,6 +429,10 @@ data class MerchantTotal(
  * Reports are SQL, not Kotlin loops over the whole table. Every one of these
  * groups on an indexed integer column, so a year of history costs the same as a
  * week.
+ *
+ * They are about spending, so income is left out of every one of them: a
+ * paycheque ranked beside the grocer, or cancelling out a week of coffee on a
+ * heat map, would make both answers wrong.
  */
 @Dao
 interface ReportDao {
@@ -437,6 +441,7 @@ interface ReportDao {
         SELECT localDateEpochDay AS day, SUM(amountMinor) AS totalMinor, COUNT(*) AS count
         FROM expense_transaction
         WHERE status = 'CONFIRMED'
+          AND kind = 'EXPENSE'
           AND currency = :currency
           AND localDateEpochDay BETWEEN :fromDay AND :toDay
         GROUP BY localDateEpochDay
@@ -454,6 +459,7 @@ interface ReportDao {
         SELECT SUM(amountMinor)
         FROM expense_transaction
         WHERE status = 'CONFIRMED'
+          AND kind = 'EXPENSE'
           AND currency = :currency
           AND localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
@@ -471,6 +477,7 @@ interface ReportDao {
         FROM expense_transaction t
         JOIN merchant m ON m.id = t.merchantId
         WHERE t.status = 'CONFIRMED'
+          AND t.kind = 'EXPENSE'
           AND t.currency = :currency
           AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         GROUP BY m.id

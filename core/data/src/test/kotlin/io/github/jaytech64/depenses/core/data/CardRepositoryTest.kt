@@ -6,6 +6,7 @@ import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.model.CardOrigin
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.PaymentMethod
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import io.github.jaytech64.depenses.parsing.GoogleWalletParser
 import io.github.jaytech64.depenses.parsing.ParserRegistry
@@ -172,6 +173,7 @@ class CardRepositoryTest {
                 merchantName = "Dépanneur du coin",
                 occurredAt = Instant.ofEpochMilli(POSTED_AT),
                 note = null,
+                kind = TransactionKind.EXPENSE,
             )
             val manual = transactions.confirmed().first().single()
             database.transactionDao().update(

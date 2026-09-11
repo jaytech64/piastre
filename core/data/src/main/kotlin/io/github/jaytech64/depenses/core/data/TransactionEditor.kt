@@ -5,6 +5,7 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.model.localDateEpochDay
@@ -44,6 +45,7 @@ class TransactionEditor
         suspend fun edit(
             id: Long,
             amount: Money,
+            kind: TransactionKind,
             merchantName: String?,
             occurredAt: Instant,
             note: String?,
@@ -57,6 +59,7 @@ class TransactionEditor
                 (if (renamed) existing.withMerchant(merchant) else existing).copy(
                     amountMinor = amount.minor,
                     currency = amount.currency,
+                    kind = kind,
                     occurredAtUtcMillis = occurredAtMillis,
                     localDateEpochDay = localDateEpochDay(occurredAtMillis, ZoneId.of(existing.zoneId)),
                     note = note?.takeIf { it.isNotBlank() }?.trim(),

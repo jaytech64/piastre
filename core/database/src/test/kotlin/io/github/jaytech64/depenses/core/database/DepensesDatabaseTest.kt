@@ -5,6 +5,7 @@ package io.github.jaytech64.depenses.core.database
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import kotlinx.coroutines.flow.first
@@ -79,6 +80,31 @@ class DepensesDatabaseTest {
             )
         }
 
+    /** A paycheque is not spending: it must not rank as a merchant or cancel out a week of coffee. */
+    @Test
+    fun `reports count what went out, never what came in`() =
+        runTest {
+            val merchant = MerchantEntity(displayName = "Acme inc.", normalisedName = "ACME INC")
+            val id = database.merchantDao().insert(merchant)
+            val dao = database.transactionDao()
+            dao.insertOrUpdate(transaction("spent", amountMinor = 1_000, day = 20_000))
+            dao.insertOrUpdate(
+                transaction(
+                    "paid",
+                    amountMinor = 150_000,
+                    day = 20_000,
+                    merchantId = id,
+                    kind = TransactionKind.INCOME,
+                ),
+            )
+
+            val reports = database.reportDao()
+
+            assertEquals(listOf(1_000L), reports.dailyTotals(19_999, 20_001, Money.CAD).first().map { it.totalMinor })
+            assertEquals(1_000L, reports.totalForRange(19_999, 20_001, Money.CAD).first())
+            assertEquals(emptyList<MerchantTotal>(), reports.topMerchants(0, 99_999, Money.CAD, limit = 5).first())
+        }
+
     @Test
     fun `a merchant ranking sums over the merchant, not the raw string`() =
         runTest {
@@ -126,6 +152,7 @@ class DepensesDatabaseTest {
         day: Int = 20_000,
         merchantId: Long? = null,
         status: TransactionStatus = TransactionStatus.CONFIRMED,
+        kind: TransactionKind = TransactionKind.EXPENSE,
     ) = ExpenseTransactionEntity(
         rawEventId = null,
         amountMinor = amountMinor,
@@ -148,6 +175,7 @@ class DepensesDatabaseTest {
         cardLabel = "Remises Visa",
         cardLast4 = "0000",
         note = null,
+        kind = kind,
     )
 
     private companion object {

@@ -13,6 +13,7 @@ import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +43,7 @@ data class ExpenseFormUiState(
     val date: LocalDate,
     val time: LocalTime,
     val note: String = "",
+    val kind: TransactionKind = TransactionKind.EXPENSE,
     val isEditing: Boolean = false,
     /** True while the purchase being edited is read off disk, so the form never shows "now" in its place. */
     val loading: Boolean = false,
@@ -121,6 +123,7 @@ class ExpenseFormViewModel
                     date = local.toLocalDate(),
                     time = local.toLocalTime(),
                     note = transaction.note.orEmpty(),
+                    kind = transaction.kind,
                     loading = false,
                 )
             }
@@ -135,6 +138,8 @@ class ExpenseFormViewModel
         fun onDateChange(date: LocalDate) = _uiState.update { it.copy(date = date) }
 
         fun onTimeChange(time: LocalTime) = _uiState.update { it.copy(time = time) }
+
+        fun onKindChange(kind: TransactionKind) = _uiState.update { it.copy(kind = kind) }
 
         /**
          * Reports completion through [ExpenseFormUiState.done] rather than a
@@ -153,11 +158,13 @@ class ExpenseFormViewModel
                         merchantName = state.merchantText,
                         occurredAt = state.occurredAt(zoneId.get()),
                         note = state.note,
+                        kind = state.kind,
                     )
                 } else {
                     editor.edit(
                         id = editing.id,
                         amount = amount,
+                        kind = state.kind,
                         merchantName = state.merchantText,
                         occurredAt = state.occurredAtLike(editing),
                         note = state.note,

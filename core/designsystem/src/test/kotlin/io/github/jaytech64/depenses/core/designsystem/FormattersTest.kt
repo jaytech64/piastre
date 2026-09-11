@@ -55,6 +55,17 @@ class FormattersTest {
     }
 
     @Test
+    fun `a balance states its direction, and zero states none`() {
+        val gain = Formatters.signedMoney(Money(10_790, Money.CAD), Locale.CANADA_FRENCH)
+        val loss = Formatters.signedMoney(Money(-4_210, Money.CAD), Locale.CANADA_FRENCH)
+        val zero = Formatters.signedMoney(Money(0, Money.CAD), Locale.CANADA)
+
+        assertTrue(gain, gain.startsWith("+") && gain.contains("107,90"))
+        assertTrue(loss, (loss.startsWith("-") || loss.startsWith("−")) && loss.contains("42,10"))
+        assertEquals(Formatters.money(Money(0, Money.CAD), Locale.CANADA), zero)
+    }
+
+    @Test
     fun `minor units are never truncated to whole dollars`() {
         assertEquals("$0.07", Formatters.money(Money(7, Money.CAD), Locale.CANADA))
     }
