@@ -175,20 +175,36 @@ private fun EntryForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = viewModel::save, enabled = state.canSave) {
-                Text(stringResource(R.string.manual_save))
-            }
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
-            if (state.isEditing) {
-                Spacer(Modifier.weight(1f))
-                TextButton(
-                    onClick = { onPick(Picking.DELETE) },
-                    enabled = !state.saving,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) {
-                    Text(stringResource(R.string.edit_delete))
-                }
+        FormActions(
+            state = state,
+            onSave = viewModel::save,
+            onCancel = onCancel,
+            onDelete = { onPick(Picking.DELETE) },
+        )
+    }
+}
+
+/** Save and Cancel together; Delete kept apart at the far end, and only when there is something to delete. */
+@Composable
+private fun FormActions(
+    state: ExpenseFormUiState,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(onClick = onSave, enabled = state.canSave) {
+            Text(stringResource(R.string.manual_save))
+        }
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
+        if (state.isEditing) {
+            Spacer(Modifier.weight(1f))
+            TextButton(
+                onClick = onDelete,
+                enabled = !state.saving,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(R.string.edit_delete))
             }
         }
     }
@@ -250,81 +266,6 @@ private fun MerchantSuggestions(
         }
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DatePickerSheet(
-    date: LocalDate,
-    onPicked: (LocalDate) -> Unit,
-    onCancel: () -> Unit,
-) {
-    // The picker speaks UTC millis; the date is held as a plain LocalDate, so the
-    // conversion is pinned to UTC at both ends rather than to a zone that would
-    // shift the day by one either side of midnight.
-    val pickerState = rememberDatePickerState(initialSelectedDateMillis = date.toUtcMillis())
-
-    // DatePickerDialog rather than AlertDialog: the latter's content slot is
-    // narrower than the calendar grid, which clips the last weekday column.
-    DatePickerDialog(
-        onDismissRequest = onCancel,
-        confirmButton = {
-            TextButton(
-                onClick = { pickerState.selectedDateMillis?.let { onPicked(it.toUtcLocalDate()) } },
-            ) {
-                Text(stringResource(R.string.manual_save))
-            }
-        },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
-    ) {
-        DatePicker(state = pickerState)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerSheet(
-    time: LocalTime,
-    onPicked: (LocalTime) -> Unit,
-    onCancel: () -> Unit,
-) {
-    val pickerState = rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = true)
-
-    AlertDialog(
-        onDismissRequest = onCancel,
-        confirmButton = {
-            TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
-                Text(stringResource(R.string.manual_save))
-            }
-        },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
-        text = { TimePicker(state = pickerState) },
-    )
-}
-
-@Composable
-private fun ConfirmDeleteDialog(
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text(stringResource(R.string.edit_delete_title)) },
-        text = { Text(stringResource(R.string.edit_delete_body)) },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) {
-                Text(stringResource(R.string.edit_delete))
-            }
-        },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
-    )
-}
-
-private fun LocalDate.toUtcMillis(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-
-private fun Long.toUtcLocalDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
 private fun LocalTime.toInstantOn(date: LocalDate): Instant = date.atTime(this).toInstant(ZoneOffset.UTC)
 

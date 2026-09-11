@@ -170,88 +170,6 @@ private fun DayHeader(
 }
 
 @Composable
-private fun TransactionRow(
-    transaction: Transaction,
-    locale: Locale,
-    onClick: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MerchantInitials(transaction.displayMerchant)
-
-        Column(Modifier.weight(1f)) {
-            Text(
-                transaction.displayMerchant ?: stringResource(R.string.ledger_unknown_merchant),
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                transaction.subtitle(locale),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        Text(Formatters.money(transaction.amount, locale), style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-/**
- * The time, then whichever of the card or the manual marker applies — enough to
- * tell two purchases at one merchant apart without a detail screen.
- */
-@Composable
-private fun Transaction.subtitle(locale: Locale): String {
-    val manual = stringResource(R.string.ledger_manual_entry)
-    val parts =
-        listOfNotNull(
-            Formatters.time(occurredAt, zoneId, locale),
-            Formatters.cardMask(cardLast4),
-            manual.takeIf { source == TransactionSource.MANUAL },
-        )
-    return parts.joinToString(SEPARATOR)
-}
-
-@Composable
-private fun MerchantInitials(merchant: String?) {
-    Surface(
-        Modifier.size(36.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-    ) {
-        Column(
-            Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                merchant.initials(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-        }
-    }
-}
-
-private fun String?.initials(): String =
-    orEmpty()
-        .split(' ')
-        .filter { it.isNotBlank() }
-        .take(2)
-        .map { it.first().uppercaseChar() }
-        .joinToString("")
-        .ifEmpty { "?" }
-
-@Composable
 private fun EmptyLedger() {
     Column(
         Modifier
@@ -278,8 +196,6 @@ private fun EmptyLedger() {
  */
 @Composable
 private fun currentLocale(): Locale = LocalConfiguration.current.locales[0]
-
-private const val SEPARATOR = " · "
 
 /**
  * Room below the last row for the floating add button: its 56 dp height, its
