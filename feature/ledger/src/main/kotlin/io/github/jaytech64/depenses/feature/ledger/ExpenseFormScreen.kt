@@ -51,9 +51,9 @@ import java.util.Locale
  * than left out of it.
  */
 @Composable
-fun ManualEntryScreen(
+fun ExpenseFormScreen(
     onDone: () -> Unit,
-    viewModel: ManualEntryViewModel = hiltViewModel(),
+    viewModel: ExpenseFormViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val merchants by viewModel.knownMerchants.collectAsStateWithLifecycle()
@@ -102,9 +102,9 @@ fun ManualEntryScreen(
 
 @Composable
 private fun EntryForm(
-    state: ManualEntryUiState,
+    state: ExpenseFormUiState,
     merchants: List<Merchant>,
-    viewModel: ManualEntryViewModel,
+    viewModel: ExpenseFormViewModel,
     onPick: (Picking) -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -161,7 +161,7 @@ private fun EntryForm(
 /** Defaults to now, because that is when almost every cash purchase is entered. */
 @Composable
 private fun WhenRow(
-    state: ManualEntryUiState,
+    state: ExpenseFormUiState,
     onPick: (Picking) -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]

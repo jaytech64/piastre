@@ -29,7 +29,7 @@ import javax.inject.Provider
  * [Money] because half-typed input is not an amount yet, and a field that
  * silently rounds what you are still writing is worse than one that waits.
  */
-data class ManualEntryUiState(
+data class ExpenseFormUiState(
     val amountText: String = "",
     val merchantText: String = "",
     val date: LocalDate,
@@ -46,7 +46,7 @@ data class ManualEntryUiState(
 }
 
 @HiltViewModel
-class ManualEntryViewModel
+class ExpenseFormViewModel
     @Inject
     constructor(
         private val transactions: TransactionRepository,
@@ -56,10 +56,10 @@ class ManualEntryViewModel
         private val _uiState =
             MutableStateFlow(
                 zoneId.get().let { zone ->
-                    ManualEntryUiState(date = LocalDate.now(zone), time = LocalTime.now(zone))
+                    ExpenseFormUiState(date = LocalDate.now(zone), time = LocalTime.now(zone))
                 },
             )
-        val uiState: StateFlow<ManualEntryUiState> = _uiState.asStateFlow()
+        val uiState: StateFlow<ExpenseFormUiState> = _uiState.asStateFlow()
 
         /**
          * Every merchant already known, so the field can offer the name you used
@@ -79,7 +79,7 @@ class ManualEntryViewModel
         fun onTimeChange(time: LocalTime) = _uiState.update { it.copy(time = time) }
 
         /**
-         * Reports completion through [ManualEntryUiState.saved] rather than a
+         * Reports completion through [ExpenseFormUiState.saved] rather than a
          * callback, so the screen navigates away on a fact that is already on disk
          * instead of on a promise made from inside a coroutine it does not own.
          */
@@ -103,4 +103,4 @@ class ManualEntryViewModel
         }
     }
 
-internal fun ManualEntryUiState.occurredAt(zone: ZoneId): Instant = date.atTime(time).atZone(zone).toInstant()
+internal fun ExpenseFormUiState.occurredAt(zone: ZoneId): Instant = date.atTime(time).atZone(zone).toInstant()

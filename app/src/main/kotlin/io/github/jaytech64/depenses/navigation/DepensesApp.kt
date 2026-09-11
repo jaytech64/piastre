@@ -27,7 +27,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.jaytech64.depenses.R
 import io.github.jaytech64.depenses.feature.ledger.LedgerScreen
-import io.github.jaytech64.depenses.feature.ledger.ManualEntryScreen
+import io.github.jaytech64.depenses.feature.ledger.ExpenseFormScreen
 import io.github.jaytech64.depenses.feature.reports.ReportsScreen
 import io.github.jaytech64.depenses.feature.review.ReviewScreen
 import io.github.jaytech64.depenses.feature.settings.CaptureHealthBanner
@@ -108,7 +108,7 @@ private fun MainShell() {
                     )
                 }
                 composable(MANUAL_ENTRY_ROUTE) {
-                    ManualEntryScreen(onDone = { navController.popBackStack() })
+                    ExpenseFormScreen(onDone = { navController.popBackStack() })
                 }
                 composable(Destination.REPORTS.route) { ReportsScreen() }
                 composable(Destination.REVIEW.route) { ReviewScreen() }

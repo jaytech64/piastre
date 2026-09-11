@@ -37,11 +37,11 @@ import javax.inject.Provider
  * a day.
  */
 @RunWith(RobolectricTestRunner::class)
-class ManualEntryViewModelTest {
+class ExpenseFormViewModelTest {
     private lateinit var database: DepensesDatabase
     private lateinit var repository: TransactionRepository
     private lateinit var merchants: MerchantRepository
-    private lateinit var viewModel: ManualEntryViewModel
+    private lateinit var viewModel: ExpenseFormViewModel
 
     @Before
     fun setUp() {
@@ -58,7 +58,7 @@ class ManualEntryViewModelTest {
         viewModel = newViewModel()
     }
 
-    private fun newViewModel() = ManualEntryViewModel(repository, merchants, Provider { ZONE })
+    private fun newViewModel() = ExpenseFormViewModel(repository, merchants, Provider { ZONE })
 
     @After
     fun tearDown() {
