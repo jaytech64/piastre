@@ -45,6 +45,17 @@
     <string name="onboarding_grant">Allow notification access</string>
     <string name="onboarding_later">Later</string>
 
+    <string name="settings_cards_section">Cards</string>
+    <string name="settings_cards_add">Add a card</string>
+    <string name="settings_cards_unnamed">Tap to name it</string>
+    <string name="settings_cards_added">Added by hand</string>
+    <plurals name="settings_cards_purchases">
+        <item quantity="one">%d purchase</item>
+        <item quantity="other">%d purchases</item>
+    </plurals>
+    <string name="settings_cards_empty">No card yet. A card appears here after its first Wallet payment, or you can add one.</string>
+    <string name="settings_cards_still_used">This card is still used by a transaction, so it stays.</string>
+
     <string name="settings_data_section">Your data</string>
     <string name="settings_export">Export</string>
     <string name="settings_export_body">CSV and JSON, into a file you choose.</string>

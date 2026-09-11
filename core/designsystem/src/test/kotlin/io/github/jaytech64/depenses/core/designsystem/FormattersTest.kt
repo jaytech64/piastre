@@ -109,6 +109,13 @@ class FormattersTest {
     }
 
     @Test
+    fun `a card is called by its name, and by its digits until it has one`() {
+        assertEquals("Débit Desrives", Formatters.cardName("Débit Desrives", "0000"))
+        assertEquals("\u2022\u20220000", Formatters.cardName(null, "0000"))
+        assertNull(Formatters.cardName(null, null))
+    }
+
+    @Test
     fun `a card is masked the way wallet masks it`() {
         assertEquals("\u2022\u20226262", Formatters.cardMask("6262"))
         assertNull(Formatters.cardMask(null))

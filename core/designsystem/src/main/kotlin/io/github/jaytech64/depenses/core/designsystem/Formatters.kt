@@ -114,6 +114,12 @@ object Formatters {
     /** The two bullets Wallet itself uses ahead of the last four digits. */
     fun cardMask(last4: String?): String? = last4?.let { "\u2022\u2022$it" }
 
+    /** What a card is called on screen: the name you gave it, or else its masked digits. */
+    fun cardName(
+        name: String?,
+        last4: String?,
+    ): String? = name ?: cardMask(last4)
+
     /**
      * Reads an amount a person typed, in whichever convention they typed it.
      *
