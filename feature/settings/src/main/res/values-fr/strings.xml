@@ -93,4 +93,7 @@
     <string name="export_column_status">statut</string>
     <string name="export_column_card">carte</string>
     <string name="export_column_note">note</string>
+    <string name="export_column_type">type</string>
+    <string name="export_column_payment">paiement</string>
+    <string name="export_column_card_name">nom de la carte</string>
 </resources>

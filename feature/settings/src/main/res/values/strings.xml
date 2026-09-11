@@ -93,4 +93,7 @@
     <string name="export_column_status">status</string>
     <string name="export_column_card">card</string>
     <string name="export_column_note">note</string>
+    <string name="export_column_type">type</string>
+    <string name="export_column_payment">payment</string>
+    <string name="export_column_card_name">card name</string>
 </resources>

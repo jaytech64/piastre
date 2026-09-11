@@ -242,4 +242,7 @@ private fun csvLabels() =
         status = stringResource(R.string.export_column_status),
         card = stringResource(R.string.export_column_card),
         note = stringResource(R.string.export_column_note),
+        type = stringResource(R.string.export_column_type),
+        payment = stringResource(R.string.export_column_payment),
+        cardName = stringResource(R.string.export_column_card_name),
     )
