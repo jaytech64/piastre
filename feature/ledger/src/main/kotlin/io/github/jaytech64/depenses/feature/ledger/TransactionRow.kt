@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.model.PaymentMethod
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -82,8 +83,8 @@ private fun TransactionAmount(
 }
 
 /**
- * The time, then what kind of entry it is — income, a manual entry, or the card
- * it was paid with. Enough to tell two purchases at one merchant apart without a
+ * The time, then how it was paid — the card by its name, cash — or failing that
+ * whether it was income or typed by hand. Enough to tell two purchases at one merchant apart without a
  * detail screen.
  */
 @Composable
@@ -91,6 +92,8 @@ private fun Transaction.subtitle(locale: Locale): String {
     val method =
         when {
             kind == TransactionKind.INCOME -> stringResource(R.string.ledger_income)
+            paymentMethod == PaymentMethod.CASH -> stringResource(R.string.ledger_cash)
+            paymentMethod == PaymentMethod.CARD -> Formatters.cardName(cardName, cardLast4)
             source == TransactionSource.MANUAL -> stringResource(R.string.ledger_manual_entry)
             else -> Formatters.cardMask(cardLast4)
         }

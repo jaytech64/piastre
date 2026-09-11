@@ -15,16 +15,79 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import io.github.jaytech64.depenses.core.designsystem.CardDialog
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
 
-/** The dialogs the expense form opens over itself: date, time, and the delete confirmation. */
+/**
+ * The one dialog [picking] names over the expense form, or none. Each closes
+ * itself through [onClose] once it has acted.
+ */
+@Composable
+internal fun FormDialog(
+    picking: Picking,
+    state: ExpenseFormUiState,
+    viewModel: ExpenseFormViewModel,
+    onClose: () -> Unit,
+) {
+    when (picking) {
+        Picking.DATE -> {
+            DatePickerSheet(
+                date = state.date,
+                onPicked = {
+                    viewModel.onDateChange(it)
+                    onClose()
+                },
+                onCancel = onClose,
+            )
+        }
+
+        Picking.TIME -> {
+            TimePickerSheet(
+                time = state.time,
+                onPicked = {
+                    viewModel.onTimeChange(it)
+                    onClose()
+                },
+                onCancel = onClose,
+            )
+        }
+
+        Picking.DELETE -> {
+            ConfirmDeleteDialog(
+                onConfirm = {
+                    viewModel.delete()
+                    onClose()
+                },
+                onCancel = onClose,
+            )
+        }
+
+        Picking.ADD_CARD -> {
+            CardDialog(
+                card = null,
+                onSave = { name, last4 ->
+                    viewModel.addCard(name, last4)
+                    onClose()
+                },
+                onDismiss = onClose,
+            )
+        }
+
+        Picking.NOTHING -> {
+            Unit
+        }
+    }
+}
+
+/** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
+internal enum class Picking { NOTHING, DATE, TIME, DELETE, ADD_CARD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun DatePickerSheet(
+private fun DatePickerSheet(
     date: LocalDate,
     onPicked: (LocalDate) -> Unit,
     onCancel: () -> Unit,
@@ -53,7 +116,7 @@ internal fun DatePickerSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TimePickerSheet(
+private fun TimePickerSheet(
     time: LocalTime,
     onPicked: (LocalTime) -> Unit,
     onCancel: () -> Unit,
@@ -73,7 +136,7 @@ internal fun TimePickerSheet(
 }
 
 @Composable
-internal fun ConfirmDeleteDialog(
+private fun ConfirmDeleteDialog(
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {

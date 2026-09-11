@@ -5,6 +5,7 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Payment
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -49,6 +50,7 @@ class TransactionEditor
             merchantName: String?,
             occurredAt: Instant,
             note: String?,
+            payment: Payment?,
         ) {
             val row = transactions.withMerchantById(id) ?: return
             val existing = row.transaction
@@ -56,7 +58,7 @@ class TransactionEditor
             val renamed = merchant != (row.merchantName ?: existing.merchantRaw)
             val occurredAtMillis = occurredAt.toEpochMilli()
             transactions.update(
-                (if (renamed) existing.withMerchant(merchant) else existing).copy(
+                (if (renamed) existing.withMerchant(merchant) else existing).withPayment(payment).copy(
                     amountMinor = amount.minor,
                     currency = amount.currency,
                     kind = kind,
@@ -89,6 +91,13 @@ class TransactionEditor
                 TransactionSource.NOTIFICATION -> {
                     merchant?.let { copy(merchantId = merchants.assign(merchantRaw, it)) } ?: this
                 }
+            }
+
+        /** A captured row's card is what its notification said, so only a manual row takes a new one. */
+        private fun ExpenseTransactionEntity.withPayment(payment: Payment?): ExpenseTransactionEntity =
+            when (source) {
+                TransactionSource.MANUAL -> copy(paymentMethod = payment.method(), cardId = payment.cardId())
+                TransactionSource.NOTIFICATION -> this
             }
 
         /**

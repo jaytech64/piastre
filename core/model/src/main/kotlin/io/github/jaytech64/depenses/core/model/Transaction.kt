@@ -81,6 +81,15 @@ data class Transaction(
 
     /** The amount as it moves a balance: income adds to it, an expense takes from it. */
     val signedAmount: Money get() = if (kind == TransactionKind.INCOME) amount else -amount
+
+    /** What it was paid with, as the form offers it: cash, a card, or nothing said. */
+    val payment: Payment?
+        get() =
+            when (paymentMethod) {
+                PaymentMethod.CASH -> Payment.Cash
+                PaymentMethod.CARD -> cardId?.let(Payment::ByCard)
+                null -> null
+            }
 }
 
 /**

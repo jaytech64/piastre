@@ -126,6 +126,11 @@ private fun CardFields(
     }
 }
 
+/** A card as a list offers it: its name with its digits, or Wallet's own label until it has a name. */
+fun cardMenuLabel(card: Card): String =
+    card.name?.let { name -> listOfNotNull(name, Formatters.cardMask(card.last4)).joinToString(" ") }
+        ?: walletLabel(card)
+
 /** How Wallet itself shows the card: the issuer's product name, then the masked digits. */
 fun walletLabel(card: Card): String = listOfNotNull(card.issuerLabel, Formatters.cardMask(card.last4)).joinToString(" ")
 

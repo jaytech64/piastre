@@ -3,6 +3,7 @@
     <string name="ledger_yesterday">Hier</string>
     <string name="ledger_balance_today">Solde du jour</string>
     <string name="ledger_income">Revenu</string>
+    <string name="ledger_cash">Comptant</string>
     <string name="ledger_manual_entry">saisie manuelle</string>
     <string name="ledger_unknown_merchant">Marchand inconnu</string>
     <string name="ledger_empty_title">Aucune dépense enregistrée</string>
@@ -25,4 +26,8 @@
     <string name="form_kind_expense">Dépense</string>
     <string name="form_kind_income">Revenu</string>
     <string name="form_source">Source</string>
+    <string name="form_paid_with">Payé avec</string>
+    <string name="form_paid_with_none">Non précisé</string>
+    <string name="form_paid_with_cash">Comptant</string>
+    <string name="form_add_card">Ajouter une carte…</string>
 </resources>

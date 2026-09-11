@@ -5,6 +5,7 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.model.CardOrigin
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Payment
 import io.github.jaytech64.depenses.core.model.PaymentMethod
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -174,11 +175,9 @@ class CardRepositoryTest {
                 occurredAt = Instant.ofEpochMilli(POSTED_AT),
                 note = null,
                 kind = TransactionKind.EXPENSE,
+                payment = Payment.ByCard(id),
             )
             val manual = transactions.confirmed().first().single()
-            database.transactionDao().update(
-                database.transactionDao().byId(manual.id)!!.copy(paymentMethod = PaymentMethod.CARD, cardId = id),
-            )
 
             val read = transactions.byId(manual.id)
 

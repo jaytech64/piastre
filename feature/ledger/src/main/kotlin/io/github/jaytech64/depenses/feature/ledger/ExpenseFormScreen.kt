@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.model.Card
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import java.time.Instant
@@ -69,6 +70,7 @@ fun ExpenseFormScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val merchants by viewModel.knownMerchants.collectAsStateWithLifecycle()
+    val cards by viewModel.knownCards.collectAsStateWithLifecycle()
     var picking by remember { mutableStateOf(Picking.NOTHING) }
 
     LaunchedEffect(state.done) {
@@ -80,54 +82,20 @@ fun ExpenseFormScreen(
     EntryForm(
         state = state,
         merchants = merchants,
+        cards = cards,
         viewModel = viewModel,
         onPick = { picking = it },
         onCancel = onDone,
     )
 
-    when (picking) {
-        Picking.DATE -> {
-            DatePickerSheet(
-                date = state.date,
-                onPicked = {
-                    viewModel.onDateChange(it)
-                    picking = Picking.NOTHING
-                },
-                onCancel = { picking = Picking.NOTHING },
-            )
-        }
-
-        Picking.TIME -> {
-            TimePickerSheet(
-                time = state.time,
-                onPicked = {
-                    viewModel.onTimeChange(it)
-                    picking = Picking.NOTHING
-                },
-                onCancel = { picking = Picking.NOTHING },
-            )
-        }
-
-        Picking.DELETE -> {
-            ConfirmDeleteDialog(
-                onConfirm = {
-                    viewModel.delete()
-                    picking = Picking.NOTHING
-                },
-                onCancel = { picking = Picking.NOTHING },
-            )
-        }
-
-        Picking.NOTHING -> {
-            Unit
-        }
-    }
+    FormDialog(picking = picking, state = state, viewModel = viewModel, onClose = { picking = Picking.NOTHING })
 }
 
 @Composable
 private fun EntryForm(
     state: ExpenseFormUiState,
     merchants: List<Merchant>,
+    cards: List<Card>,
     viewModel: ExpenseFormViewModel,
     onPick: (Picking) -> Unit,
     onCancel: () -> Unit,
@@ -172,6 +140,10 @@ private fun EntryForm(
             typed = state.merchantText,
             onPick = viewModel::onMerchantChange,
         )
+
+        if (state.kind == TransactionKind.EXPENSE) {
+            PaidWithField(state, cards, onPick = viewModel::onPaymentChange, onAddCard = { onPick(Picking.ADD_CARD) })
+        }
 
         WhenRow(state = state, onPick = onPick)
 
@@ -268,9 +240,6 @@ private fun WhenRow(
         }
     }
 }
-
-/** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
-private enum class Picking { NOTHING, DATE, TIME, DELETE }
 
 /**
  * Names you have used before, filtered as you type.

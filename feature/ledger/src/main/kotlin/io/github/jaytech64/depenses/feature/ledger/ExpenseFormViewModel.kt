@@ -6,14 +6,18 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jaytech64.depenses.core.data.CardRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.model.Card
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Payment
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +48,11 @@ data class ExpenseFormUiState(
     val time: LocalTime,
     val note: String = "",
     val kind: TransactionKind = TransactionKind.EXPENSE,
+    /** Null when nothing was said about it. */
+    val payment: Payment? = null,
+    /** A purchase a notification recorded: its card is the bank's to say, so it is shown rather than offered. */
+    val isCaptured: Boolean = false,
+    val capturedCardLabel: String? = null,
     val isEditing: Boolean = false,
     /** True while the purchase being edited is read off disk, so the form never shows "now" in its place. */
     val loading: Boolean = false,
@@ -55,6 +64,9 @@ data class ExpenseFormUiState(
 
     /** A purchase needs an amount. Everything else on this form is optional. */
     val canSave: Boolean get() = amount != null && !saving && !loading
+
+    /** Income has no Paid with field, so whatever it said before the switch is not kept. */
+    val paymentToSave: Payment? get() = payment.takeIf { kind == TransactionKind.EXPENSE }
 }
 
 /**
@@ -70,6 +82,7 @@ class ExpenseFormViewModel
         private val transactions: TransactionRepository,
         private val editor: TransactionEditor,
         merchants: MerchantRepository,
+        private val cards: CardRepository,
         private val zoneId: Provider<ZoneId>,
     ) : ViewModel() {
         private val editingId: Long? = savedStateHandle.get<Long>(EXPENSE_ID_ARG)
@@ -97,35 +110,20 @@ class ExpenseFormViewModel
         val knownMerchants: StateFlow<List<Merchant>> =
             merchants.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
-        init {
-            editingId?.let { id -> viewModelScope.launch { load(id) } }
-        }
+        val knownCards: StateFlow<List<Card>> =
+            cards.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
-        /**
-         * Fills the form from the purchase as stored, read in the zone it was made
-         * in — the same clock the ledger row shows it under.
-         *
-         * A purchase that is no longer there has nothing to edit, so the screen
-         * simply closes rather than offering to save into a row that is gone.
-         */
-        private suspend fun load(id: Long) {
-            val transaction = transactions.byId(id)
-            if (transaction == null) {
-                _uiState.update { it.copy(loading = false, done = true) }
-                return
-            }
-            original = transaction
-            val local = transaction.occurredAt.atZone(transaction.zoneId)
-            _uiState.update {
-                it.copy(
-                    amountText = Formatters.amountInput(transaction.amount),
-                    merchantText = transaction.displayMerchant.orEmpty(),
-                    date = local.toLocalDate(),
-                    time = local.toLocalTime(),
-                    note = transaction.note.orEmpty(),
-                    kind = transaction.kind,
-                    loading = false,
-                )
+        // A purchase that is no longer there has nothing to edit, so the screen
+        // simply closes rather than offering to save into a row that is gone.
+        init {
+            editingId?.let { id ->
+                viewModelScope.launch {
+                    val transaction = transactions.byId(id)
+                    original = transaction
+                    _uiState.update { state ->
+                        transaction?.let { state.filledFrom(it) } ?: state.copy(loading = false, done = true)
+                    }
+                }
             }
         }
 
@@ -140,6 +138,19 @@ class ExpenseFormViewModel
         fun onTimeChange(time: LocalTime) = _uiState.update { it.copy(time = time) }
 
         fun onKindChange(kind: TransactionKind) = _uiState.update { it.copy(kind = kind) }
+
+        fun onPaymentChange(payment: Payment?) = _uiState.update { it.copy(payment = payment) }
+
+        /** Adds the card missing from the list and picks it, so adding one never means leaving the form. */
+        fun addCard(
+            name: String,
+            last4: String,
+        ) {
+            viewModelScope.launch {
+                val id = cards.add(name, last4)
+                _uiState.update { it.copy(payment = Payment.ByCard(id)) }
+            }
+        }
 
         /**
          * Reports completion through [ExpenseFormUiState.done] rather than a
@@ -159,6 +170,7 @@ class ExpenseFormViewModel
                         occurredAt = state.occurredAt(zoneId.get()),
                         note = state.note,
                         kind = state.kind,
+                        payment = state.paymentToSave,
                     )
                 } else {
                     editor.edit(
@@ -168,6 +180,7 @@ class ExpenseFormViewModel
                         merchantName = state.merchantText,
                         occurredAt = state.occurredAtLike(editing),
                         note = state.note,
+                        payment = state.paymentToSave,
                     )
                 }
                 _uiState.update { it.copy(saving = false, done = true) }
@@ -188,6 +201,26 @@ class ExpenseFormViewModel
             const val STOP_TIMEOUT_MILLIS = 5_000L
         }
     }
+
+/**
+ * The form filled from a purchase as stored, read in the zone it was made in —
+ * the same clock the ledger row shows it under.
+ */
+private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseFormUiState {
+    val local = transaction.occurredAt.atZone(transaction.zoneId)
+    return copy(
+        amountText = Formatters.amountInput(transaction.amount),
+        merchantText = transaction.displayMerchant.orEmpty(),
+        date = local.toLocalDate(),
+        time = local.toLocalTime(),
+        note = transaction.note.orEmpty(),
+        kind = transaction.kind,
+        payment = transaction.payment,
+        isCaptured = transaction.source == TransactionSource.NOTIFICATION,
+        capturedCardLabel = Formatters.cardName(transaction.cardName, transaction.cardLast4),
+        loading = false,
+    )
+}
 
 internal fun ExpenseFormUiState.occurredAt(zone: ZoneId): Instant = date.atTime(time).atZone(zone).toInstant()
 
