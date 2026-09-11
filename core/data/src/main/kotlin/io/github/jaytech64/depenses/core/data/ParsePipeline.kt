@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.database.RawNotificationEventDao
 import io.github.jaytech64.depenses.core.database.RawNotificationEventEntity
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.PaymentMethod
 import io.github.jaytech64.depenses.core.model.ReviewReason
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -38,6 +39,7 @@ class ParsePipeline
         private val transactions: TransactionDao,
         private val registry: ParserRegistry,
         private val merchants: MerchantRepository,
+        private val cards: CardRepository,
         private val zoneId: Provider<ZoneId>,
     ) {
         suspend fun parse(eventId: Long) {
@@ -135,6 +137,7 @@ class ParsePipeline
                         confidence,
                         reviewReason,
                         merchants.resolve(draft.merchantRaw),
+                        cards.resolve(draft.cardLabel, draft.cardLast4),
                     ),
                 )
             events.markParsed(event.id, ParseState.PARSED, parser?.version)
@@ -153,6 +156,7 @@ class ParsePipeline
             confidence: Float,
             reviewReason: ReviewReason?,
             merchantId: Long?,
+            cardId: Long?,
         ): ExpenseTransactionEntity {
             val zone = zoneId.get()
             return ExpenseTransactionEntity(
@@ -177,6 +181,8 @@ class ParsePipeline
                 cardLabel = draft.cardLabel,
                 cardLast4 = draft.cardLast4,
                 note = null,
+                paymentMethod = cardId?.let { PaymentMethod.CARD },
+                cardId = cardId,
             )
         }
 

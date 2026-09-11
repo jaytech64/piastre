@@ -51,6 +51,7 @@ class TransactionEditorTest {
                     transactions = database.transactionDao(),
                     registry = ParserRegistry(listOf(GoogleWalletParser())),
                     merchants = merchants,
+                    cards = CardRepository(database.cardDao()),
                     zoneId = Provider { ZONE },
                 ),
             )
