@@ -131,7 +131,8 @@ interface TransactionDao {
      * primary key, and a fresh row carries id 0, so the update matches nothing and
      * the re-post is silently dropped instead of applied.
      *
-     * Fields the user owns — their note, their category — survive a re-parse.
+     * Fields the user owns — their note, their category, whether it was income —
+     * survive a re-parse.
      * Everything the parser owns is overwritten, which is what makes fixing a
      * parser repair history.
      *
@@ -152,6 +153,7 @@ interface TransactionDao {
                 id = existing.id,
                 note = existing.note,
                 categoryId = existing.categoryId,
+                kind = existing.kind,
             ),
         )
         return existing.id
@@ -215,9 +217,10 @@ interface TransactionDao {
      */
     @Query(
         """
-        SELECT t.*, m.displayName AS merchantName
+        SELECT t.*, m.displayName AS merchantName, c.name AS cardName, c.last4 AS resolvedCardLast4
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
+        LEFT JOIN card c ON c.id = t.cardId
         WHERE t.status = :status
         ORDER BY t.occurredAtUtcMillis DESC
         """,
@@ -251,9 +254,10 @@ interface TransactionDao {
 
     @Query(
         """
-        SELECT t.*, m.displayName AS merchantName
+        SELECT t.*, m.displayName AS merchantName, c.name AS cardName, c.last4 AS resolvedCardLast4
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
+        LEFT JOIN card c ON c.id = t.cardId
         WHERE t.id = :id
         """,
     )
@@ -272,9 +276,10 @@ interface TransactionDao {
      */
     @Query(
         """
-        SELECT t.*, m.displayName AS merchantName
+        SELECT t.*, m.displayName AS merchantName, c.name AS cardName, c.last4 AS resolvedCardLast4
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
+        LEFT JOIN card c ON c.id = t.cardId
         ORDER BY t.occurredAtUtcMillis
         """,
     )
@@ -322,10 +327,78 @@ interface MerchantDao {
     suspend fun allAliases(): List<MerchantAliasEntity>
 }
 
-/** A transaction with the display name of the merchant it resolved to. */
+@Dao
+interface CardDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(card: CardEntity): Long
+
+    /**
+     * The Wallet card a notification names. `IS` rather than `=` for the label, so
+     * a notification whose card label could not be read still finds its card.
+     * Scoped to Wallet cards, so one you added by hand is never claimed by capture.
+     */
+    @Query("SELECT * FROM card WHERE origin = 'WALLET' AND issuerLabel IS :issuerLabel AND last4 = :last4")
+    suspend fun walletCard(
+        issuerLabel: String?,
+        last4: String,
+    ): CardEntity?
+
+    /** Named cards first, alphabetically; then the ones still waiting for a name. */
+    @Query(
+        """
+        SELECT c.*, COUNT(t.id) AS purchaseCount
+        FROM card c
+        LEFT JOIN expense_transaction t ON t.cardId = c.id AND t.status = 'CONFIRMED'
+        GROUP BY c.id
+        ORDER BY c.name IS NULL, c.name COLLATE NOCASE, c.issuerLabel, c.last4
+        """,
+    )
+    fun allWithCounts(): Flow<List<CardWithCount>>
+
+    @Query("SELECT * FROM card ORDER BY id")
+    suspend fun allOnce(): List<CardEntity>
+
+    @Query("UPDATE card SET name = :name WHERE id = :id")
+    suspend fun rename(
+        id: Long,
+        name: String?,
+    )
+
+    /** Only a card you added has digits you can change; Wallet's are the bank's. */
+    @Query("UPDATE card SET name = :name, last4 = :last4 WHERE id = :id AND origin = 'USER'")
+    suspend fun updateUserCard(
+        id: Long,
+        name: String?,
+        last4: String?,
+    )
+
+    /**
+     * Returns 1 when the card was removed and 0 when a transaction still uses it,
+     * so nothing is ever left pointing at a card that is gone.
+     */
+    @Query("DELETE FROM card WHERE id = :id AND NOT EXISTS (SELECT 1 FROM expense_transaction WHERE cardId = :id)")
+    suspend fun deleteIfUnused(id: Long): Int
+}
+
+/**
+ * A transaction with the display name of the merchant it resolved to, and the
+ * card it was paid with.
+ *
+ * [resolvedCardLast4] is the card's digits rather than the notification's: a
+ * manual entry has no notification, and a card you added carries its digits only
+ * on the card row.
+ */
 data class TransactionWithMerchant(
     @Embedded val transaction: ExpenseTransactionEntity,
     val merchantName: String?,
+    val cardName: String? = null,
+    val resolvedCardLast4: String? = null,
+)
+
+/** A card with how many confirmed transactions were paid with it. */
+data class CardWithCount(
+    @Embedded val card: CardEntity,
+    val purchaseCount: Int,
 )
 
 /** A transaction awaiting review, with the notification it was read from. */

@@ -2,13 +2,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.database
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import io.github.jaytech64.depenses.core.model.AliasOrigin
+import io.github.jaytech64.depenses.core.model.CardOrigin
 import io.github.jaytech64.depenses.core.model.MatchType
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.PaymentMethod
 import io.github.jaytech64.depenses.core.model.ReviewReason
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 
@@ -77,6 +81,7 @@ data class RawNotificationEventEntity(
         Index("localDateEpochDay"),
         Index("merchantId"),
         Index("status"),
+        Index("cardId"),
     ],
 )
 data class ExpenseTransactionEntity(
@@ -107,6 +112,36 @@ data class ExpenseTransactionEntity(
     val cardLabel: String?,
     val cardLast4: String?,
     val note: String?,
+    /** Yours to set, so a re-parse keeps it: see [TransactionDao.insertOrUpdate]. */
+    @ColumnInfo(defaultValue = "EXPENSE") val kind: TransactionKind = TransactionKind.EXPENSE,
+    val paymentMethod: PaymentMethod? = null,
+    /**
+     * The card [cardLabel] and [cardLast4] resolved to, or the one you picked for
+     * a manual entry. The raw pair stays beside it as the bank's evidence, the way
+     * [merchantRaw] stays beside [merchantId].
+     */
+    val cardId: Long? = null,
+)
+
+/**
+ * A card, as Wallet reports it or as you entered it.
+ *
+ * A Wallet card is identified by the issuer's label together with the last four
+ * digits — the pair every notification carries. The digits alone collide across
+ * issuers often enough to merge two cards into one. SQLite treats NULLs as
+ * distinct in a unique index, so a card you add by hand, which has no issuer
+ * label, is never refused for sharing its digits with another.
+ */
+@Entity(
+    tableName = "card",
+    indices = [Index(value = ["issuerLabel", "last4"], unique = true)],
+)
+data class CardEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String?,
+    val issuerLabel: String?,
+    val last4: String?,
+    val origin: CardOrigin,
 )
 
 /**

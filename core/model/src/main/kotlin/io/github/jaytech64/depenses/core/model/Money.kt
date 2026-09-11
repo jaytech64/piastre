@@ -21,6 +21,8 @@ data class Money(
         return copy(minor = minor + other.minor)
     }
 
+    operator fun unaryMinus(): Money = copy(minor = -minor)
+
     companion object {
         const val CAD: String = "CAD"
 

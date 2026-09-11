@@ -36,4 +36,7 @@ object DatabaseModule {
 
     @Provides
     fun reportDao(database: DepensesDatabase): ReportDao = database.reportDao()
+
+    @Provides
+    fun cardDao(database: DepensesDatabase): CardDao = database.cardDao()
 }

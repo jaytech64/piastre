@@ -149,7 +149,11 @@ internal fun toDomain(row: TransactionWithMerchant): Transaction =
             source = source,
             status = status,
             cardLabel = cardLabel,
-            cardLast4 = cardLast4,
+            cardLast4 = row.resolvedCardLast4 ?: cardLast4,
             note = note,
+            kind = kind,
+            paymentMethod = paymentMethod,
+            cardId = cardId,
+            cardName = row.cardName,
         )
     }
