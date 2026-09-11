@@ -143,6 +143,23 @@ object Formatters {
         return Money(if (text.trimStart().startsWith('-')) -minor else minor, currency)
     }
 
+    /**
+     * An amount the way you would type it into a field: the locale's decimal
+     * mark, and no symbol or grouping to delete before you can change a digit.
+     * Reads back through [parseMoney] to the same amount.
+     */
+    fun amountInput(
+        amount: Money,
+        locale: Locale = Locale.getDefault(),
+    ): String =
+        NumberFormat
+            .getNumberInstance(locale)
+            .apply {
+                isGroupingUsed = false
+                minimumFractionDigits = MAX_DECIMALS
+                maximumFractionDigits = MAX_DECIMALS
+            }.format(BigDecimal.valueOf(amount.minor, MAX_DECIMALS))
+
     /** Both marks are accepted wherever the phone is set, so both are stripped. */
     private const val SEPARATORS = ",.\u00A0\u202F\u2009\u2007 "
 

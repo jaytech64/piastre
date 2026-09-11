@@ -145,6 +145,23 @@ class FormattersTest {
         assertEquals(1_200L, Formatters.parseMoney("12")?.minor)
     }
 
+    @Test
+    fun `an amount put back in a field is plain digits with the locale's decimal mark`() {
+        assertEquals("1234,56", Formatters.amountInput(Money(1_234_56, Money.CAD), Locale.CANADA_FRENCH))
+        assertEquals("1234.56", Formatters.amountInput(Money(1_234_56, Money.CAD), Locale.CANADA))
+        assertEquals("0,07", Formatters.amountInput(Money(7, Money.CAD), Locale.CANADA_FRENCH))
+    }
+
+    @Test
+    fun `an amount put back in a field reads back unchanged, refunds included`() {
+        listOf(Locale.CANADA_FRENCH, Locale.CANADA).forEach { locale ->
+            listOf(1_250L, -1_250L, 7L, 1_234_56L).forEach { minor ->
+                val typed = Formatters.amountInput(Money(minor, Money.CAD), locale)
+                assertEquals(typed, minor, Formatters.parseMoney(typed)?.minor)
+            }
+        }
+    }
+
     private companion object {
         val LABELS = Formatters.RelativeDayLabels(today = "Aujourd'hui", yesterday = "Hier")
     }

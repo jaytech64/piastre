@@ -9,7 +9,7 @@ The app has no `INTERNET` permission and no network code, and the build fails if
 
 Phase 2 — capture.
 Google Wallet payment notifications are captured, parsed and recorded, and the app has been run against real spending on a device.
-The ledger, the review inbox, manual entry, capture-health onboarding, export and erasure are in place.
+The ledger with editing and deletion, the review inbox, manual entry, capture-health onboarding, export and erasure are in place.
 
 The Wallet parser is tested against a corpus captured over two weeks on a real device, and the raw notification log lets a parser fix repair history rather than only improve the future.
 

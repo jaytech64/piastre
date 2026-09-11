@@ -2,9 +2,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.depenses.core.data.MerchantRepository
+import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
+import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -24,6 +28,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Clock
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -37,11 +42,11 @@ import javax.inject.Provider
  * a day.
  */
 @RunWith(RobolectricTestRunner::class)
-class ManualEntryViewModelTest {
+class ExpenseFormViewModelTest {
     private lateinit var database: DepensesDatabase
     private lateinit var repository: TransactionRepository
     private lateinit var merchants: MerchantRepository
-    private lateinit var viewModel: ManualEntryViewModel
+    private lateinit var viewModel: ExpenseFormViewModel
 
     @Before
     fun setUp() {
@@ -58,7 +63,14 @@ class ManualEntryViewModelTest {
         viewModel = newViewModel()
     }
 
-    private fun newViewModel() = ManualEntryViewModel(repository, merchants, Provider { ZONE })
+    private fun newViewModel(editing: Long? = null) =
+        ExpenseFormViewModel(
+            savedStateHandle = SavedStateHandle(editing?.let { mapOf(EXPENSE_ID_ARG to it) } ?: emptyMap()),
+            transactions = repository,
+            editor = TransactionEditor(database.transactionDao(), merchants, Clock.systemUTC()),
+            merchants = merchants,
+            zoneId = Provider { ZONE },
+        )
 
     @After
     fun tearDown() {
@@ -93,7 +105,7 @@ class ManualEntryViewModelTest {
             viewModel.onTimeChange(LocalTime.of(9, 41))
 
             viewModel.save()
-            awaitSaved()
+            awaitDone()
 
             val stored = repository.confirmed().first().single()
             assertEquals(1_250L, stored.amount.minor)
@@ -110,7 +122,7 @@ class ManualEntryViewModelTest {
             viewModel.onAmountChange("6,25")
             viewModel.onMerchantChange("Café Olimpico")
             viewModel.save()
-            awaitSaved()
+            awaitDone()
 
             assertNotNull(database.merchantDao().byExactAlias("Café Olimpico"))
         }
@@ -130,21 +142,105 @@ class ManualEntryViewModelTest {
                 viewModel.onAmountChange("4,00")
                 viewModel.onMerchantChange("Le Couteau")
                 viewModel.save()
-                awaitSaved()
+                awaitDone()
             }
 
             assertEquals(2, repository.confirmed().first().size)
         }
 
+    @Test
+    fun `editing opens on the purchase as stored, in the zone it was made in`() =
+        runTest {
+            val id = addCashPurchase()
+
+            viewModel = newViewModel(editing = id)
+            val state = viewModel.uiState.first { !it.loading }
+
+            assertTrue(state.isEditing)
+            assertEquals(Formatters.amountInput(Money(1_250, Money.CAD)), state.amountText)
+            assertEquals("Dépanneur du coin", state.merchantText)
+            assertEquals("Argent comptant", state.note)
+            assertEquals(LocalDate.of(2026, 9, 7), state.date)
+            assertEquals(LocalTime.of(9, 41), state.time)
+        }
+
+    @Test
+    fun `saving an edit rewrites the purchase rather than adding another`() =
+        runTest {
+            val id = addCashPurchase()
+            viewModel = newViewModel(editing = id)
+            viewModel.uiState.first { !it.loading }
+
+            viewModel.onAmountChange("13,75")
+            viewModel.onDateChange(LocalDate.of(2026, 9, 6))
+            viewModel.save()
+            awaitDone()
+
+            val stored = repository.confirmed().first().single()
+            assertEquals(id, stored.id)
+            assertEquals(1_375L, stored.amount.minor)
+            assertEquals(LocalDate.of(2026, 9, 6), stored.localDate)
+            assertEquals("Dépanneur du coin", stored.displayMerchant)
+        }
+
+    @Test
+    fun `an edit saved untouched leaves the purchase exactly as it was`() =
+        runTest {
+            val id = addCashPurchase()
+            val before = repository.byId(id)
+            viewModel = newViewModel(editing = id)
+            viewModel.uiState.first { !it.loading }
+
+            viewModel.save()
+            awaitDone()
+
+            assertEquals(before, repository.byId(id))
+        }
+
+    @Test
+    fun `deleting from the form takes the purchase out of the ledger`() =
+        runTest {
+            val id = addCashPurchase()
+            viewModel = newViewModel(editing = id)
+            viewModel.uiState.first { !it.loading }
+
+            viewModel.delete()
+            awaitDone()
+
+            assertEquals(emptyList<Any>(), repository.confirmed().first())
+        }
+
+    @Test
+    fun `a purchase that is gone by the time the form opens closes the form`() =
+        runTest {
+            viewModel = newViewModel(editing = MISSING_ID)
+
+            awaitDone()
+        }
+
+    private suspend fun addCashPurchase(): Long =
+        repository.addManual(
+            amount = Money(1_250, Money.CAD),
+            merchantName = "Dépanneur du coin",
+            occurredAt =
+                LocalDate
+                    .of(2026, 9, 7)
+                    .atTime(9, 41)
+                    .atZone(ZONE)
+                    .toInstant(),
+            note = "Argent comptant",
+        )
+
     /**
      * Room's writes run on its own executor, off the test scheduler, so the flag is
      * awaited rather than assumed to be set by the time the dispatcher goes idle.
      */
-    private suspend fun awaitSaved() {
-        viewModel.uiState.first { it.saved }
+    private suspend fun awaitDone() {
+        viewModel.uiState.first { it.done }
     }
 
     private companion object {
         val ZONE: ZoneId = ZoneId.of("America/Toronto")
+        const val MISSING_ID = 404L
     }
 }

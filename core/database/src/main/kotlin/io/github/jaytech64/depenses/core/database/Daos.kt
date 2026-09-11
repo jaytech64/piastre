@@ -249,6 +249,19 @@ interface TransactionDao {
     @Query("SELECT * FROM expense_transaction WHERE id = :id")
     suspend fun byId(id: Long): ExpenseTransactionEntity?
 
+    @Query(
+        """
+        SELECT t.*, m.displayName AS merchantName
+        FROM expense_transaction t
+        LEFT JOIN merchant m ON m.id = t.merchantId
+        WHERE t.id = :id
+        """,
+    )
+    suspend fun withMerchantById(id: Long): TransactionWithMerchant?
+
+    @Query("DELETE FROM expense_transaction WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("SELECT COUNT(*) FROM expense_transaction")
     fun count(): Flow<Int>
 

@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -46,22 +48,26 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 /**
+ * Adds a purchase, or corrects one already in the ledger.
+ *
  * Cash and Interac never post a notification, so they are typed. Only the amount
  * is required: a purchase you half-remember is still worth more in the ledger
  * than left out of it.
  */
 @Composable
-fun ManualEntryScreen(
+fun ExpenseFormScreen(
     onDone: () -> Unit,
-    viewModel: ManualEntryViewModel = hiltViewModel(),
+    viewModel: ExpenseFormViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val merchants by viewModel.knownMerchants.collectAsStateWithLifecycle()
     var picking by remember { mutableStateOf(Picking.NOTHING) }
 
-    LaunchedEffect(state.saved) {
-        if (state.saved) onDone()
+    LaunchedEffect(state.done) {
+        if (state.done) onDone()
     }
+
+    if (state.loading) return
 
     EntryForm(
         state = state,
@@ -94,6 +100,16 @@ fun ManualEntryScreen(
             )
         }
 
+        Picking.DELETE -> {
+            ConfirmDeleteDialog(
+                onConfirm = {
+                    viewModel.delete()
+                    picking = Picking.NOTHING
+                },
+                onCancel = { picking = Picking.NOTHING },
+            )
+        }
+
         Picking.NOTHING -> {
             Unit
         }
@@ -102,9 +118,9 @@ fun ManualEntryScreen(
 
 @Composable
 private fun EntryForm(
-    state: ManualEntryUiState,
+    state: ExpenseFormUiState,
     merchants: List<Merchant>,
-    viewModel: ManualEntryViewModel,
+    viewModel: ExpenseFormViewModel,
     onPick: (Picking) -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -114,7 +130,10 @@ private fun EntryForm(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.manual_title), style = MaterialTheme.typography.titleLarge)
+        Text(
+            stringResource(if (state.isEditing) R.string.edit_title else R.string.manual_title),
+            style = MaterialTheme.typography.titleLarge,
+        )
 
         OutlinedTextField(
             value = state.amountText,
@@ -149,11 +168,21 @@ private fun EntryForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = viewModel::save, enabled = state.canSave) {
                 Text(stringResource(R.string.manual_save))
             }
             TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
+            if (state.isEditing) {
+                Spacer(Modifier.weight(1f))
+                TextButton(
+                    onClick = { onPick(Picking.DELETE) },
+                    enabled = !state.saving,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                ) {
+                    Text(stringResource(R.string.edit_delete))
+                }
+            }
         }
     }
 }
@@ -161,7 +190,7 @@ private fun EntryForm(
 /** Defaults to now, because that is when almost every cash purchase is entered. */
 @Composable
 private fun WhenRow(
-    state: ManualEntryUiState,
+    state: ExpenseFormUiState,
     onPick: (Picking) -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]
@@ -176,7 +205,8 @@ private fun WhenRow(
     }
 }
 
-private enum class Picking { NOTHING, DATE, TIME }
+/** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
+private enum class Picking { NOTHING, DATE, TIME, DELETE }
 
 /**
  * Names you have used before, filtered as you type.
@@ -258,6 +288,27 @@ private fun TimePickerSheet(
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
         text = { TimePicker(state = pickerState) },
+    )
+}
+
+@Composable
+private fun ConfirmDeleteDialog(
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(stringResource(R.string.edit_delete_title)) },
+        text = { Text(stringResource(R.string.edit_delete_body)) },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(R.string.edit_delete))
+            }
+        },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
     )
 }
 

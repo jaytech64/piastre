@@ -45,7 +45,7 @@
     <string name="onboarding_grant">Autoriser l\'accès aux notifications</string>
     <string name="onboarding_later">Plus tard</string>
 
-    <string name="settings_data_section">Vos données · Loi 25</string>
+    <string name="settings_data_section">Vos données</string>
     <string name="settings_export">Exporter</string>
     <string name="settings_export_body">CSV et JSON, vers un fichier que vous choisissez.</string>
     <string name="settings_export_csv">CSV</string>
