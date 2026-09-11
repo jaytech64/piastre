@@ -129,7 +129,7 @@ private fun DayList(
             yesterday = stringResource(R.string.ledger_yesterday),
         )
 
-    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+    LazyColumn(contentPadding = PaddingValues(bottom = ADD_BUTTON_CLEARANCE)) {
         days.forEach { day ->
             item(key = day.date.toEpochDay()) {
                 DayHeader(
@@ -280,3 +280,10 @@ private fun EmptyLedger() {
 private fun currentLocale(): Locale = LocalConfiguration.current.locales[0]
 
 private const val SEPARATOR = " · "
+
+/**
+ * Room below the last row for the floating add button: its 56 dp height, its
+ * 16 dp margin, and 16 dp of air. Without it the newest-first list ends with the
+ * oldest purchase's amount hidden under the button, unreachable by scrolling.
+ */
+private val ADD_BUTTON_CLEARANCE = 88.dp
