@@ -16,6 +16,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -256,7 +257,9 @@ private fun DatePickerSheet(
     // shift the day by one either side of midnight.
     val pickerState = rememberDatePickerState(initialSelectedDateMillis = date.toUtcMillis())
 
-    AlertDialog(
+    // DatePickerDialog rather than AlertDialog: the latter's content slot is
+    // narrower than the calendar grid, which clips the last weekday column.
+    DatePickerDialog(
         onDismissRequest = onCancel,
         confirmButton = {
             TextButton(
@@ -266,8 +269,9 @@ private fun DatePickerSheet(
             }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
-        text = { DatePicker(state = pickerState) },
-    )
+    ) {
+        DatePicker(state = pickerState)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
