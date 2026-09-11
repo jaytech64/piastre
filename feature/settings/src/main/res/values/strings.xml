@@ -45,7 +45,7 @@
     <string name="onboarding_grant">Allow notification access</string>
     <string name="onboarding_later">Later</string>
 
-    <string name="settings_data_section">Your data · Law 25</string>
+    <string name="settings_data_section">Your data</string>
     <string name="settings_export">Export</string>
     <string name="settings_export_body">CSV and JSON, into a file you choose.</string>
     <string name="settings_export_csv">CSV</string>
