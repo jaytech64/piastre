@@ -115,6 +115,20 @@ class LedgerExportTest {
             assertTrue(json, "\"accountName\": \"Débit Desrives\"" in json)
         }
 
+    /** Added within version 2: nothing was removed, so the version stays and older files read as having none. */
+    @Test
+    fun `the json carries each account's opening balance, and null where none was given`() =
+        runTest {
+            storeAccount(openingBalanceMinor = -640_25)
+            storeAccount(name = null, type = AccountType.CASH, issuerLabel = null, last4 = null)
+
+            val json = write(ExportFormat.JSON)
+
+            assertTrue(json, "\"version\": 2" in json)
+            assertTrue(json, "\"openingBalanceMinor\": -64025" in json)
+            assertTrue(json, "\"openingBalanceMinor\": null" in json)
+        }
+
     @Test
     fun `a merchant carrying the delimiter cannot break the row`() =
         runTest {
@@ -222,6 +236,7 @@ class LedgerExportTest {
         type: AccountType = AccountType.CARD,
         issuerLabel: String? = "Carte d'accès Desrives",
         last4: String? = "6262",
+        openingBalanceMinor: Long? = null,
     ): Long =
         database.accountDao().insert(
             AccountEntity(
@@ -230,6 +245,7 @@ class LedgerExportTest {
                 issuerLabel = issuerLabel,
                 last4 = last4,
                 origin = AccountOrigin.WALLET,
+                openingBalanceMinor = openingBalanceMinor,
             ),
         )
 

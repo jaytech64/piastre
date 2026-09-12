@@ -62,6 +62,13 @@ The column carrying the bank's digits keeps its own name, `card`, because those 
 In the JSON the `cards` list became `accounts`, each transaction gained `accountId`, `accountName`, `toAccountId` and `toAccountName`, and `paymentMethod` is gone.
 Fields were removed and renamed rather than added, so the format version is now **2**: a reader written for version 1 must refuse the file rather than guess at it.
 
+## Amended 2026-09-12 — opening balances
+
+Schema 9 lets an account start from a balance, and the JSON carries it: each entry in `accounts` gains `openingBalanceMinor`, in minor units, negative for money owed, and null when none was given.
+Null and zero are kept apart on purpose, because an import fills in a balance nobody gave but never overwrites one you set.
+Nothing was removed and no field changed meaning, so the format stays at version 2, and a version-2 file written before this change reads as having no opening balances.
+The CSV is unchanged: it lists transactions, and an opening balance is not one.
+
 ## Where this lives in the code
 
 - `core/data/src/main/kotlin/.../LedgerExport.kt` — both writers, the BOM, the separator, the hand-rolled decimal.

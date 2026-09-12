@@ -189,6 +189,7 @@ class LedgerExport
                                 it.issuerLabel,
                                 it.last4,
                                 it.origin.name,
+                                it.openingBalanceMinor,
                             )
                         },
                     transactions = rows.map { it.toExported() },
@@ -266,7 +267,12 @@ private data class ExportDocument(
     val transactions: List<ExportedTransaction>,
 )
 
-/** An account, with the name you gave it — which is data about you, so it leaves with the rest. */
+/**
+ * An account, with the name you gave it — which is data about you, so it leaves with the rest.
+ *
+ * [openingBalanceMinor] arrived within version 2 and stays null when none was given, so that a
+ * reader can tell a balance nobody stated from one set to zero.
+ */
 @Serializable
 private data class ExportedAccount(
     val id: Long,
@@ -275,6 +281,7 @@ private data class ExportedAccount(
     val issuerLabel: String?,
     val last4: String?,
     val origin: String,
+    val openingBalanceMinor: Long?,
 )
 
 @Serializable
