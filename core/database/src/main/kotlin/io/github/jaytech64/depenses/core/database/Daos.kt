@@ -311,6 +311,16 @@ interface MerchantDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAlias(alias: MerchantAliasEntity): Long
 
+    /**
+     * Renames a merchant in place, which renames it on every transaction at once:
+     * the ledger reads this name through a join rather than copying it per row.
+     */
+    @Query("UPDATE merchant SET displayName = :displayName WHERE id = :id")
+    suspend fun renameMerchant(
+        id: Long,
+        displayName: String,
+    )
+
     @Query("SELECT * FROM merchant WHERE normalisedName = :normalisedName")
     suspend fun byNormalisedName(normalisedName: String): MerchantEntity?
 

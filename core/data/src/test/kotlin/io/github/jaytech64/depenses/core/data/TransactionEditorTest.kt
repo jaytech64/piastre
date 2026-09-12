@@ -119,6 +119,30 @@ class TransactionEditorTest {
         }
 
     /**
+     * Matching folds case, so the new name finds the merchant it is renaming. The
+     * point of typing it is the capitalisation, and it has to survive.
+     */
+    @Test
+    fun `a merchant can be renamed to the same name, capitalised properly`() =
+        runTest {
+            captureShouting(merchant = "MCDONALD'S")
+            val id = capturedId()
+
+            editor.edit(
+                id,
+                Money(625, Money.CAD),
+                TransactionKind.EXPENSE,
+                "McDonald's",
+                occurredAt(),
+                note = null,
+                payment = null,
+            )
+
+            assertEquals("McDonald's", repository.byId(id)?.displayMerchant)
+            assertEquals(1, database.merchantDao().allOnce().size)
+        }
+
+    /**
      * Saving an edit to the note must not quietly promote the normaliser's guess
      * to a mapping you made, which would then outrank a later normaliser fix.
      */
@@ -326,6 +350,19 @@ class TransactionEditorTest {
             assertTrue(named is Payment.ByCard)
             assertEquals(named, repository.byId(id)?.payment)
         }
+
+    private suspend fun captureShouting(merchant: String) =
+        capture.capture(
+            RawNotification(
+                sourcePackage = WALLET,
+                notificationKey = KEY,
+                postedAtUtcMillis = POSTED_AT,
+                deviceLocale = "fr-CA",
+                title = merchant,
+                text = "6,25 $ avec Carte d'accès Desrives ••0000",
+            ),
+            extrasJson = "{}",
+        )
 
     private suspend fun capturedId(): Long =
         repository
