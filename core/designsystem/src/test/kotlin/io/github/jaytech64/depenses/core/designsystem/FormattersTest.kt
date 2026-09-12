@@ -109,10 +109,10 @@ class FormattersTest {
     }
 
     @Test
-    fun `a card is called by its name, and by its digits until it has one`() {
-        assertEquals("Débit Desrives", Formatters.cardName("Débit Desrives", "0000"))
-        assertEquals("\u2022\u20220000", Formatters.cardName(null, "0000"))
-        assertNull(Formatters.cardName(null, null))
+    fun `an account is called by its name, and by its digits until it has one`() {
+        assertEquals("Débit Desrives", Formatters.accountName("Débit Desrives", "0000"))
+        assertEquals("\u2022\u20220000", Formatters.accountName(null, "0000"))
+        assertNull(Formatters.accountName(null, null))
     }
 
     @Test

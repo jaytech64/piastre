@@ -148,7 +148,7 @@ private fun ReviewCard(
 /**
  * The notification exactly as it was posted, quoted rather than reformatted.
  *
- * This is the only thing on the card the parser did not produce, so it is the
+ * This is the only thing on the account the parser did not produce, so it is the
  * only thing that can answer whether the parser was right. Showing it verbatim
  * is also what lets a correction become a parser fixture afterwards.
  */
@@ -244,7 +244,7 @@ private fun EmptyReview() {
     }
 }
 
-/** Which app posted the notification, and when — the card's provenance line. */
+/** Which app posted the notification, and when — the account's provenance line. */
 private fun ReviewItem.provenance(locale: Locale): String {
     val app = sourceName.uppercase(locale)
     val posted =

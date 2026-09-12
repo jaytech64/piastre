@@ -5,7 +5,6 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.model.Money
-import io.github.jaytech64.depenses.core.model.Payment
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -50,7 +49,8 @@ class TransactionEditor
             merchantName: String?,
             occurredAt: Instant,
             note: String?,
-            payment: Payment?,
+            accountId: Long?,
+            toAccountId: Long?,
         ) {
             val row = transactions.withMerchantById(id) ?: return
             val existing = row.transaction
@@ -58,7 +58,15 @@ class TransactionEditor
             val renamed = merchant != (row.merchantName ?: existing.merchantRaw)
             val occurredAtMillis = occurredAt.toEpochMilli()
             transactions.update(
-                (if (renamed) existing.withMerchant(merchant) else existing).withPayment(payment).copy(
+                (
+                    if (renamed) {
+                        existing.withMerchant(
+                            merchant,
+                        )
+                    } else {
+                        existing
+                    }
+                ).withAccounts(kind, accountId, toAccountId).copy(
                     amountMinor = amount.minor,
                     currency = amount.currency,
                     kind = kind,
@@ -93,12 +101,24 @@ class TransactionEditor
                 }
             }
 
-        /** A captured row's card is what its notification said, so only a manual row takes a new one. */
-        private fun ExpenseTransactionEntity.withPayment(payment: Payment?): ExpenseTransactionEntity =
-            when (source) {
-                TransactionSource.MANUAL -> copy(paymentMethod = payment.method(), cardId = payment.cardId())
-                TransactionSource.NOTIFICATION -> this
-            }
+        /**
+         * A captured row's account is what its notification said, so only a manual
+         * row takes a new one — but either may become a transfer, and then the
+         * destination is yours to name.
+         *
+         * The destination is cleared on anything that is not a transfer, so an
+         * entry switched back to an expense cannot keep a second account nothing
+         * reads.
+         */
+        private fun ExpenseTransactionEntity.withAccounts(
+            kind: TransactionKind,
+            accountId: Long?,
+            toAccountId: Long?,
+        ): ExpenseTransactionEntity =
+            copy(
+                accountId = if (source == TransactionSource.MANUAL) accountId else this.accountId,
+                toAccountId = toAccountId.takeIf { kind == TransactionKind.TRANSFER },
+            )
 
         /**
          * Takes a purchase out of the ledger.

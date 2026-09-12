@@ -7,7 +7,6 @@ import io.github.jaytech64.depenses.core.database.ReportDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import io.github.jaytech64.depenses.core.model.Money
-import io.github.jaytech64.depenses.core.model.Payment
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -71,7 +70,8 @@ class TransactionRepository
          * bucket is computed in — a purchase entered on a trip belongs to the day it
          * was that trip, not the day it was back home.
          *
-         * [payment] is null when nothing was said about it, and always for income.
+         * [accountId] is the account it came from, null when nothing was said, and
+         * [toAccountId] where a transfer landed.
          */
         suspend fun addManual(
             amount: Money,
@@ -79,7 +79,8 @@ class TransactionRepository
             occurredAt: Instant,
             note: String?,
             kind: TransactionKind,
-            payment: Payment?,
+            accountId: Long?,
+            toAccountId: Long?,
         ): Long {
             val zone = zoneId.get()
             val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
@@ -107,8 +108,8 @@ class TransactionRepository
                     cardLast4 = null,
                     note = note?.takeIf { it.isNotBlank() }?.trim(),
                     kind = kind,
-                    paymentMethod = payment.method(),
-                    cardId = payment.cardId(),
+                    accountId = accountId,
+                    toAccountId = toAccountId,
                 ),
             )
         }
@@ -158,11 +159,15 @@ internal fun toDomain(row: TransactionWithMerchant): Transaction =
             source = source,
             status = status,
             cardLabel = cardLabel,
-            cardLast4 = row.resolvedCardLast4 ?: cardLast4,
+            cardLast4 = row.accountLast4 ?: cardLast4,
             note = note,
             kind = kind,
-            paymentMethod = paymentMethod,
-            cardId = cardId,
-            cardName = row.cardName,
+            accountId = accountId,
+            accountName = row.accountName,
+            accountType = row.accountType,
+            toAccountId = toAccountId,
+            toAccountName = row.toAccountName,
+            toAccountLast4 = row.toAccountLast4,
+            toAccountType = row.toAccountType,
         )
     }

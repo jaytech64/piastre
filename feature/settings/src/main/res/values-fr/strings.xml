@@ -45,16 +45,16 @@
     <string name="onboarding_grant">Autoriser l\'accès aux notifications</string>
     <string name="onboarding_later">Plus tard</string>
 
-    <string name="settings_cards_section">Cartes</string>
-    <string name="settings_cards_add">Ajouter une carte</string>
-    <string name="settings_cards_unnamed">Touchez pour la nommer</string>
-    <string name="settings_cards_added">Ajoutée à la main</string>
-    <plurals name="settings_cards_purchases">
-        <item quantity="one">%d achat</item>
-        <item quantity="other">%d achats</item>
+    <string name="settings_accounts_section">Comptes</string>
+    <string name="settings_accounts_add">Ajouter un compte</string>
+    <string name="settings_accounts_unnamed">Touchez pour le nommer</string>
+    <string name="settings_accounts_added">Ajouté à la main</string>
+    <plurals name="settings_accounts_transactions">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
     </plurals>
-    <string name="settings_cards_empty">Aucune carte pour l\'instant. Une carte apparaît ici après son premier paiement Wallet, ou vous pouvez en ajouter une.</string>
-    <string name="settings_cards_still_used">Cette carte est encore utilisée par une transaction, elle reste donc.</string>
+    <string name="settings_accounts_empty">Rien que le comptant pour l\'instant. Une carte apparaît ici après son premier paiement Wallet, et vous pouvez ajouter un compte vous-même.</string>
+    <string name="settings_accounts_still_used">Ce compte est encore utilisé par une transaction, il reste donc.</string>
 
     <string name="settings_data_section">Vos données</string>
     <string name="settings_export">Exporter</string>
@@ -94,6 +94,6 @@
     <string name="export_column_card">carte</string>
     <string name="export_column_note">note</string>
     <string name="export_column_type">type</string>
-    <string name="export_column_payment">paiement</string>
-    <string name="export_column_card_name">nom de la carte</string>
+    <string name="export_column_account">compte</string>
+    <string name="export_column_to_account">compte de destination</string>
 </resources>

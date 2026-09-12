@@ -21,7 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.Formatters
-import io.github.jaytech64.depenses.core.model.PaymentMethod
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -43,11 +43,11 @@ internal fun TransactionRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MerchantInitials(transaction.displayMerchant)
+        MerchantInitials(if (transaction.kind == TransactionKind.TRANSFER) ARROW else transaction.displayMerchant)
 
         Column(Modifier.weight(1f)) {
             Text(
-                transaction.displayMerchant ?: stringResource(R.string.ledger_unknown_merchant),
+                transaction.title(),
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -65,39 +65,80 @@ internal fun TransactionRow(
     }
 }
 
-/** Income says so twice, with a plus and a colour: a misread sign is a misread balance. */
+/**
+ * Income says so twice, with a plus and a colour: a misread sign is a misread
+ * balance. A transfer is dimmed and unsigned — the money left one account of
+ * yours and arrived in another, so neither sign would be honest.
+ */
 @Composable
 private fun TransactionAmount(
     transaction: Transaction,
     locale: Locale,
 ) {
-    if (transaction.kind == TransactionKind.INCOME) {
-        Text(
-            Formatters.signedMoney(transaction.amount, locale),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.tertiary,
-        )
-    } else {
-        Text(Formatters.money(transaction.amount, locale), style = MaterialTheme.typography.bodyLarge)
+    when (transaction.kind) {
+        TransactionKind.INCOME -> {
+            Text(
+                Formatters.signedMoney(transaction.amount, locale),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+
+        TransactionKind.TRANSFER -> {
+            Text(
+                Formatters.money(transaction.amount, locale),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        TransactionKind.EXPENSE -> {
+            Text(Formatters.money(transaction.amount, locale), style = MaterialTheme.typography.bodyLarge)
+        }
     }
 }
 
+/** A transfer is between two accounts of yours, and that pair is the only thing worth reading. */
+@Composable
+private fun Transaction.title(): String =
+    when (kind) {
+        TransactionKind.TRANSFER -> {
+            accountLabel(accountName, accountType, cardLast4) + " $ARROW " +
+                accountLabel(toAccountName, toAccountType, toAccountLast4)
+        }
+
+        else -> {
+            displayMerchant ?: stringResource(R.string.ledger_unknown_merchant)
+        }
+    }
+
+/** An account as a row names it: your name for it, else its digits, else what kind it is. */
+@Composable
+private fun accountLabel(
+    name: String?,
+    type: AccountType?,
+    last4: String?,
+): String =
+    name
+        ?: Formatters.cardMask(last4)
+        ?: stringResource(if (type == AccountType.CASH) R.string.ledger_cash else R.string.ledger_account)
+
 /**
- * The time, then how it was paid — the card by its name, cash — or failing that
- * whether it was income or typed by hand. Enough to tell two purchases at one merchant apart without a
- * detail screen.
+ * The time, then what the row is: a transfer, income, the account it came from,
+ * or failing all of those that it was typed by hand. Enough to tell two
+ * purchases at one merchant apart without a detail screen.
  */
 @Composable
 private fun Transaction.subtitle(locale: Locale): String {
-    val method =
+    val what =
         when {
+            kind == TransactionKind.TRANSFER -> stringResource(R.string.ledger_transfer)
             kind == TransactionKind.INCOME -> stringResource(R.string.ledger_income)
-            paymentMethod == PaymentMethod.CASH -> stringResource(R.string.ledger_cash)
-            paymentMethod == PaymentMethod.CARD -> Formatters.cardName(cardName, cardLast4)
+            accountId != null -> accountLabel(accountName, accountType, cardLast4)
             source == TransactionSource.MANUAL -> stringResource(R.string.ledger_manual_entry)
             else -> Formatters.cardMask(cardLast4)
         }
-    return listOfNotNull(Formatters.time(occurredAt, zoneId, locale), method).joinToString(SEPARATOR)
+    return listOfNotNull(Formatters.time(occurredAt, zoneId, locale), what).joinToString(SEPARATOR)
 }
 
 @Composable
@@ -131,3 +172,4 @@ private fun String?.initials(): String =
         .ifEmpty { "?" }
 
 private const val SEPARATOR = " · "
+private const val ARROW = "→"

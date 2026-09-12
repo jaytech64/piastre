@@ -5,9 +5,10 @@ package io.github.jaytech64.depenses.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jaytech64.depenses.core.data.CardRepository
-import io.github.jaytech64.depenses.core.model.Card
-import io.github.jaytech64.depenses.core.model.CardOrigin
+import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.model.Account
+import io.github.jaytech64.depenses.core.model.AccountOrigin
+import io.github.jaytech64.depenses.core.model.AccountType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,44 +18,46 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class CardsViewModel
+class AccountsViewModel
     @Inject
     constructor(
-        private val repository: CardRepository,
+        private val repository: AccountRepository,
     ) : ViewModel() {
-        val cards: StateFlow<List<Card>> =
+        val accounts: StateFlow<List<Account>> =
             repository.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
         private val removalRefusedState = MutableStateFlow(false)
 
         /**
          * True after a removal was refused because a transaction still uses the
-         * card, until the next change. Said on screen rather than left silent, or a
-         * card that will not go away looks like a button that does nothing.
+         * account, until the next change. Said on screen rather than left silent, or a
+         * account that will not go away looks like a button that does nothing.
          */
         val removalRefused: StateFlow<Boolean> = removalRefusedState.asStateFlow()
 
         /**
-         * Adds a card, or saves an existing one. A Wallet card only takes a new
-         * name — its digits are the bank's — while a card you added takes both.
+         * Adds an account, or saves an existing one. One Wallet named takes only a
+         * new name — its digits and its kind are the bank's — while an account you
+         * added takes all three.
          */
         fun save(
-            card: Card?,
+            account: Account?,
             name: String,
+            type: AccountType,
             last4: String,
         ) {
             removalRefusedState.value = false
             viewModelScope.launch {
                 when {
-                    card == null -> repository.add(name, last4)
-                    card.origin == CardOrigin.USER -> repository.updateAdded(card.id, name, last4)
-                    else -> repository.rename(card.id, name)
+                    account == null -> repository.add(name, type, last4)
+                    account.origin == AccountOrigin.USER -> repository.updateAdded(account.id, name, type, last4)
+                    else -> repository.rename(account.id, name)
                 }
             }
         }
 
-        fun remove(card: Card) {
-            viewModelScope.launch { removalRefusedState.value = !repository.remove(card.id) }
+        fun remove(account: Account) {
+            viewModelScope.launch { removalRefusedState.value = !repository.remove(account.id) }
         }
 
         private companion object {

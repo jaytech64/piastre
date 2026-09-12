@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
-import io.github.jaytech64.depenses.core.database.CardDao
+import io.github.jaytech64.depenses.core.database.AccountDao
 import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
@@ -45,12 +45,12 @@ data class CsvLabels(
     val card: String,
     val note: String,
     val type: String,
-    val payment: String,
-    val cardName: String,
+    val account: String,
+    val toAccount: String,
 ) {
-    /** The columns added with income and cards come last, so every earlier column keeps its position. */
+    /** The columns added with income and accounts come last, so every earlier column keeps its position. */
     internal fun headerRow(): List<String> =
-        listOf(date, time, merchant, amount, currency, source, status, card, note, type, payment, cardName)
+        listOf(date, time, merchant, amount, currency, source, status, card, note, type, account, toAccount)
 }
 
 /**
@@ -67,7 +67,7 @@ class LedgerExport
     constructor(
         private val transactions: TransactionDao,
         private val merchants: MerchantDao,
-        private val cards: CardDao,
+        private val accounts: AccountDao,
         private val clock: Clock,
     ) {
         /** Returns how many transactions were written. */
@@ -121,10 +121,19 @@ class LedgerExport
                 transaction.cardLast4.orEmpty(),
                 transaction.note.orEmpty(),
                 transaction.kind.name,
-                transaction.paymentMethod?.name.orEmpty(),
-                cardName.orEmpty(),
+                accountLabel(),
+                toAccountName.orEmpty(),
             )
         }
+
+        /**
+         * The account by the name you gave it, or by its kind when you have not.
+         *
+         * Never translated, like every value here: `CASH` is what the database
+         * says, and the same file read on an English phone must not disagree with
+         * itself on a French one.
+         */
+        private fun TransactionWithMerchant.accountLabel(): String = accountName ?: accountType?.name.orEmpty()
 
         /**
          * The amount with a comma, written by hand rather than by a locale.
@@ -171,11 +180,12 @@ class LedgerExport
                         merchants.allAliases().map {
                             ExportedAlias(it.id, it.merchantId, it.pattern, it.matchType.name, it.createdBy.name)
                         },
-                    cards =
-                        cards.allOnce().map {
-                            ExportedCard(
+                    accounts =
+                        accounts.allOnce().map {
+                            ExportedAccount(
                                 it.id,
                                 it.name,
+                                it.type.name,
                                 it.issuerLabel,
                                 it.last4,
                                 it.origin.name,
@@ -210,18 +220,22 @@ class LedgerExport
                 cardLast4 = transaction.cardLast4,
                 note = transaction.note,
                 kind = transaction.kind.name,
-                paymentMethod = transaction.paymentMethod?.name,
-                cardId = transaction.cardId,
-                cardName = cardName,
+                accountId = transaction.accountId,
+                accountName = accountName,
+                toAccountId = transaction.toAccountId,
+                toAccountName = toAccountName,
             )
 
         private companion object {
             /**
              * Bumped whenever a field is removed or changes meaning. A reader that
-             * does not recognise the number should refuse rather than guess. Income
-             * and cards only added fields, so they did not bump it.
+             * does not recognise the number should refuse rather than guess.
+             *
+             * Version 2 dropped `paymentMethod`, because cash became an account,
+             * and renamed the card list to accounts: a version-1 reader must
+             * refuse the file rather than guess at what it no longer says.
              */
-            const val FORMAT_VERSION = 1
+            const val FORMAT_VERSION = 2
 
             const val BYTE_ORDER_MARK = "\uFEFF"
             const val FIELD_SEPARATOR = ";"
@@ -248,15 +262,16 @@ private data class ExportDocument(
     val exportedAtUtc: String,
     val merchants: List<ExportedMerchant>,
     val aliases: List<ExportedAlias>,
-    val cards: List<ExportedCard>,
+    val accounts: List<ExportedAccount>,
     val transactions: List<ExportedTransaction>,
 )
 
-/** A card, with the name you gave it — which is data about you, so it leaves with the rest. */
+/** An account, with the name you gave it — which is data about you, so it leaves with the rest. */
 @Serializable
-private data class ExportedCard(
+private data class ExportedAccount(
     val id: Long,
     val name: String?,
+    val type: String,
     val issuerLabel: String?,
     val last4: String?,
     val origin: String,
@@ -299,7 +314,8 @@ private data class ExportedTransaction(
     val cardLast4: String?,
     val note: String?,
     val kind: String,
-    val paymentMethod: String?,
-    val cardId: Long?,
-    val cardName: String?,
+    val accountId: Long?,
+    val accountName: String?,
+    val toAccountId: Long?,
+    val toAccountName: String?,
 )

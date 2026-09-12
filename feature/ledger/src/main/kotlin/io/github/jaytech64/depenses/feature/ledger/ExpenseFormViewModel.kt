@@ -6,15 +6,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jaytech64.depenses.core.data.CardRepository
+import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.designsystem.Formatters
-import io.github.jaytech64.depenses.core.model.Card
+import io.github.jaytech64.depenses.core.model.Account
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
-import io.github.jaytech64.depenses.core.model.Payment
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -33,8 +33,11 @@ import java.time.ZonedDateTime
 import javax.inject.Inject
 import javax.inject.Provider
 
-/** The navigation argument naming the purchase to edit. Absent when adding one. */
+/** The navigation argument naming the transaction to edit. Absent when adding one. */
 const val EXPENSE_ID_ARG = "expenseId"
+
+/** Which end of a transfer a choice is about. Anything else has only a source. */
+enum class AccountSlot { SOURCE, DESTINATION }
 
 /**
  * What has been typed so far. [amountText] is kept as text rather than as a
@@ -48,13 +51,15 @@ data class ExpenseFormUiState(
     val time: LocalTime,
     val note: String = "",
     val kind: TransactionKind = TransactionKind.EXPENSE,
-    /** Null when nothing was said about it. */
-    val payment: Payment? = null,
-    /** A purchase a notification recorded: its card is the bank's to say, so it is shown rather than offered. */
+    /** Where the money came from, or left from on a transfer. Null when nothing was said. */
+    val accountId: Long? = null,
+    /** Where a transfer lands. Null on anything else. */
+    val toAccountId: Long? = null,
+    /** A transaction a notification recorded: its account is the bank's to say, so it is shown, not offered. */
     val isCaptured: Boolean = false,
-    val capturedCardLabel: String? = null,
+    val capturedAccountLabel: String? = null,
     val isEditing: Boolean = false,
-    /** True while the purchase being edited is read off disk, so the form never shows "now" in its place. */
+    /** True while the transaction being edited is read off disk, so the form never shows "now" in its place. */
     val loading: Boolean = false,
     val saving: Boolean = false,
     /** Flips once, when the change is on disk. The screen leaves on it. */
@@ -62,17 +67,29 @@ data class ExpenseFormUiState(
 ) {
     val amount: Money? get() = Formatters.parseMoney(amountText)
 
-    /** A purchase needs an amount. Everything else on this form is optional. */
-    val canSave: Boolean get() = amount != null && !saving && !loading
+    /** A transaction needs an amount; a transfer also needs two accounts, and two different ones. */
+    val canSave: Boolean get() = amount != null && !saving && !loading && transferIsSettled
 
-    /** Income has no Paid with field, so whatever it said before the switch is not kept. */
-    val paymentToSave: Payment? get() = payment.takeIf { kind == TransactionKind.EXPENSE }
+    /** Income has no account field, so what an expense said is not carried into it. */
+    val sourceToSave: Long? get() = accountId.takeIf { kind != TransactionKind.INCOME }
+
+    /** Only a transfer has a destination; switching away from one drops it. */
+    val destinationToSave: Long? get() = toAccountId.takeIf { kind == TransactionKind.TRANSFER }
+
+    /**
+     * A transfer into the account it came from is not a transaction, it is a typo,
+     * so Save stays out of reach until the two accounts are both set and differ.
+     */
+    private val transferIsSettled: Boolean
+        get() =
+            kind != TransactionKind.TRANSFER ||
+                (accountId != null && toAccountId != null && accountId != toAccountId)
 }
 
 /**
- * One form for adding a purchase and for correcting one, because the two ask the
- * same questions — and a second form would drift from the first the day one of
- * them learns something.
+ * One form for adding a transaction and for correcting one, because the two ask
+ * the same questions — and a second form would drift from the first the day one
+ * of them learns something.
  */
 @HiltViewModel
 class ExpenseFormViewModel
@@ -82,12 +99,12 @@ class ExpenseFormViewModel
         private val transactions: TransactionRepository,
         private val editor: TransactionEditor,
         merchants: MerchantRepository,
-        private val cards: CardRepository,
+        private val accounts: AccountRepository,
         private val zoneId: Provider<ZoneId>,
     ) : ViewModel() {
         private val editingId: Long? = savedStateHandle.get<Long>(EXPENSE_ID_ARG)
 
-        /** The purchase as it was on disk before this edit, or null when adding. */
+        /** The transaction as it was on disk before this edit, or null when adding. */
         private var original: Transaction? = null
 
         private val _uiState =
@@ -110,10 +127,10 @@ class ExpenseFormViewModel
         val knownMerchants: StateFlow<List<Merchant>> =
             merchants.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
-        val knownCards: StateFlow<List<Card>> =
-            cards.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
+        val knownAccounts: StateFlow<List<Account>> =
+            accounts.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
-        // A purchase that is no longer there has nothing to edit, so the screen
+        // A transaction that is no longer there has nothing to edit, so the screen
         // simply closes rather than offering to save into a row that is gone.
         init {
             editingId?.let { id ->
@@ -139,16 +156,26 @@ class ExpenseFormViewModel
 
         fun onKindChange(kind: TransactionKind) = _uiState.update { it.copy(kind = kind) }
 
-        fun onPaymentChange(payment: Payment?) = _uiState.update { it.copy(payment = payment) }
+        fun onAccountChange(
+            slot: AccountSlot,
+            id: Long?,
+        ) = _uiState.update {
+            when (slot) {
+                AccountSlot.SOURCE -> it.copy(accountId = id)
+                AccountSlot.DESTINATION -> it.copy(toAccountId = id)
+            }
+        }
 
-        /** Adds the card missing from the list and picks it, so adding one never means leaving the form. */
-        fun addCard(
+        /** Adds the account missing from the list and picks it, so adding one never means leaving the form. */
+        fun addAccount(
             name: String,
+            type: AccountType,
             last4: String,
+            slot: AccountSlot,
         ) {
             viewModelScope.launch {
-                val id = cards.add(name, last4)
-                _uiState.update { it.copy(payment = Payment.ByCard(id)) }
+                val id = accounts.add(name, type, last4)
+                onAccountChange(slot, id)
             }
         }
 
@@ -170,7 +197,8 @@ class ExpenseFormViewModel
                         occurredAt = state.occurredAt(zoneId.get()),
                         note = state.note,
                         kind = state.kind,
-                        payment = state.paymentToSave,
+                        accountId = state.sourceToSave,
+                        toAccountId = state.destinationToSave,
                     )
                 } else {
                     editor.edit(
@@ -180,14 +208,15 @@ class ExpenseFormViewModel
                         merchantName = state.merchantText,
                         occurredAt = state.occurredAtLike(editing),
                         note = state.note,
-                        payment = state.paymentToSave,
+                        accountId = state.sourceToSave,
+                        toAccountId = state.destinationToSave,
                     )
                 }
                 _uiState.update { it.copy(saving = false, done = true) }
             }
         }
 
-        /** Only offered while editing: a purchase not yet saved has nothing to remove. */
+        /** Only offered while editing: a transaction not yet saved has nothing to remove. */
         fun delete() {
             val editing = original ?: return
             _uiState.update { it.copy(saving = true) }
@@ -203,7 +232,7 @@ class ExpenseFormViewModel
     }
 
 /**
- * The form filled from a purchase as stored, read in the zone it was made in —
+ * The form filled from a transaction as stored, read in the zone it was made in —
  * the same clock the ledger row shows it under.
  */
 private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseFormUiState {
@@ -215,9 +244,10 @@ private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseForm
         time = local.toLocalTime(),
         note = transaction.note.orEmpty(),
         kind = transaction.kind,
-        payment = transaction.payment,
+        accountId = transaction.accountId,
+        toAccountId = transaction.toAccountId,
         isCaptured = transaction.source == TransactionSource.NOTIFICATION,
-        capturedCardLabel = Formatters.cardName(transaction.cardName, transaction.cardLast4),
+        capturedAccountLabel = Formatters.accountName(transaction.accountName, transaction.cardLast4),
         loading = false,
     )
 }
@@ -225,10 +255,11 @@ private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseForm
 internal fun ExpenseFormUiState.occurredAt(zone: ZoneId): Instant = date.atTime(time).atZone(zone).toInstant()
 
 /**
- * The typed date and time, read in the zone the [original] purchase was made in.
+ * The typed date and time, read in the zone the [original] transaction was made
+ * in.
  *
  * Its offset is preferred when the wall-clock time is ambiguous, so an untouched
- * purchase made in the hour the clocks fall back does not jump an hour on save.
+ * transaction made in the hour the clocks fall back does not jump an hour on save.
  */
 internal fun ExpenseFormUiState.occurredAtLike(original: Transaction): Instant =
     ZonedDateTime

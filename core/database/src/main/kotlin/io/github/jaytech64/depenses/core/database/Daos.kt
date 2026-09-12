@@ -9,6 +9,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.ParseState
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
@@ -217,10 +218,13 @@ interface TransactionDao {
      */
     @Query(
         """
-        SELECT t.*, m.displayName AS merchantName, c.name AS cardName, c.last4 AS resolvedCardLast4
+        SELECT t.*, m.displayName AS merchantName,
+               a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
-        LEFT JOIN card c ON c.id = t.cardId
+        LEFT JOIN account a ON a.id = t.accountId
+        LEFT JOIN account d ON d.id = t.toAccountId
         WHERE t.status = :status
         ORDER BY t.occurredAtUtcMillis DESC
         """,
@@ -254,10 +258,13 @@ interface TransactionDao {
 
     @Query(
         """
-        SELECT t.*, m.displayName AS merchantName, c.name AS cardName, c.last4 AS resolvedCardLast4
+        SELECT t.*, m.displayName AS merchantName,
+               a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
-        LEFT JOIN card c ON c.id = t.cardId
+        LEFT JOIN account a ON a.id = t.accountId
+        LEFT JOIN account d ON d.id = t.toAccountId
         WHERE t.id = :id
         """,
     )
@@ -276,10 +283,13 @@ interface TransactionDao {
      */
     @Query(
         """
-        SELECT t.*, m.displayName AS merchantName, c.name AS cardName, c.last4 AS resolvedCardLast4
+        SELECT t.*, m.displayName AS merchantName,
+               a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
-        LEFT JOIN card c ON c.id = t.cardId
+        LEFT JOIN account a ON a.id = t.accountId
+        LEFT JOIN account d ON d.id = t.toAccountId
         ORDER BY t.occurredAtUtcMillis
         """,
     )
@@ -338,77 +348,99 @@ interface MerchantDao {
 }
 
 @Dao
-interface CardDao {
+interface AccountDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(card: CardEntity): Long
+    suspend fun insert(account: AccountEntity): Long
 
     /**
      * The Wallet card a notification names. `IS` rather than `=` for the label, so
-     * a notification whose card label could not be read still finds its card.
-     * Scoped to Wallet cards, so one you added by hand is never claimed by capture.
+     * a notification whose card label could not be read still finds its account.
+     * Scoped to Wallet accounts, so one you added by hand is never claimed by capture.
      */
-    @Query("SELECT * FROM card WHERE origin = 'WALLET' AND issuerLabel IS :issuerLabel AND last4 = :last4")
-    suspend fun walletCard(
+    @Query("SELECT * FROM account WHERE origin = 'WALLET' AND issuerLabel IS :issuerLabel AND last4 = :last4")
+    suspend fun walletAccount(
         issuerLabel: String?,
         last4: String,
-    ): CardEntity?
+    ): AccountEntity?
 
-    /** Named cards first, alphabetically; then the ones still waiting for a name. */
+    /**
+     * Named accounts first, alphabetically; then the ones still waiting for a name.
+     *
+     * Both sides of a transfer count: an account money only ever leaves is still in
+     * use, and the count is what decides whether it can be removed.
+     */
     @Query(
         """
-        SELECT c.*, COUNT(t.id) AS purchaseCount
-        FROM card c
-        LEFT JOIN expense_transaction t ON t.cardId = c.id AND t.status = 'CONFIRMED'
-        GROUP BY c.id
-        ORDER BY c.name IS NULL, c.name COLLATE NOCASE, c.issuerLabel, c.last4
+        SELECT a.*, COUNT(t.id) AS transactionCount
+        FROM account a
+        LEFT JOIN expense_transaction t
+            ON (t.accountId = a.id OR t.toAccountId = a.id) AND t.status = 'CONFIRMED'
+        GROUP BY a.id
+        ORDER BY a.name IS NULL, a.name COLLATE NOCASE, a.issuerLabel, a.last4
         """,
     )
-    fun allWithCounts(): Flow<List<CardWithCount>>
+    fun allWithCounts(): Flow<List<AccountWithCount>>
 
-    @Query("SELECT * FROM card ORDER BY id")
-    suspend fun allOnce(): List<CardEntity>
+    @Query("SELECT * FROM account ORDER BY id")
+    suspend fun allOnce(): List<AccountEntity>
 
-    @Query("UPDATE card SET name = :name WHERE id = :id")
+    /** The cash account, which the 7→8 migration created if any entry ever said cash. */
+    @Query("SELECT * FROM account WHERE type = 'CASH' ORDER BY id LIMIT 1")
+    suspend fun cashAccount(): AccountEntity?
+
+    @Query("UPDATE account SET name = :name WHERE id = :id")
     suspend fun rename(
         id: Long,
         name: String?,
     )
 
-    /** Only a card you added has digits you can change; Wallet's are the bank's. */
-    @Query("UPDATE card SET name = :name, last4 = :last4 WHERE id = :id AND origin = 'USER'")
-    suspend fun updateUserCard(
+    /** Only an account you added has digits and a type you can change; Wallet's are the bank's. */
+    @Query("UPDATE account SET name = :name, last4 = :last4, type = :type WHERE id = :id AND origin = 'USER'")
+    suspend fun updateAddedAccount(
         id: Long,
         name: String?,
         last4: String?,
+        type: AccountType,
     )
 
     /**
-     * Returns 1 when the card was removed and 0 when a transaction still uses it,
-     * so nothing is ever left pointing at a card that is gone.
+     * Returns 1 when the account was removed and 0 when a transaction still uses
+     * it, so nothing is ever left pointing at an account that is gone.
      */
-    @Query("DELETE FROM card WHERE id = :id AND NOT EXISTS (SELECT 1 FROM expense_transaction WHERE cardId = :id)")
+    @Query(
+        """
+        DELETE FROM account WHERE id = :id AND NOT EXISTS (
+            SELECT 1 FROM expense_transaction WHERE accountId = :id OR toAccountId = :id
+        )
+        """,
+    )
     suspend fun deleteIfUnused(id: Long): Int
 }
 
 /**
- * A transaction with the display name of the merchant it resolved to, and the
- * card it was paid with.
+ * A transaction with the display name of the merchant it resolved to, the account
+ * it came from, and — on a transfer — the one it went to.
  *
- * [resolvedCardLast4] is the card's digits rather than the notification's: a
- * manual entry has no notification, and a card you added carries its digits only
- * on the card row.
+ * [accountLast4] is the account's digits rather than the notification's: a manual
+ * entry has no notification, and an account you added carries its digits only on
+ * the account row. [accountType] rides along so a screen can say "Cash" without
+ * looking the account up again.
  */
 data class TransactionWithMerchant(
     @Embedded val transaction: ExpenseTransactionEntity,
     val merchantName: String?,
-    val cardName: String? = null,
-    val resolvedCardLast4: String? = null,
+    val accountName: String? = null,
+    val accountLast4: String? = null,
+    val accountType: AccountType? = null,
+    val toAccountName: String? = null,
+    val toAccountLast4: String? = null,
+    val toAccountType: AccountType? = null,
 )
 
-/** A card with how many confirmed transactions were paid with it. */
-data class CardWithCount(
-    @Embedded val card: CardEntity,
-    val purchaseCount: Int,
+/** An account with how many confirmed transactions it carries, transfers included. */
+data class AccountWithCount(
+    @Embedded val account: AccountEntity,
+    val transactionCount: Int,
 )
 
 /** A transaction awaiting review, with the notification it was read from. */
@@ -440,9 +472,9 @@ data class MerchantTotal(
  * groups on an indexed integer column, so a year of history costs the same as a
  * week.
  *
- * They are about spending, so income is left out of every one of them: a
- * paycheque ranked beside the grocer, or cancelling out a week of coffee on a
- * heat map, would make both answers wrong.
+ * They are about spending, so every one keeps to expenses: a paycheque ranked
+ * beside the grocer would make the ranking wrong, and a card payment counted as
+ * spending would charge you twice for the purchases it settles.
  */
 @Dao
 interface ReportDao {

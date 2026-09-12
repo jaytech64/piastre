@@ -15,7 +15,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import io.github.jaytech64.depenses.core.designsystem.CardDialog
+import io.github.jaytech64.depenses.core.designsystem.AccountDialog
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -65,11 +65,12 @@ internal fun FormDialog(
             )
         }
 
-        Picking.ADD_CARD -> {
-            CardDialog(
-                card = null,
-                onSave = { name, last4 ->
-                    viewModel.addCard(name, last4)
+        Picking.ADD_ACCOUNT, Picking.ADD_DESTINATION -> {
+            val slot = if (picking == Picking.ADD_ACCOUNT) AccountSlot.SOURCE else AccountSlot.DESTINATION
+            AccountDialog(
+                account = null,
+                onSave = { name, type, last4 ->
+                    viewModel.addAccount(name, type, last4, slot)
                     onClose()
                 },
                 onDismiss = onClose,
@@ -83,7 +84,7 @@ internal fun FormDialog(
 }
 
 /** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
-internal enum class Picking { NOTHING, DATE, TIME, DELETE, ADD_CARD }
+internal enum class Picking { NOTHING, DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

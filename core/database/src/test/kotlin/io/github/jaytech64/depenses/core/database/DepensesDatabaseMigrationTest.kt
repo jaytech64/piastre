@@ -157,8 +157,9 @@ class DepensesDatabaseMigrationTest {
 
     /**
      * The one migration that runs on a phone full of real purchases with a new
-     * table to fill: every card already seen must arrive as one card, with its
-     * purchases pointing at it, and nothing may stop being an expense.
+     * table to fill: every account already seen must arrive as one account, with its
+     * purchases pointing at it, and nothing may stop being an expense. It runs
+     * against schema 7's own names, which schema 8 later renamed.
      */
     @Test
     fun `migrating to schema 7 turns each card already seen into one card`() {
@@ -177,7 +178,8 @@ class DepensesDatabaseMigrationTest {
         assertEquals(
             2,
             migrated.singleInt(
-                "SELECT COUNT(*) FROM expense_transaction t JOIN card c ON c.id = t.cardId WHERE c.last4 = '0000'",
+                "SELECT COUNT(*) FROM expense_transaction t JOIN card c ON c.id = t.cardId " +
+                    "WHERE c.last4 = '0000'",
             ),
         )
         assertEquals(4, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE kind = 'EXPENSE'"))
@@ -188,6 +190,64 @@ class DepensesDatabaseMigrationTest {
             ),
         )
     }
+
+    /**
+     * The rename with real data in it: every card becomes an account, entries that
+     * said cash point at the cash account, and nothing loses the account it was on.
+     */
+    @Test
+    fun `migrating to schema 8 turns cards into accounts, cash included`() {
+        helper.createDatabase(NAME, 7).use { database ->
+            database.execSQL(
+                "INSERT INTO card (id, name, issuerLabel, last4, origin) " +
+                    "VALUES (1, 'Visa perso', 'Récompenses Visa', '4821', 'WALLET')",
+            )
+            database.insertSchema7Transaction(sourceKey = "card-1", paymentMethod = "CARD", cardId = 1)
+            database.insertSchema7Transaction(sourceKey = "cash-1", paymentMethod = "CASH", cardId = null)
+            database.insertSchema7Transaction(sourceKey = "bare-1", paymentMethod = null, cardId = null)
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 8, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(3, migrated.count("expense_transaction"))
+        assertEquals(2, migrated.count("account"))
+        assertEquals(
+            1,
+            migrated.singleInt("SELECT COUNT(*) FROM account WHERE type = 'CARD' AND name = 'Visa perso'"),
+        )
+        assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM account WHERE type = 'CASH'"))
+        assertEquals(
+            1,
+            migrated.singleInt(
+                "SELECT COUNT(*) FROM expense_transaction t JOIN account a ON a.id = t.accountId " +
+                    "WHERE a.type = 'CASH'",
+            ),
+        )
+        assertEquals(
+            1,
+            migrated.singleInt(
+                "SELECT COUNT(*) FROM expense_transaction t JOIN account a ON a.id = t.accountId " +
+                    "WHERE a.last4 = '4821'",
+            ),
+        )
+        assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE accountId IS NULL"))
+        assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE toAccountId IS NOT NULL"))
+        assertEquals(3, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE kind = 'EXPENSE'"))
+    }
+
+    private fun SupportSQLiteDatabase.insertSchema7Transaction(
+        sourceKey: String,
+        paymentMethod: String?,
+        cardId: Long?,
+    ) = execSQL(
+        "INSERT INTO expense_transaction " +
+            "(rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay, merchantId, " +
+            "merchantRaw, categoryId, source, status, confidence, parserId, parserVersion, sourcePackage, " +
+            "sourceKey, cardLabel, cardLast4, note, kind, paymentMethod, cardId) " +
+            "VALUES (NULL, 6554, 'CAD', ?, 'America/Toronto', 20707, NULL, 'MARCHE ST DAVID', NULL, " +
+            "'NOTIFICATION', 'CONFIRMED', 1.0, 'google-wallet', 1, ?, ?, NULL, '4821', NULL, 'EXPENSE', ?, ?)",
+        arrayOf<Any?>(FIRST_POST, WALLET, sourceKey, paymentMethod, cardId),
+    )
 
     private fun SupportSQLiteDatabase.insertRawEvent(
         postedAtUtcMillis: Long,

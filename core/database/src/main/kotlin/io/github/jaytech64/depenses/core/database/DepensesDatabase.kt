@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ExpenseTransactionEntity::class,
         MerchantEntity::class,
         MerchantAliasEntity::class,
-        CardEntity::class,
+        AccountEntity::class,
     ],
     version = DepensesDatabase.VERSION,
     exportSchema = true,
@@ -27,17 +27,25 @@ abstract class DepensesDatabase : RoomDatabase() {
 
     abstract fun reportDao(): ReportDao
 
-    abstract fun cardDao(): CardDao
+    abstract fun accountDao(): AccountDao
 
     companion object {
-        const val VERSION: Int = 7
+        const val VERSION: Int = 8
 
         /**
          * Migrations are listed here rather than passed at the call site so that
          * adding one cannot be forgotten in a second place.
          */
         val MIGRATIONS: Array<Migration> =
-            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+            arrayOf(
+                MIGRATION_1_2,
+                MIGRATION_2_3,
+                MIGRATION_3_4,
+                MIGRATION_4_5,
+                MIGRATION_5_6,
+                MIGRATION_6_7,
+                MIGRATION_7_8,
+            )
 
         const val NAME: String = "depenses.db"
     }
@@ -161,6 +169,9 @@ private val MIGRATION_5_6 =
  * point at it, so the Cards screen opens on the cards you actually use rather
  * than on an empty list. Every existing row stays an expense, which keeps every
  * total the app has ever shown exactly as it was.
+ *
+ * Schema 8 renamed this table to `account`; the SQL here stays as it was, because
+ * a migration must build the schema of its own version and no other.
  */
 private val MIGRATION_6_7 =
     object : Migration(6, 7) {
@@ -170,7 +181,8 @@ private val MIGRATION_6_7 =
                     "`name` TEXT, `issuerLabel` TEXT, `last4` TEXT, `origin` TEXT NOT NULL)",
             )
             db.execSQL(
-                "CREATE UNIQUE INDEX IF NOT EXISTS `index_card_issuerLabel_last4` ON `card` (`issuerLabel`, `last4`)",
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_card_issuerLabel_last4` " +
+                    "ON `card` (`issuerLabel`, `last4`)",
             )
             db.execSQL(
                 """
@@ -183,7 +195,8 @@ private val MIGRATION_6_7 =
             db.execSQL("ALTER TABLE expense_transaction ADD COLUMN paymentMethod TEXT DEFAULT NULL")
             db.execSQL("ALTER TABLE expense_transaction ADD COLUMN cardId INTEGER DEFAULT NULL")
             db.execSQL(
-                "CREATE INDEX IF NOT EXISTS `index_expense_transaction_cardId` ON `expense_transaction` (`cardId`)",
+                "CREATE INDEX IF NOT EXISTS `index_expense_transaction_cardId` " +
+                    "ON `expense_transaction` (`cardId`)",
             )
             db.execSQL(
                 """
@@ -200,3 +213,121 @@ private val MIGRATION_6_7 =
             )
         }
     }
+
+/**
+ * Schema 8 turns cards into accounts, and lets a transaction move between two.
+ *
+ * Cash stops being a column on the transaction and becomes an account like any
+ * other, which is what allows a transfer between a wallet and a card. Entries
+ * that said cash are re-pointed at the new cash account, so nothing loses how it
+ * was paid.
+ *
+ * Both tables are rebuilt rather than altered: this app supports Android 12,
+ * whose SQLite cannot drop a column, and `paymentMethod` has to go.
+ */
+private val MIGRATION_7_8 =
+    object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.createAccountTable()
+            db.copyCardsIntoAccounts()
+            db.rebuildTransactionsOntoAccounts()
+            db.execSQL("DROP TABLE card")
+        }
+    }
+
+private fun SupportSQLiteDatabase.createAccountTable() {
+    execSQL(
+        "CREATE TABLE IF NOT EXISTS `account` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+            "`name` TEXT, `type` TEXT NOT NULL, `issuerLabel` TEXT, `last4` TEXT, `origin` TEXT NOT NULL)",
+    )
+    execSQL(
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_account_issuerLabel_last4` " +
+            "ON `account` (`issuerLabel`, `last4`)",
+    )
+}
+
+/**
+ * Every card becomes an account of its own kind, keeping its id so the ledger's
+ * rows still point at it, and a cash account is added whether or not anything
+ * said cash — the list and the form offer it from the start rather than later.
+ */
+private fun SupportSQLiteDatabase.copyCardsIntoAccounts() {
+    execSQL(
+        """
+        INSERT INTO account (id, name, type, issuerLabel, last4, origin)
+        SELECT id, name, 'CARD', issuerLabel, last4, origin FROM card
+        """.trimIndent(),
+    )
+    execSQL(
+        """
+        INSERT INTO account (name, type, issuerLabel, last4, origin)
+        VALUES (NULL, 'CASH', NULL, NULL, 'USER')
+        """.trimIndent(),
+    )
+}
+
+/** The table without `paymentMethod`, with its cash rows pointed at the cash account. */
+private fun SupportSQLiteDatabase.rebuildTransactionsOntoAccounts() {
+    execSQL(
+        "CREATE TABLE IF NOT EXISTS `expense_transaction_new` " +
+            "(`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `rawEventId` INTEGER, " +
+            "`amountMinor` INTEGER NOT NULL, `currency` TEXT NOT NULL, " +
+            "`occurredAtUtcMillis` INTEGER NOT NULL, `zoneId` TEXT NOT NULL, " +
+            "`localDateEpochDay` INTEGER NOT NULL, `merchantId` INTEGER, `merchantRaw` TEXT, " +
+            "`categoryId` INTEGER, `source` TEXT NOT NULL, `status` TEXT NOT NULL, " +
+            "`reviewReason` TEXT, `reviewedAtUtcMillis` INTEGER, `confidence` REAL NOT NULL, " +
+            "`parserId` TEXT, `parserVersion` INTEGER, `sourcePackage` TEXT NOT NULL, " +
+            "`sourceKey` TEXT NOT NULL, `cardLabel` TEXT, `cardLast4` TEXT, `note` TEXT, " +
+            "`kind` TEXT NOT NULL DEFAULT 'EXPENSE', `accountId` INTEGER, `toAccountId` INTEGER)",
+    )
+    execSQL(
+        """
+        INSERT INTO expense_transaction_new (
+            id, rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay,
+            merchantId, merchantRaw, categoryId, source, status, reviewReason, reviewedAtUtcMillis,
+            confidence, parserId, parserVersion, sourcePackage, sourceKey, cardLabel, cardLast4,
+            note, kind, accountId, toAccountId
+        )
+        SELECT
+            id, rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay,
+            merchantId, merchantRaw, categoryId, source, status, reviewReason, reviewedAtUtcMillis,
+            confidence, parserId, parserVersion, sourcePackage, sourceKey, cardLabel, cardLast4,
+            note, kind,
+            CASE WHEN paymentMethod = 'CASH'
+                 THEN (SELECT id FROM account WHERE type = 'CASH' ORDER BY id LIMIT 1)
+                 ELSE cardId END,
+            NULL
+        FROM expense_transaction
+        """.trimIndent(),
+    )
+    execSQL("DROP TABLE expense_transaction")
+    execSQL("ALTER TABLE expense_transaction_new RENAME TO expense_transaction")
+    recreateTransactionIndices()
+}
+
+private fun SupportSQLiteDatabase.recreateTransactionIndices() {
+    execSQL(
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_expense_transaction_sourcePackage_sourceKey` " +
+            "ON `expense_transaction` (`sourcePackage`, `sourceKey`)",
+    )
+    execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_expense_transaction_localDateEpochDay` " +
+            "ON `expense_transaction` (`localDateEpochDay`)",
+    )
+    execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_expense_transaction_merchantId` " +
+            "ON `expense_transaction` (`merchantId`)",
+    )
+    execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_expense_transaction_status` " +
+            "ON `expense_transaction` (`status`)",
+    )
+    execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_expense_transaction_accountId` " +
+            "ON `expense_transaction` (`accountId`)",
+    )
+    execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_expense_transaction_toAccountId` " +
+            "ON `expense_transaction` (`toAccountId`)",
+    )
+}

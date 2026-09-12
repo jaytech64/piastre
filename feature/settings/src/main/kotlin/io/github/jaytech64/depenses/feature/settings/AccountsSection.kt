@@ -21,40 +21,41 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import io.github.jaytech64.depenses.core.designsystem.CardDialog
+import io.github.jaytech64.depenses.core.designsystem.AccountDialog
+import io.github.jaytech64.depenses.core.designsystem.accountTypeLabel
 import io.github.jaytech64.depenses.core.designsystem.walletLabel
-import io.github.jaytech64.depenses.core.model.Card
-import io.github.jaytech64.depenses.core.model.CardOrigin
+import io.github.jaytech64.depenses.core.model.Account
+import io.github.jaytech64.depenses.core.model.AccountOrigin
 
 /**
- * Every card you pay with, named or still waiting for a name. The name given
- * here is what the ledger shows beside each purchase made with the card.
+ * Every account money sits in, named or still waiting for a name. The name given
+ * here is what the ledger shows beside each transaction on that account.
  */
 @Composable
-internal fun CardsSection(viewModel: CardsViewModel = hiltViewModel()) {
-    val cards by viewModel.cards.collectAsStateWithLifecycle()
+internal fun AccountsSection(viewModel: AccountsViewModel = hiltViewModel()) {
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val removalRefused by viewModel.removalRefused.collectAsStateWithLifecycle()
-    var editing by remember { mutableStateOf<CardEdit?>(null) }
+    var editing by remember { mutableStateOf<AccountEdit?>(null) }
 
-    SectionHeader(stringResource(R.string.settings_cards_section))
+    SectionHeader(stringResource(R.string.settings_accounts_section))
 
-    if (cards.isEmpty()) {
+    if (accounts.isEmpty()) {
         Text(
-            stringResource(R.string.settings_cards_empty),
+            stringResource(R.string.settings_accounts_empty),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
     }
-    cards.forEach { card -> CardRow(card, onClick = { editing = CardEdit.Existing(card) }) }
+    accounts.forEach { account -> AccountRow(account, onClick = { editing = AccountEdit.Existing(account) }) }
 
-    TextButton(onClick = { editing = CardEdit.New }, modifier = Modifier.padding(horizontal = 4.dp)) {
-        Text(stringResource(R.string.settings_cards_add))
+    TextButton(onClick = { editing = AccountEdit.New }, modifier = Modifier.padding(horizontal = 4.dp)) {
+        Text(stringResource(R.string.settings_accounts_add))
     }
 
     if (removalRefused) {
         Text(
-            stringResource(R.string.settings_cards_still_used),
+            stringResource(R.string.settings_accounts_still_used),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -62,16 +63,16 @@ internal fun CardsSection(viewModel: CardsViewModel = hiltViewModel()) {
     }
 
     editing?.let { edit ->
-        val card = (edit as? CardEdit.Existing)?.card
-        CardDialog(
-            card = card,
-            onSave = { name, last4 ->
-                viewModel.save(card, name, last4)
+        val account = (edit as? AccountEdit.Existing)?.account
+        AccountDialog(
+            account = account,
+            onSave = { name, type, last4 ->
+                viewModel.save(account, name, type, last4)
                 editing = null
             },
             onDismiss = { editing = null },
             onRemove =
-                card?.takeIf { it.purchaseCount == 0 }?.let { removable ->
+                account?.takeIf { it.transactionCount == 0 }?.let { removable ->
                     {
                         viewModel.remove(removable)
                         editing = null
@@ -81,27 +82,33 @@ internal fun CardsSection(viewModel: CardsViewModel = hiltViewModel()) {
     }
 }
 
-private sealed interface CardEdit {
-    data object New : CardEdit
+private sealed interface AccountEdit {
+    data object New : AccountEdit
 
     data class Existing(
-        val card: Card,
-    ) : CardEdit
+        val account: Account,
+    ) : AccountEdit
 }
 
 /**
- * A named card leads with its name; one still waiting for a name leads with how
+ * A named account leads with its name; one still waiting for a name leads with how
  * Wallet shows it, and says it can be named.
  */
 @Composable
-private fun CardRow(
-    card: Card,
+private fun AccountRow(
+    account: Account,
     onClick: () -> Unit,
 ) {
-    val name = card.name
-    val digits = walletLabel(card)
-    val purchases = pluralStringResource(R.plurals.settings_cards_purchases, card.purchaseCount, card.purchaseCount)
-    val addedByHand = stringResource(R.string.settings_cards_added).takeIf { card.origin == CardOrigin.USER }
+    val name = account.name
+    val digits = walletLabel(account)
+    val transactions =
+        pluralStringResource(
+            R.plurals.settings_accounts_transactions,
+            account.transactionCount,
+            account.transactionCount,
+        )
+    val kind = stringResource(accountTypeLabel(account.type))
+    val addedByHand = stringResource(R.string.settings_accounts_added).takeIf { account.origin == AccountOrigin.USER }
 
     Column(
         Modifier
@@ -113,14 +120,14 @@ private fun CardRow(
         if (name != null) {
             Text(name, style = MaterialTheme.typography.bodyLarge)
             Text(
-                listOfNotNull(digits.ifEmpty { null }, purchases, addedByHand).joinToString(SEPARATOR),
+                listOfNotNull(kind, digits.ifEmpty { null }, transactions, addedByHand).joinToString(SEPARATOR),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
             Text(digits, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
-                listOf(stringResource(R.string.settings_cards_unnamed), purchases).joinToString(SEPARATOR),
+                listOf(stringResource(R.string.settings_accounts_unnamed), transactions).joinToString(SEPARATOR),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )

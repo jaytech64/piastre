@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
-import io.github.jaytech64.depenses.core.database.CardEntity
+import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantAliasEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.database.RawNotificationEventEntity
+import io.github.jaytech64.depenses.core.model.AccountOrigin
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.AliasOrigin
-import io.github.jaytech64.depenses.core.model.CardOrigin
 import io.github.jaytech64.depenses.core.model.MatchType
 import io.github.jaytech64.depenses.core.model.ParseState
-import io.github.jaytech64.depenses.core.model.PaymentMethod
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -48,7 +48,7 @@ class LedgerExportTest {
             LedgerExport(
                 transactions = database.transactionDao(),
                 merchants = database.merchantDao(),
-                cards = database.cardDao(),
+                accounts = database.accountDao(),
                 clock = Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
             )
     }
@@ -65,54 +65,54 @@ class LedgerExportTest {
 
             assertTrue("missing UTF-8 BOM", csv.startsWith(BOM))
             assertEquals(
-                "date;heure;marchand;montant;devise;source;statut;carte;note;type;paiement;nom de la carte",
+                "date;heure;marchand;montant;devise;source;statut;carte;note;type;compte;compte de destination",
                 csv.lines()[0].removePrefix(BOM),
             )
             assertTrue(csv, "MARCHE ST DAVID;16,09;CAD" in csv)
         }
 
     @Test
-    fun `the csv says which way the money went and what paid for it`() =
+    fun `the csv says which way the money went and between which accounts`() =
         runTest {
-            val card = storeCard()
-            store(
-                merchantName = "MARCHE ST DAVID",
-                amountMinor = 1_609,
-                paymentMethod = PaymentMethod.CARD,
-                cardId = card,
-            )
+            val card = storeAccount()
+            val cash = storeAccount(name = null, type = AccountType.CASH, issuerLabel = null, last4 = null)
+            store(merchantName = "MARCHE ST DAVID", amountMinor = 1_609, accountId = card)
             store(
                 merchantName = "ACME INC",
                 amountMinor = 150_000,
                 kind = TransactionKind.INCOME,
-                sourceKey = "manual-1",
+                sourceKey = "income-1",
+            )
+            store(
+                merchantName = "VISA",
+                amountMinor = 45_000,
+                kind = TransactionKind.TRANSFER,
+                accountId = cash,
+                toAccountId = card,
+                sourceKey = "transfer-1",
             )
 
             val rows = write(ExportFormat.CSV).lines()
 
-            assertTrue(rows.toString(), rows.any { it.endsWith(";EXPENSE;CARD;Débit Desrives") })
-            assertTrue(rows.toString(), rows.any { it.startsWith("2026-09-08") && it.endsWith(";INCOME;;") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";EXPENSE;Débit Desrives;") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";INCOME;;") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";TRANSFER;CASH;Débit Desrives") })
         }
 
-    /** The names you give your cards are data about you, so they leave with the rest. */
+    /** The names you give your accounts are data about you, so they leave with the rest. */
     @Test
-    fun `the json carries your cards and what each transaction was paid with`() =
+    fun `the json carries your accounts and the account of each transaction`() =
         runTest {
-            val card = storeCard()
-            store(
-                merchantName = "MARCHE ST DAVID",
-                amountMinor = 1_609,
-                paymentMethod = PaymentMethod.CARD,
-                cardId = card,
-            )
+            store(merchantName = "MARCHE ST DAVID", amountMinor = 1_609, accountId = storeAccount())
 
             val json = write(ExportFormat.JSON)
 
+            assertTrue(json, "\"version\": 2" in json)
             assertTrue(json, "\"name\": \"Débit Desrives\"" in json)
+            assertTrue(json, "\"type\": \"CARD\"" in json)
             assertTrue(json, "\"issuerLabel\": \"Carte d'accès Desrives\"" in json)
             assertTrue(json, "\"kind\": \"EXPENSE\"" in json)
-            assertTrue(json, "\"paymentMethod\": \"CARD\"" in json)
-            assertTrue(json, "\"cardName\": \"Débit Desrives\"" in json)
+            assertTrue(json, "\"accountName\": \"Débit Desrives\"" in json)
         }
 
     @Test
@@ -164,7 +164,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 1" in json)
+            assertTrue(json, "\"version\": 2" in json)
             assertTrue(json, "\"sourceKey\": \"tag-1\"" in json)
             assertTrue(json, "\"sourcePackage\": \"com.google.android.apps.walletnfcrel\"" in json)
             assertTrue(json, "\"normalisedName\": \"MARCHE ST DAVID\"" in json)
@@ -217,13 +217,19 @@ class LedgerExportTest {
         )
     }
 
-    private suspend fun storeCard(): Long =
-        database.cardDao().insert(
-            CardEntity(
-                name = "Débit Desrives",
-                issuerLabel = "Carte d'accès Desrives",
-                last4 = "6262",
-                origin = CardOrigin.WALLET,
+    private suspend fun storeAccount(
+        name: String? = "Débit Desrives",
+        type: AccountType = AccountType.CARD,
+        issuerLabel: String? = "Carte d'accès Desrives",
+        last4: String? = "6262",
+    ): Long =
+        database.accountDao().insert(
+            AccountEntity(
+                name = name,
+                type = type,
+                issuerLabel = issuerLabel,
+                last4 = last4,
+                origin = AccountOrigin.WALLET,
             ),
         )
 
@@ -231,8 +237,8 @@ class LedgerExportTest {
         merchantName: String,
         amountMinor: Long,
         kind: TransactionKind = TransactionKind.EXPENSE,
-        paymentMethod: PaymentMethod? = null,
-        cardId: Long? = null,
+        accountId: Long? = null,
+        toAccountId: Long? = null,
         sourceKey: String = "tag-1",
     ) {
         val merchantId =
@@ -271,8 +277,8 @@ class LedgerExportTest {
                 cardLast4 = "6262",
                 note = null,
                 kind = kind,
-                paymentMethod = paymentMethod,
-                cardId = cardId,
+                accountId = accountId,
+                toAccountId = toAccountId,
             ),
         )
     }
@@ -305,8 +311,8 @@ class LedgerExportTest {
                 card = "carte",
                 note = "note",
                 type = "type",
-                payment = "paiement",
-                cardName = "nom de la carte",
+                account = "compte",
+                toAccount = "compte de destination",
             )
     }
 }

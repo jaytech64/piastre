@@ -98,7 +98,7 @@ class CaptureCatchUpTest {
                     transactions = database.transactionDao(),
                     registry = registry,
                     merchants = MerchantRepository(database.merchantDao()),
-                    cards = CardRepository(database.cardDao()),
+                    accounts = AccountRepository(database.accountDao()),
                     zoneId = Provider { ZONE },
                 ),
             registry = registry,

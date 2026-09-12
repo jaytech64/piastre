@@ -54,6 +54,14 @@ The JSON gains `kind`, `paymentMethod`, `cardId` and `cardName` on each transact
 Nothing was removed and no field changed meaning, so the JSON stays at version 1.
 The names you give your cards are data about you, which is why they leave with the rest.
 
+## Amended 2026-09-12 — accounts and transfers
+
+Schema 8 renamed cards to accounts, gave each one a kind, and replaced a transaction's payment method with the account it came from — cash became an account like any other — alongside the account a transfer went to.
+The CSV's `payment` and `card name` columns became `account` and `to account`.
+The column carrying the bank's digits keeps its own name, `card`, because those digits belong to the card the notification named and not to the account.
+In the JSON the `cards` list became `accounts`, each transaction gained `accountId`, `accountName`, `toAccountId` and `toAccountName`, and `paymentMethod` is gone.
+Fields were removed and renamed rather than added, so the format version is now **2**: a reader written for version 1 must refuse the file rather than guess at it.
+
 ## Where this lives in the code
 
 - `core/data/src/main/kotlin/.../LedgerExport.kt` — both writers, the BOM, the separator, the hand-rolled decimal.

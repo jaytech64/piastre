@@ -4,6 +4,8 @@ package io.github.jaytech64.depenses.core.database
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,7 +24,19 @@ object DatabaseModule {
         Room
             .databaseBuilder(context, DepensesDatabase::class.java, DepensesDatabase.NAME)
             .addMigrations(*DepensesDatabase.MIGRATIONS)
-            .build()
+            // A fresh install gets the cash account the 7→8 migration gives an
+            // upgrade, so "Cash" is offered from the first purchase rather than
+            // after the first time you name it.
+            .addCallback(
+                object : RoomDatabase.Callback() {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        db.execSQL(
+                            "INSERT INTO account (name, type, issuerLabel, last4, origin) " +
+                                "VALUES (NULL, 'CASH', NULL, NULL, 'USER')",
+                        )
+                    }
+                },
+            ).build()
 
     @Provides
     fun rawNotificationEventDao(database: DepensesDatabase): RawNotificationEventDao =
@@ -38,5 +52,5 @@ object DatabaseModule {
     fun reportDao(database: DepensesDatabase): ReportDao = database.reportDao()
 
     @Provides
-    fun cardDao(database: DepensesDatabase): CardDao = database.cardDao()
+    fun accountDao(database: DepensesDatabase): AccountDao = database.accountDao()
 }

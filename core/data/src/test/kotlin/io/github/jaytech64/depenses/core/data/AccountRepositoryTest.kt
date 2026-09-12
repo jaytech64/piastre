@@ -3,10 +3,9 @@
 package io.github.jaytech64.depenses.core.data
 
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
-import io.github.jaytech64.depenses.core.model.CardOrigin
+import io.github.jaytech64.depenses.core.model.AccountOrigin
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
-import io.github.jaytech64.depenses.core.model.Payment
-import io.github.jaytech64.depenses.core.model.PaymentMethod
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import io.github.jaytech64.depenses.parsing.GoogleWalletParser
@@ -30,20 +29,20 @@ import javax.inject.Provider
 
 /**
  * Cards against a real database, fed by real Wallet notifications where it
- * matters: the card a purchase lands on is decided by the parser's reading of
+ * matters: the account a purchase lands on is decided by the parser's reading of
  * the text, and a hand-built row would prove nothing about that.
  */
 @RunWith(RobolectricTestRunner::class)
-class CardRepositoryTest {
+class AccountRepositoryTest {
     private lateinit var database: DepensesDatabase
-    private lateinit var cards: CardRepository
+    private lateinit var accounts: AccountRepository
     private lateinit var capture: NotificationCapture
     private lateinit var transactions: TransactionRepository
 
     @Before
     fun open() {
         database = inMemoryDatabase()
-        cards = CardRepository(database.cardDao())
+        accounts = AccountRepository(database.accountDao())
         val merchants = MerchantRepository(database.merchantDao())
         capture =
             NotificationCapture(
@@ -53,7 +52,7 @@ class CardRepositoryTest {
                     transactions = database.transactionDao(),
                     registry = ParserRegistry(listOf(GoogleWalletParser())),
                     merchants = merchants,
-                    cards = cards,
+                    accounts = accounts,
                     zoneId = Provider { ZONE },
                 ),
             )
@@ -70,57 +69,56 @@ class CardRepositoryTest {
     fun close() = database.close()
 
     @Test
-    fun `two purchases on one card land on one card`() =
+    fun `two purchases on one account land on one account`() =
         runTest {
             captureCoffee(key = "tag-1", postedAt = POSTED_AT)
             captureCoffee(key = "tag-2", postedAt = POSTED_AT + HOUR)
 
             val purchases = transactions.confirmed().first()
-            val card = cards.all().first().single()
+            val account = accounts.all().first().single()
 
-            assertEquals(setOf(card.id), purchases.map { it.cardId }.toSet())
-            assertEquals(setOf(PaymentMethod.CARD), purchases.map { it.paymentMethod }.toSet())
-            assertEquals("Carte d'accès Desrives", card.issuerLabel)
-            assertEquals("0000", card.last4)
-            assertEquals(CardOrigin.WALLET, card.origin)
-            assertEquals(2, card.purchaseCount)
+            assertEquals(setOf(account.id), purchases.map { it.accountId }.toSet())
+            assertEquals("Carte d'accès Desrives", account.issuerLabel)
+            assertEquals("0000", account.last4)
+            assertEquals(AccountOrigin.WALLET, account.origin)
+            assertEquals(2, account.transactionCount)
         }
 
     @Test
-    fun `the same digits from another issuer are another card`() =
+    fun `the same digits from another issuer are another account`() =
         runTest {
-            val desrives = cards.resolve("Carte d'accès Desrives", "0000")
-            val visa = cards.resolve("Récompenses Visa", "0000")
+            val desrives = accounts.resolve("Carte d'accès Desrives", "0000")
+            val visa = accounts.resolve("Récompenses Visa", "0000")
 
             assertNotEquals(desrives, visa)
-            assertEquals(desrives, cards.resolve("Carte d'accès Desrives", "0000"))
+            assertEquals(desrives, accounts.resolve("Carte d'accès Desrives", "0000"))
         }
 
     @Test
-    fun `a notification without digits is not pinned to any card`() =
+    fun `a notification without digits is not pinned to any account`() =
         runTest {
-            assertNull(cards.resolve("Carte d'accès Desrives", null))
-            assertTrue(cards.all().first().isEmpty())
+            assertNull(accounts.resolve("Carte d'accès Desrives", null))
+            assertTrue(accounts.all().first().isEmpty())
         }
 
-    /** A card you typed in must never be claimed by capture, even with matching digits. */
+    /** An account you typed in must never be claimed by capture, even with matching digits. */
     @Test
-    fun `a card you added is never claimed by a notification`() =
+    fun `an account you added is never claimed by a notification`() =
         runTest {
-            val added = cards.add(name = "Amex papier", last4 = "0000")
+            val added = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "0000")
 
-            val resolved = cards.resolve(issuerLabel = null, last4 = "0000")
+            val resolved = accounts.resolve(issuerLabel = null, last4 = "0000")
 
             assertNotEquals(added, resolved)
         }
 
     @Test
-    fun `naming a card shows on every purchase made with it`() =
+    fun `naming an account shows on every purchase made with it`() =
         runTest {
             captureCoffee(key = "tag-1", postedAt = POSTED_AT)
-            val card = cards.all().first().single()
+            val account = accounts.all().first().single()
 
-            cards.rename(card.id, "  Débit Desrives ")
+            accounts.rename(account.id, "  Débit Desrives ")
 
             assertEquals(
                 "Débit Desrives",
@@ -128,19 +126,19 @@ class CardRepositoryTest {
                     .confirmed()
                     .first()
                     .single()
-                    .cardName,
+                    .accountName,
             )
         }
 
     @Test
     fun `a blank name clears it`() =
         runTest {
-            val id = cards.add(name = "Amex papier", last4 = "8484")
+            val id = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "8484")
 
-            cards.rename(id, "   ")
+            accounts.rename(id, "   ")
 
             assertNull(
-                cards
+                accounts
                     .all()
                     .first()
                     .single()
@@ -149,39 +147,40 @@ class CardRepositoryTest {
         }
 
     @Test
-    fun `a card in use stays, an unused one goes`() =
+    fun `an account in use stays, an unused one goes`() =
         runTest {
             captureCoffee(key = "tag-1", postedAt = POSTED_AT)
             val used =
-                cards
+                accounts
                     .all()
                     .first()
                     .single()
                     .id
-            val unused = cards.add(name = "Amex papier", last4 = "8484")
+            val unused = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "8484")
 
-            assertFalse(cards.remove(used))
-            assertTrue(cards.remove(unused))
-            assertEquals(listOf(used), cards.all().first().map { it.id })
+            assertFalse(accounts.remove(used))
+            assertTrue(accounts.remove(unused))
+            assertEquals(listOf(used), accounts.all().first().map { it.id })
         }
 
     @Test
-    fun `a manual entry paid by card reads back with the card's name and digits`() =
+    fun `a manual entry on an account reads back with its name and digits`() =
         runTest {
-            val id = cards.add(name = "Amex papier", last4 = "8484")
+            val id = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "8484")
             transactions.addManual(
                 amount = Money(1_250, Money.CAD),
                 merchantName = "Dépanneur du coin",
                 occurredAt = Instant.ofEpochMilli(POSTED_AT),
                 note = null,
                 kind = TransactionKind.EXPENSE,
-                payment = Payment.ByCard(id),
+                accountId = id,
+                toAccountId = null,
             )
             val manual = transactions.confirmed().first().single()
 
             val read = transactions.byId(manual.id)
 
-            assertEquals("Amex papier", read?.cardName)
+            assertEquals("Amex papier", read?.accountName)
             assertEquals("8484", read?.cardLast4)
         }
 
