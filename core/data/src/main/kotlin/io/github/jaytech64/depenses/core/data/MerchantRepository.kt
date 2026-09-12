@@ -83,6 +83,16 @@ class MerchantRepository
             return merchant.id
         }
 
+        /**
+         * The merchant a name belongs to, created when there is none yet. One already
+         * here keeps the name it has: bringing a file in must not rename a merchant
+         * you have already named.
+         */
+        suspend fun named(displayName: String): Long? {
+            val name = MerchantNormaliser.normalise(displayName) ?: return null
+            return findOrCreate(name.displayName, name.normalisedName)?.id
+        }
+
         fun all(): Flow<List<Merchant>> =
             merchants.all().map { rows ->
                 rows.map { Merchant(id = it.id, displayName = it.displayName, normalisedName = it.normalisedName) }

@@ -6,7 +6,6 @@ import io.github.jaytech64.depenses.core.database.AccountDao
 import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.OutputStream
 import java.time.Clock
@@ -170,7 +169,7 @@ class LedgerExport
         ) {
             val document =
                 ExportDocument(
-                    version = FORMAT_VERSION,
+                    version = LEDGER_FORMAT_VERSION,
                     exportedAtUtc = DateTimeFormatter.ISO_INSTANT.format(clock.instant()),
                     merchants =
                         merchants.allOnce().map {
@@ -228,16 +227,6 @@ class LedgerExport
             )
 
         private companion object {
-            /**
-             * Bumped whenever a field is removed or changes meaning. A reader that
-             * does not recognise the number should refuse rather than guess.
-             *
-             * Version 2 dropped `paymentMethod`, because cash became an account,
-             * and renamed the card list to accounts: a version-1 reader must
-             * refuse the file rather than guess at what it no longer says.
-             */
-            const val FORMAT_VERSION = 2
-
             const val BYTE_ORDER_MARK = "\uFEFF"
             const val FIELD_SEPARATOR = ";"
             const val CHARACTERS_NEEDING_QUOTES = ";\"\n\r"
@@ -246,83 +235,11 @@ class LedgerExport
             val DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
             val TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-            val JSON = Json { prettyPrint = true }
+            /** Defaults are written too: a field added within a version has one, and still belongs in the file. */
+            val JSON =
+                Json {
+                    prettyPrint = true
+                    encodeDefaults = true
+                }
         }
     }
-
-/**
- * The JSON export, shaped for a reader that does not exist yet.
- *
- * Ids are kept so merchants and aliases can be reattached on the way back in,
- * and `sourcePackage` with `sourceKey` are kept because together they are the
- * identity a re-import must match on to avoid duplicating a purchase.
- */
-@Serializable
-private data class ExportDocument(
-    val version: Int,
-    val exportedAtUtc: String,
-    val merchants: List<ExportedMerchant>,
-    val aliases: List<ExportedAlias>,
-    val accounts: List<ExportedAccount>,
-    val transactions: List<ExportedTransaction>,
-)
-
-/**
- * An account, with the name you gave it — which is data about you, so it leaves with the rest.
- *
- * [openingBalanceMinor] arrived within version 2 and stays null when none was given, so that a
- * reader can tell a balance nobody stated from one set to zero.
- */
-@Serializable
-private data class ExportedAccount(
-    val id: Long,
-    val name: String?,
-    val type: String,
-    val issuerLabel: String?,
-    val last4: String?,
-    val origin: String,
-    val openingBalanceMinor: Long?,
-)
-
-@Serializable
-private data class ExportedMerchant(
-    val id: Long,
-    val displayName: String,
-    val normalisedName: String,
-)
-
-@Serializable
-private data class ExportedAlias(
-    val id: Long,
-    val merchantId: Long,
-    val pattern: String,
-    val matchType: String,
-    val createdBy: String,
-)
-
-@Serializable
-private data class ExportedTransaction(
-    val id: Long,
-    val amountMinor: Long,
-    val currency: String,
-    val occurredAtUtcMillis: Long,
-    val zoneId: String,
-    val merchantId: Long?,
-    val merchantName: String?,
-    val merchantRaw: String?,
-    val source: String,
-    val status: String,
-    val confidence: Float,
-    val parserId: String?,
-    val parserVersion: Int?,
-    val sourcePackage: String,
-    val sourceKey: String,
-    val cardLabel: String?,
-    val cardLast4: String?,
-    val note: String?,
-    val kind: String,
-    val accountId: Long?,
-    val accountName: String?,
-    val toAccountId: Long?,
-    val toAccountName: String?,
-)
