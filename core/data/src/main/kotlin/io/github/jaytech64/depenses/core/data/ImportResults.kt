@@ -52,6 +52,14 @@ sealed interface ImportProblem {
     data class AmbiguousAccount(
         val name: String,
     ) : ImportProblem
+
+    /**
+     * The file could not be opened or read at all. [reason] is the system's own
+     * message where there is one; null when it refused without saying anything.
+     */
+    data class Unreadable(
+        val reason: String?,
+    ) : ImportProblem
 }
 
 /** What an import adds to the ledger, and what it leaves as it is. */
