@@ -8,6 +8,7 @@ import io.github.jaytech64.depenses.core.database.AccountWithCount
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
+import io.github.jaytech64.depenses.core.model.Money
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -48,7 +49,8 @@ class AccountRepository
             return accounts.walletAccount(issuerLabel, last4)?.id
         }
 
-        fun all(): Flow<List<Account>> = accounts.allWithCounts().map { rows -> rows.map(AccountWithCount::toDomain) }
+        fun all(): Flow<List<Account>> =
+            accounts.allWithCounts(Money.CAD).map { rows -> rows.map(AccountWithCount::toDomain) }
 
         /** A blank name clears it, and a card goes back to showing its digits. */
         suspend fun rename(
@@ -60,6 +62,7 @@ class AccountRepository
             name: String?,
             type: AccountType,
             last4: String?,
+            openingBalance: Money? = null,
         ): Long =
             accounts.insert(
                 AccountEntity(
@@ -68,8 +71,15 @@ class AccountRepository
                     issuerLabel = null,
                     last4 = last4.forType(type),
                     origin = AccountOrigin.USER,
+                    openingBalanceMinor = openingBalance?.minor,
                 ),
             )
+
+        /** Any account takes one, Wallet's included: the bank knows its digits, not what it held. */
+        suspend fun setOpeningBalance(
+            id: Long,
+            openingBalance: Money?,
+        ) = accounts.setOpeningBalance(id, openingBalance?.minor)
 
         /** Changes an account you added. One Wallet named only takes [rename]. */
         suspend fun updateAdded(
@@ -97,4 +107,6 @@ private fun AccountWithCount.toDomain(): Account =
         last4 = account.last4,
         origin = account.origin,
         transactionCount = transactionCount,
+        openingBalance = account.openingBalanceMinor?.let { Money(it, Money.CAD) },
+        balance = Money(balanceMinor, Money.CAD),
     )

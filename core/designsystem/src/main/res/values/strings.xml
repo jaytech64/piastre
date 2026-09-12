@@ -5,6 +5,8 @@
     <string name="account_dialog_name">Name</string>
     <string name="account_dialog_last4">Last 4 digits (optional)</string>
     <string name="account_dialog_last4_locked">Last 4 digits · from Wallet</string>
+    <string name="account_dialog_opening_balance">Opening balance (optional)</string>
+    <string name="account_dialog_opening_balance_help">What it held before any transaction here. Negative for money you owe.</string>
     <string name="account_dialog_remove">Remove</string>
     <string name="account_dialog_save">Save</string>
     <string name="account_dialog_cancel">Cancel</string>

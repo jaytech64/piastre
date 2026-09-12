@@ -263,7 +263,7 @@ class ExpenseFormViewModelTest {
     fun `an account added from the form is picked and spent from`() =
         runTest {
             viewModel.onAmountChange("6,25")
-            viewModel.addAccount("Amex papier", AccountType.CARD, "8484", AccountSlot.SOURCE)
+            viewModel.addAccount("Amex papier", AccountType.CARD, "8484", openingBalance = null, AccountSlot.SOURCE)
             viewModel.uiState.first { it.accountId != null }
 
             viewModel.save()

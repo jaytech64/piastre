@@ -368,18 +368,31 @@ interface AccountDao {
      *
      * Both sides of a transfer count: an account money only ever leaves is still in
      * use, and the count is what decides whether it can be removed.
+     *
+     * The balance starts from the opening balance and follows every confirmed row on
+     * the account: income adds, an expense takes away, and a transfer takes from the
+     * account it left and adds to the one it reached. Only [currency] is summed, the
+     * way reports keep to one currency, because dollars plus euros is not a balance.
      */
     @Query(
         """
-        SELECT a.*, COUNT(t.id) AS transactionCount
+        SELECT a.*,
+            (SELECT COUNT(*) FROM expense_transaction t
+             WHERE (t.accountId = a.id OR t.toAccountId = a.id) AND t.status = 'CONFIRMED') AS transactionCount,
+            COALESCE(a.openingBalanceMinor, 0)
+                + COALESCE((SELECT SUM(CASE WHEN t.kind = 'INCOME' THEN t.amountMinor ELSE -t.amountMinor END)
+                            FROM expense_transaction t
+                            WHERE t.accountId = a.id AND t.status = 'CONFIRMED' AND t.currency = :currency), 0)
+                + COALESCE((SELECT SUM(t.amountMinor)
+                            FROM expense_transaction t
+                            WHERE t.toAccountId = a.id AND t.kind = 'TRANSFER'
+                              AND t.status = 'CONFIRMED' AND t.currency = :currency), 0)
+                AS balanceMinor
         FROM account a
-        LEFT JOIN expense_transaction t
-            ON (t.accountId = a.id OR t.toAccountId = a.id) AND t.status = 'CONFIRMED'
-        GROUP BY a.id
         ORDER BY a.name IS NULL, a.name COLLATE NOCASE, a.issuerLabel, a.last4
         """,
     )
-    fun allWithCounts(): Flow<List<AccountWithCount>>
+    fun allWithCounts(currency: String): Flow<List<AccountWithCount>>
 
     @Query("SELECT * FROM account ORDER BY id")
     suspend fun allOnce(): List<AccountEntity>
@@ -392,6 +405,13 @@ interface AccountDao {
     suspend fun rename(
         id: Long,
         name: String?,
+    )
+
+    /** Null clears it, and the account goes back to having no stated starting point. */
+    @Query("UPDATE account SET openingBalanceMinor = :openingBalanceMinor WHERE id = :id")
+    suspend fun setOpeningBalance(
+        id: Long,
+        openingBalanceMinor: Long?,
     )
 
     /** Only an account you added has digits and a type you can change; Wallet's are the bank's. */
@@ -437,10 +457,12 @@ data class TransactionWithMerchant(
     val toAccountType: AccountType? = null,
 )
 
-/** An account with how many confirmed transactions it carries, transfers included. */
+/** An account with how many confirmed transactions it carries, transfers included, and what it holds now. */
 data class AccountWithCount(
     @Embedded val account: AccountEntity,
     val transactionCount: Int,
+    /** In minor units of the currency [AccountDao.allWithCounts] was asked for. */
+    val balanceMinor: Long,
 )
 
 /** A transaction awaiting review, with the notification it was read from. */

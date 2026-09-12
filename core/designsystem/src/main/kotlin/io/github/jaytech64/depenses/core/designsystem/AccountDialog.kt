@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
+import io.github.jaytech64.depenses.core.model.Money
 
 /**
  * Names an account, or adds one. Settings and the expense form open this same
@@ -41,19 +42,27 @@ import io.github.jaytech64.depenses.core.model.AccountType
  * recognised by — while clearing an existing one's name is how it goes back to
  * showing its digits.
  *
+ * The opening balance is open on every account, Wallet's included: the bank
+ * supplies a card's digits but never what it held. Left blank it is no balance
+ * at all, and Save waits while the field holds something that is not an amount.
+ *
  * [onRemove] is null when the account cannot be removed, and the button is then
  * not offered at all.
  */
 @Composable
 fun AccountDialog(
     account: Account?,
-    onSave: (name: String, type: AccountType, last4: String) -> Unit,
+    onSave: (name: String, type: AccountType, last4: String, openingBalance: Money?) -> Unit,
     onDismiss: () -> Unit,
     onRemove: (() -> Unit)? = null,
 ) {
     var name by remember(account) { mutableStateOf(account?.name.orEmpty()) }
     var last4 by remember(account) { mutableStateOf(account?.last4.orEmpty()) }
     var type by remember(account) { mutableStateOf(account?.type ?: AccountType.CASH) }
+    var openingBalance by remember(account) {
+        mutableStateOf(account?.openingBalance?.let(Formatters::amountInput).orEmpty())
+    }
+    val openingBalanceIsAmount = openingBalance.isBlank() || Formatters.parseMoney(openingBalance) != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -73,12 +82,15 @@ fun AccountDialog(
                 onTypeChange = { type = it },
                 last4 = last4,
                 onLast4Change = { typed -> last4 = typed.filter(Char::isDigit).take(LAST4_LENGTH) },
+                openingBalance = openingBalance,
+                openingBalanceIsAmount = openingBalanceIsAmount,
+                onOpeningBalanceChange = { openingBalance = it },
             )
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name, type, last4) },
-                enabled = account != null || name.isNotBlank(),
+                onClick = { onSave(name, type, last4, Formatters.parseMoney(openingBalance)) },
+                enabled = (account != null || name.isNotBlank()) && openingBalanceIsAmount,
             ) {
                 Text(stringResource(R.string.account_dialog_save))
             }
@@ -99,7 +111,7 @@ fun AccountDialog(
     )
 }
 
-/** The kind, the name, and the digits — the last two locked when Wallet supplied them. */
+/** The kind, the name, the digits — the kind and digits locked when Wallet supplied them — and the opening balance. */
 @Composable
 private fun AccountFields(
     account: Account?,
@@ -109,6 +121,9 @@ private fun AccountFields(
     onTypeChange: (AccountType) -> Unit,
     last4: String,
     onLast4Change: (String) -> Unit,
+    openingBalance: String,
+    openingBalanceIsAmount: Boolean,
+    onOpeningBalanceChange: (String) -> Unit,
 ) {
     val fromWallet = account?.origin == AccountOrigin.WALLET
 
@@ -147,6 +162,16 @@ private fun AccountFields(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        OutlinedTextField(
+            value = openingBalance,
+            onValueChange = onOpeningBalanceChange,
+            label = { Text(stringResource(R.string.account_dialog_opening_balance)) },
+            supportingText = { Text(stringResource(R.string.account_dialog_opening_balance_help)) },
+            isError = !openingBalanceIsAmount,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

@@ -5,6 +5,8 @@
     <string name="account_dialog_name">Nom</string>
     <string name="account_dialog_last4">4 derniers chiffres (facultatif)</string>
     <string name="account_dialog_last4_locked">4 derniers chiffres · fournis par Wallet</string>
+    <string name="account_dialog_opening_balance">Solde d\'ouverture (facultatif)</string>
+    <string name="account_dialog_opening_balance_help">Ce qu\'il contenait avant toute transaction ici. Négatif pour une somme due.</string>
     <string name="account_dialog_remove">Retirer</string>
     <string name="account_dialog_save">Enregistrer</string>
     <string name="account_dialog_cancel">Annuler</string>

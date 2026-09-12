@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
+import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -48,7 +49,13 @@ class AccountsViewModelTest {
     @Test
     fun `an account added here is listed with its name and digits`() =
         runTest {
-            viewModel.save(account = null, name = "Amex papier", type = AccountType.CARD, last4 = "8484")
+            viewModel.save(
+                account = null,
+                name = "Amex papier",
+                type = AccountType.CARD,
+                last4 = "8484",
+                openingBalance = null,
+            )
 
             val account = viewModel.accounts.first { it.isNotEmpty() }.single()
 
@@ -64,20 +71,70 @@ class AccountsViewModelTest {
             repository.resolve("Carte d'accès Desrives", "0000")
             val wallet = viewModel.accounts.first { it.isNotEmpty() }.single()
 
-            viewModel.save(wallet, name = "Débit Desrives", type = AccountType.CARD, last4 = "9999")
+            viewModel.save(
+                wallet,
+                name = "Débit Desrives",
+                type = AccountType.CARD,
+                last4 = "9999",
+                openingBalance = null,
+            )
 
             val saved = viewModel.accounts.first { it.single().name != null }.single()
             assertEquals("Débit Desrives", saved.name)
             assertEquals("0000", saved.last4)
         }
 
+    /** The bank supplies a card's digits, never what it held, so a Wallet card takes a balance too. */
+    @Test
+    fun `a Wallet card takes an opening balance, and it becomes its balance`() =
+        runTest {
+            repository.resolve("Carte d'accès Desrives", "0000")
+            val wallet = viewModel.accounts.first { it.isNotEmpty() }.single()
+
+            viewModel.save(
+                wallet,
+                name = "Débit Desrives",
+                type = AccountType.CARD,
+                last4 = "0000",
+                openingBalance = Money(1_850_00, Money.CAD),
+            )
+
+            val saved = viewModel.accounts.first { it.single().openingBalance != null }.single()
+            assertEquals(1_850_00L, saved.openingBalance?.minor)
+            assertEquals(1_850_00L, saved.balance.minor)
+        }
+
+    @Test
+    fun `clearing the opening balance leaves none, rather than zero`() =
+        runTest {
+            viewModel.save(
+                account = null,
+                name = "CELI",
+                type = AccountType.BANK,
+                last4 = "",
+                openingBalance = Money(5_000_00, Money.CAD),
+            )
+            val added = viewModel.accounts.first { it.isNotEmpty() }.single()
+
+            viewModel.save(added, name = "CELI", type = AccountType.BANK, last4 = "", openingBalance = null)
+
+            val cleared = viewModel.accounts.first { it.single().openingBalance == null }.single()
+            assertEquals(0L, cleared.balance.minor)
+        }
+
     @Test
     fun `an account you added can have its digits corrected`() =
         runTest {
-            viewModel.save(account = null, name = "Amex papier", type = AccountType.CARD, last4 = "1090")
+            viewModel.save(
+                account = null,
+                name = "Amex papier",
+                type = AccountType.CARD,
+                last4 = "1090",
+                openingBalance = null,
+            )
             val added = viewModel.accounts.first { it.isNotEmpty() }.single()
 
-            viewModel.save(added, name = "Amex papier", type = AccountType.CARD, last4 = "8484")
+            viewModel.save(added, name = "Amex papier", type = AccountType.CARD, last4 = "8484", openingBalance = null)
 
             assertEquals(
                 "8484",
@@ -118,7 +175,13 @@ class AccountsViewModelTest {
     @Test
     fun `an unused account goes`() =
         runTest {
-            viewModel.save(account = null, name = "Amex papier", type = AccountType.CARD, last4 = "8484")
+            viewModel.save(
+                account = null,
+                name = "Amex papier",
+                type = AccountType.CARD,
+                last4 = "8484",
+                openingBalance = null,
+            )
             val account = viewModel.accounts.first { it.isNotEmpty() }.single()
 
             viewModel.remove(account)

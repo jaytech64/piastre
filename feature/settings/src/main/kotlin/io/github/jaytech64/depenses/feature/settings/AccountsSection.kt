@@ -5,6 +5,8 @@ package io.github.jaytech64.depenses.feature.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -22,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.AccountDialog
+import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.designsystem.accountTypeLabel
 import io.github.jaytech64.depenses.core.designsystem.walletLabel
 import io.github.jaytech64.depenses.core.model.Account
@@ -66,8 +70,8 @@ internal fun AccountsSection(viewModel: AccountsViewModel = hiltViewModel()) {
         val account = (edit as? AccountEdit.Existing)?.account
         AccountDialog(
             account = account,
-            onSave = { name, type, last4 ->
-                viewModel.save(account, name, type, last4)
+            onSave = { name, type, last4, openingBalance ->
+                viewModel.save(account, name, type, last4, openingBalance)
                 editing = null
             },
             onDismiss = { editing = null },
@@ -92,14 +96,14 @@ private sealed interface AccountEdit {
 
 /**
  * A named account leads with its name; one still waiting for a name leads with how
- * Wallet shows it, and says it can be named.
+ * Wallet shows it, and says it can be named. Either ends with what it holds now,
+ * which carries the income colour when it is above zero.
  */
 @Composable
 private fun AccountRow(
     account: Account,
     onClick: () -> Unit,
 ) {
-    val name = account.name
     val digits = walletLabel(account)
     val transactions =
         pluralStringResource(
@@ -110,13 +114,38 @@ private fun AccountRow(
     val kind = stringResource(accountTypeLabel(account.type))
     val addedByHand = stringResource(R.string.settings_accounts_added).takeIf { account.origin == AccountOrigin.USER }
 
-    Column(
+    Row(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        AccountLabels(account, kind = kind, digits = digits, transactions = transactions, addedByHand = addedByHand)
+        Text(
+            Formatters.money(account.balance),
+            style = MaterialTheme.typography.bodyLarge,
+            color =
+                if (account.balance.minor > 0) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+        )
+    }
+}
+
+@Composable
+private fun RowScope.AccountLabels(
+    account: Account,
+    kind: String,
+    digits: String,
+    transactions: String,
+    addedByHand: String?,
+) {
+    val name = account.name
+    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         if (name != null) {
             Text(name, style = MaterialTheme.typography.bodyLarge)
             Text(

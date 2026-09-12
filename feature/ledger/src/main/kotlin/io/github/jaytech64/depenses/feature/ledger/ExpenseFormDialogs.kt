@@ -69,8 +69,8 @@ internal fun FormDialog(
             val slot = if (picking == Picking.ADD_ACCOUNT) AccountSlot.SOURCE else AccountSlot.DESTINATION
             AccountDialog(
                 account = null,
-                onSave = { name, type, last4 ->
-                    viewModel.addAccount(name, type, last4, slot)
+                onSave = { name, type, last4, openingBalance ->
+                    viewModel.addAccount(name, type, last4, openingBalance, slot)
                     onClose()
                 },
                 onDismiss = onClose,

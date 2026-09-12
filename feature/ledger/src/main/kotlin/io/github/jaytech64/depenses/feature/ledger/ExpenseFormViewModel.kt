@@ -171,10 +171,11 @@ class ExpenseFormViewModel
             name: String,
             type: AccountType,
             last4: String,
+            openingBalance: Money?,
             slot: AccountSlot,
         ) {
             viewModelScope.launch {
-                val id = accounts.add(name, type, last4)
+                val id = accounts.add(name, type, last4, openingBalance)
                 onAccountChange(slot, id)
             }
         }

@@ -25,4 +25,8 @@ data class Account(
     val origin: AccountOrigin,
     /** Confirmed transactions on it, either side of a transfer included. */
     val transactionCount: Int,
+    /** What it held before any transaction the ledger knows about; null when nobody said. */
+    val openingBalance: Money?,
+    /** The opening balance moved by every confirmed transaction on it, in the home currency. */
+    val balance: Money,
 )

@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import io.github.jaytech64.depenses.parsing.GoogleWalletParser
 import io.github.jaytech64.depenses.parsing.ParserRegistry
@@ -183,6 +184,81 @@ class AccountRepositoryTest {
             assertEquals("Amex papier", read?.accountName)
             assertEquals("8484", read?.cardLast4)
         }
+
+    /** Paying the card from the bank lowers one and brings the other's debt toward zero. */
+    @Test
+    fun `a balance starts from the opening balance and follows every confirmed row`() =
+        runTest {
+            val bank =
+                accounts.add(
+                    "Débit",
+                    AccountType.BANK,
+                    last4 = null,
+                    openingBalance = Money(1_850_00, Money.CAD),
+                )
+            val card =
+                accounts.add(
+                    "Visa",
+                    AccountType.CARD,
+                    last4 = null,
+                    openingBalance = Money(-640_25, Money.CAD),
+                )
+            enter(1_500_00, TransactionKind.INCOME, accountId = bank)
+            enter(8_82, TransactionKind.EXPENSE, accountId = card)
+            enter(412_50, TransactionKind.TRANSFER, accountId = bank, toAccountId = card)
+
+            val balances = accounts.all().first().associate { it.name to it.balance.minor }
+
+            assertEquals(1_850_00L + 1_500_00 - 412_50, balances["Débit"])
+            assertEquals(-640_25L - 8_82 + 412_50, balances["Visa"])
+        }
+
+    @Test
+    fun `an account nobody gave a starting point has none, and holds only its rows`() =
+        runTest {
+            val id = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "8484")
+            enter(12_50, TransactionKind.EXPENSE, accountId = id)
+
+            val account = accounts.all().first().single()
+
+            assertNull(account.openingBalance)
+            assertEquals(-12_50L, account.balance.minor)
+        }
+
+    /** The same rule as every total (ADR-0002): only what you agreed to moves a number. */
+    @Test
+    fun `a row waiting for review moves no balance`() =
+        runTest {
+            val id = accounts.add("Débit", AccountType.BANK, last4 = null, openingBalance = Money(100_00, Money.CAD))
+            val entered = enter(12_50, TransactionKind.EXPENSE, accountId = id)
+            val row = database.transactionDao().byId(entered)!!
+            database.transactionDao().update(row.copy(status = TransactionStatus.NEEDS_REVIEW))
+
+            assertEquals(
+                100_00L,
+                accounts
+                    .all()
+                    .first()
+                    .single()
+                    .balance.minor,
+            )
+        }
+
+    private suspend fun enter(
+        minor: Long,
+        kind: TransactionKind,
+        accountId: Long,
+        toAccountId: Long? = null,
+    ): Long =
+        transactions.addManual(
+            amount = Money(minor, Money.CAD),
+            merchantName = null,
+            occurredAt = Instant.ofEpochMilli(POSTED_AT),
+            note = null,
+            kind = kind,
+            accountId = accountId,
+            toAccountId = toAccountId,
+        )
 
     private suspend fun captureCoffee(
         key: String,

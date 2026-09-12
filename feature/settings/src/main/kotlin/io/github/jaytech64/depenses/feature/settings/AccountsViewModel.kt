@@ -9,6 +9,7 @@ import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
+import io.github.jaytech64.depenses.core.model.Money
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -37,21 +38,32 @@ class AccountsViewModel
 
         /**
          * Adds an account, or saves an existing one. One Wallet named takes only a
-         * new name — its digits and its kind are the bank's — while an account you
-         * added takes all three.
+         * new name and an opening balance — its digits and its kind are the bank's —
+         * while an account you added takes everything.
          */
         fun save(
             account: Account?,
             name: String,
             type: AccountType,
             last4: String,
+            openingBalance: Money?,
         ) {
             removalRefusedState.value = false
             viewModelScope.launch {
                 when {
-                    account == null -> repository.add(name, type, last4)
-                    account.origin == AccountOrigin.USER -> repository.updateAdded(account.id, name, type, last4)
-                    else -> repository.rename(account.id, name)
+                    account == null -> {
+                        repository.add(name, type, last4, openingBalance)
+                    }
+
+                    account.origin == AccountOrigin.USER -> {
+                        repository.updateAdded(account.id, name, type, last4)
+                        repository.setOpeningBalance(account.id, openingBalance)
+                    }
+
+                    else -> {
+                        repository.rename(account.id, name)
+                        repository.setOpeningBalance(account.id, openingBalance)
+                    }
                 }
             }
         }
