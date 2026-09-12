@@ -45,6 +45,15 @@ An import written later must handle version 1 or refuse it explicitly; silently 
 A file, once written, is outside every guarantee this app makes.
 It sits in Downloads, it is readable by anything with storage access, and it is the one place the "everything stays on the device" promise ends by design rather than by accident.
 
+## Amended 2026-09-11 — income and cards
+
+Schema 7 gives a transaction a kind, how it was paid and the card it points at, and both formats now carry them.
+The CSV gains three columns at the end — `type` (`EXPENSE` or `INCOME`), `payment` (`CARD`, `CASH`, or empty when nothing was said) and the card's name — so every earlier column keeps its position and an existing spreadsheet still reads.
+The method and the name are separate columns because the CSV's values are stored codes, never translated text, and a column mixing `CASH` with a name you typed would be neither.
+The JSON gains `kind`, `paymentMethod`, `cardId` and `cardName` on each transaction, and a top-level `cards` list.
+Nothing was removed and no field changed meaning, so the JSON stays at version 1.
+The names you give your cards are data about you, which is why they leave with the rest.
+
 ## Where this lives in the code
 
 - `core/data/src/main/kotlin/.../LedgerExport.kt` — both writers, the BOM, the separator, the hand-rolled decimal.

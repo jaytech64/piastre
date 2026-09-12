@@ -43,6 +43,15 @@ enum class MatchType { EXACT, PREFIX, REGEX }
 /** A user-made alias always outranks one the parser invented. */
 enum class AliasOrigin { AUTO, USER }
 
+/**
+ * Which way the money went. Amounts are stored as magnitudes either way; the
+ * kind is what decides whether a transaction adds to a balance or takes from it.
+ */
+enum class TransactionKind { EXPENSE, INCOME }
+
+/** How a transaction was paid, when that is known. The card itself is [Transaction.cardId]. */
+enum class PaymentMethod { CARD, CASH }
+
 data class Transaction(
     val id: Long,
     val amount: Money,
@@ -57,6 +66,11 @@ data class Transaction(
     val cardLabel: String?,
     val cardLast4: String?,
     val note: String?,
+    val kind: TransactionKind = TransactionKind.EXPENSE,
+    val paymentMethod: PaymentMethod? = null,
+    val cardId: Long? = null,
+    /** The name you gave the card, or null until you do. */
+    val cardName: String? = null,
 ) {
     /**
      * What to put on screen. The canonical merchant if the raw string resolved to
@@ -64,6 +78,18 @@ data class Transaction(
      * carried no merchant at all — which is a case the review inbox owns.
      */
     val displayMerchant: String? get() = merchantName ?: merchantRaw
+
+    /** The amount as it moves a balance: income adds to it, an expense takes from it. */
+    val signedAmount: Money get() = if (kind == TransactionKind.INCOME) amount else -amount
+
+    /** What it was paid with, as the form offers it: cash, a card, or nothing said. */
+    val payment: Payment?
+        get() =
+            when (paymentMethod) {
+                PaymentMethod.CASH -> Payment.Cash
+                PaymentMethod.CARD -> cardId?.let(Payment::ByCard)
+                null -> null
+            }
 }
 
 /**

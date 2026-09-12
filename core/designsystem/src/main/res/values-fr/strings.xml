@@ -1,0 +1,11 @@
+<resources>
+    <string name="card_dialog_add_title">Ajouter une carte</string>
+    <string name="card_dialog_edit_title">Nommer cette carte</string>
+    <string name="card_dialog_from_wallet">%1$s, tel que l\'indique Wallet</string>
+    <string name="card_dialog_name">Nom</string>
+    <string name="card_dialog_last4">4 derniers chiffres (facultatif)</string>
+    <string name="card_dialog_last4_locked">4 derniers chiffres · fournis par Wallet</string>
+    <string name="card_dialog_remove">Retirer</string>
+    <string name="card_dialog_save">Enregistrer</string>
+    <string name="card_dialog_cancel">Annuler</string>
+</resources>

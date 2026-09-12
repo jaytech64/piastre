@@ -5,6 +5,8 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Payment
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import io.github.jaytech64.depenses.parsing.GoogleWalletParser
@@ -15,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,6 +54,7 @@ class TransactionEditorTest {
                     transactions = database.transactionDao(),
                     registry = ParserRegistry(listOf(GoogleWalletParser())),
                     merchants = merchants,
+                    cards = CardRepository(database.cardDao()),
                     zoneId = Provider { ZONE },
                 ),
             )
@@ -74,7 +78,15 @@ class TransactionEditorTest {
             captureCoffee()
             val id = capturedId()
 
-            editor.edit(id, Money(700, Money.CAD), MERCHANT_RAW, occurredAt(), note = "Avec un croissant")
+            editor.edit(
+                id,
+                Money(700, Money.CAD),
+                TransactionKind.EXPENSE,
+                MERCHANT_RAW,
+                occurredAt(),
+                note = "Avec un croissant",
+                payment = null,
+            )
             captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
 
             val stored = repository.byId(id)
@@ -90,7 +102,15 @@ class TransactionEditorTest {
             captureCoffee()
             val id = capturedId()
 
-            editor.edit(id, Money(625, Money.CAD), "Café Olimpico", occurredAt(), note = null)
+            editor.edit(
+                id,
+                Money(625, Money.CAD),
+                TransactionKind.EXPENSE,
+                "Café Olimpico",
+                occurredAt(),
+                note = null,
+                payment = null,
+            )
 
             val stored = repository.byId(id)
             assertEquals("Café Olimpico", stored?.displayMerchant)
@@ -109,7 +129,15 @@ class TransactionEditorTest {
             val id = capturedId()
             val shownAs = repository.byId(id)?.displayMerchant
 
-            editor.edit(id, Money(625, Money.CAD), shownAs, occurredAt(), note = "Réunion")
+            editor.edit(
+                id,
+                Money(625, Money.CAD),
+                TransactionKind.EXPENSE,
+                shownAs,
+                occurredAt(),
+                note = "Réunion",
+                payment = null,
+            )
 
             val alias = database.merchantDao().allAliases().single { it.pattern == MERCHANT_RAW }
             assertEquals(AliasOrigin.AUTO, alias.createdBy)
@@ -122,7 +150,15 @@ class TransactionEditorTest {
             val id = capturedId()
             val before = repository.byId(id)?.merchantId
 
-            editor.edit(id, Money(625, Money.CAD), "  ", occurredAt(), note = null)
+            editor.edit(
+                id,
+                Money(625, Money.CAD),
+                TransactionKind.EXPENSE,
+                "  ",
+                occurredAt(),
+                note = null,
+                payment = null,
+            )
 
             assertEquals(before, repository.byId(id)?.merchantId)
         }
@@ -132,7 +168,15 @@ class TransactionEditorTest {
         runTest {
             val id = addManual(merchant = "Dépanneur du coin")
 
-            editor.edit(id, Money(1_250, Money.CAD), "", occurredAt(), note = null)
+            editor.edit(
+                id,
+                Money(1_250, Money.CAD),
+                TransactionKind.EXPENSE,
+                "",
+                occurredAt(),
+                note = null,
+                payment = null,
+            )
 
             assertNull(repository.byId(id)?.displayMerchant)
         }
@@ -154,7 +198,15 @@ class TransactionEditorTest {
                     .atZone(ZONE)
                     .toInstant()
 
-            editor.edit(id, Money(625, Money.CAD), MERCHANT_RAW, lateEvening, note = null)
+            editor.edit(
+                id,
+                Money(625, Money.CAD),
+                TransactionKind.EXPENSE,
+                MERCHANT_RAW,
+                lateEvening,
+                note = null,
+                payment = null,
+            )
 
             val stored = repository.byId(id)
             assertEquals(LocalDate.of(2026, 9, 5), stored?.localDate)
@@ -190,6 +242,91 @@ class TransactionEditorTest {
             assertEquals(2, database.rawNotificationEventDao().count().first())
         }
 
+    @Test
+    fun `turning a captured purchase into income survives Wallet posting it again`() =
+        runTest {
+            captureCoffee()
+            val id = capturedId()
+
+            editor.edit(
+                id,
+                Money(625, Money.CAD),
+                TransactionKind.INCOME,
+                MERCHANT_RAW,
+                occurredAt(),
+                note = "Remboursé",
+                payment = null,
+            )
+            captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
+
+            assertEquals(TransactionKind.INCOME, repository.byId(id)?.kind)
+        }
+
+    /** Even a row nobody has ruled on keeps a kind you set, the way it keeps your note. */
+    @Test
+    fun `a re-parse keeps the kind of a row nobody has ruled on`() =
+        runTest {
+            captureCoffee()
+            val id = capturedId()
+            val dao = database.transactionDao()
+            dao.update(dao.byId(id)!!.copy(kind = TransactionKind.INCOME))
+
+            captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
+
+            assertEquals(TransactionKind.INCOME, dao.byId(id)?.kind)
+        }
+
+    @Test
+    fun `a manual entry takes the card it was paid with, or cash`() =
+        runTest {
+            val cardId = CardRepository(database.cardDao()).add(name = "Amex papier", last4 = "8484")
+            val id = addManual(merchant = "Dépanneur du coin")
+
+            editor.edit(
+                id,
+                Money(1_250, Money.CAD),
+                TransactionKind.EXPENSE,
+                "Dépanneur du coin",
+                occurredAt(),
+                note = null,
+                payment = Payment.ByCard(cardId),
+            )
+            assertEquals(Payment.ByCard(cardId), repository.byId(id)?.payment)
+
+            editor.edit(
+                id,
+                Money(1_250, Money.CAD),
+                TransactionKind.EXPENSE,
+                "Dépanneur du coin",
+                occurredAt(),
+                note = null,
+                payment = Payment.Cash,
+            )
+            assertEquals(Payment.Cash, repository.byId(id)?.payment)
+        }
+
+    /** The notification named the card; an edit cannot say otherwise. */
+    @Test
+    fun `a captured purchase keeps the card its notification named`() =
+        runTest {
+            captureCoffee()
+            val id = capturedId()
+            val named = repository.byId(id)?.payment
+
+            editor.edit(
+                id,
+                Money(625, Money.CAD),
+                TransactionKind.EXPENSE,
+                MERCHANT_RAW,
+                occurredAt(),
+                note = null,
+                payment = Payment.Cash,
+            )
+
+            assertTrue(named is Payment.ByCard)
+            assertEquals(named, repository.byId(id)?.payment)
+        }
+
     private suspend fun capturedId(): Long =
         repository
             .confirmed()
@@ -198,7 +335,14 @@ class TransactionEditorTest {
             .id
 
     private suspend fun addManual(merchant: String?): Long =
-        repository.addManual(Money(1_250, Money.CAD), merchant, occurredAt(), note = null)
+        repository.addManual(
+            Money(1_250, Money.CAD),
+            merchant,
+            occurredAt(),
+            note = null,
+            kind = TransactionKind.EXPENSE,
+            payment = null,
+        )
 
     private fun occurredAt(): Instant = Instant.ofEpochMilli(POSTED_AT)
 

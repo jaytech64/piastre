@@ -155,6 +155,40 @@ class DepensesDatabaseMigrationTest {
         )
     }
 
+    /**
+     * The one migration that runs on a phone full of real purchases with a new
+     * table to fill: every card already seen must arrive as one card, with its
+     * purchases pointing at it, and nothing may stop being an expense.
+     */
+    @Test
+    fun `migrating to schema 7 turns each card already seen into one card`() {
+        helper.createDatabase(NAME, 6).use { database ->
+            database.insertTransaction(sourceKey = "tag-1", cardLabel = "Carte d'accès Desrives", cardLast4 = "0000")
+            database.insertTransaction(sourceKey = "tag-2", cardLabel = "Carte d'accès Desrives", cardLast4 = "0000")
+            database.insertTransaction(sourceKey = "tag-3", cardLabel = "Récompenses Visa", cardLast4 = "7373")
+            database.insertTransaction(sourceKey = "manual-1", source = "MANUAL", cardLast4 = null)
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 7, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(2, migrated.count("card"))
+        assertEquals(3, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE cardId IS NOT NULL"))
+        assertEquals(3, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE paymentMethod = 'CARD'"))
+        assertEquals(
+            2,
+            migrated.singleInt(
+                "SELECT COUNT(*) FROM expense_transaction t JOIN card c ON c.id = t.cardId WHERE c.last4 = '0000'",
+            ),
+        )
+        assertEquals(4, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE kind = 'EXPENSE'"))
+        assertEquals(
+            0,
+            migrated.singleInt(
+                "SELECT COUNT(*) FROM expense_transaction WHERE source = 'MANUAL' AND cardId IS NOT NULL",
+            ),
+        )
+    }
+
     private fun SupportSQLiteDatabase.insertRawEvent(
         postedAtUtcMillis: Long,
         sourcePackage: String = WALLET,
@@ -167,16 +201,20 @@ class DepensesDatabaseMigrationTest {
         arrayOf<Any>(sourcePackage, KEY, postedAtUtcMillis, "fr-CA", "MARCHE ST JOSEPH  1234", "23,42 $ avec"),
     )
 
-    private fun SupportSQLiteDatabase.insertTransaction() =
-        execSQL(
-            "INSERT INTO expense_transaction " +
-                "(rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay, " +
-                "merchantId, merchantRaw, categoryId, source, status, confidence, parserId, parserVersion, " +
-                "sourcePackage, sourceKey, cardLabel, cardLast4, note) " +
-                "VALUES (NULL, 6554, 'CAD', ?, 'America/Toronto', 20707, NULL, 'MARCHE ST DAVID', NULL, " +
-                "'NOTIFICATION', 'CONFIRMED', 1.0, 'google-wallet', 1, ?, 'tag-1', NULL, '1011', NULL)",
-            arrayOf<Any>(FIRST_POST, WALLET),
-        )
+    private fun SupportSQLiteDatabase.insertTransaction(
+        sourceKey: String = "tag-1",
+        source: String = "NOTIFICATION",
+        cardLabel: String? = null,
+        cardLast4: String? = "6262",
+    ) = execSQL(
+        "INSERT INTO expense_transaction " +
+            "(rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay, " +
+            "merchantId, merchantRaw, categoryId, source, status, confidence, parserId, parserVersion, " +
+            "sourcePackage, sourceKey, cardLabel, cardLast4, note) " +
+            "VALUES (NULL, 6554, 'CAD', ?, 'America/Toronto', 20707, NULL, 'MARCHE ST DAVID', NULL, " +
+            "?, 'CONFIRMED', 1.0, 'google-wallet', 1, ?, ?, ?, ?, NULL)",
+        arrayOf<Any?>(FIRST_POST, source, WALLET, sourceKey, cardLabel, cardLast4),
+    )
 
     private fun SupportSQLiteDatabase.singleRawEventPackage(): String =
         query("SELECT sourcePackage FROM raw_notification_event").use { cursor ->

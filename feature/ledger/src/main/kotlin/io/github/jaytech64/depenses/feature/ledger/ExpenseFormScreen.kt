@@ -9,17 +9,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,7 +46,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.model.Card
 import io.github.jaytech64.depenses.core.model.Merchant
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -48,7 +56,8 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 /**
- * Adds a purchase, or corrects one already in the ledger.
+ * Adds a transaction — money spent or received — or corrects one already in the
+ * ledger.
  *
  * Cash and Interac never post a notification, so they are typed. Only the amount
  * is required: a purchase you half-remember is still worth more in the ledger
@@ -61,6 +70,7 @@ fun ExpenseFormScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val merchants by viewModel.knownMerchants.collectAsStateWithLifecycle()
+    val cards by viewModel.knownCards.collectAsStateWithLifecycle()
     var picking by remember { mutableStateOf(Picking.NOTHING) }
 
     LaunchedEffect(state.done) {
@@ -72,61 +82,31 @@ fun ExpenseFormScreen(
     EntryForm(
         state = state,
         merchants = merchants,
+        cards = cards,
         viewModel = viewModel,
         onPick = { picking = it },
         onCancel = onDone,
     )
 
-    when (picking) {
-        Picking.DATE -> {
-            DatePickerSheet(
-                date = state.date,
-                onPicked = {
-                    viewModel.onDateChange(it)
-                    picking = Picking.NOTHING
-                },
-                onCancel = { picking = Picking.NOTHING },
-            )
-        }
-
-        Picking.TIME -> {
-            TimePickerSheet(
-                time = state.time,
-                onPicked = {
-                    viewModel.onTimeChange(it)
-                    picking = Picking.NOTHING
-                },
-                onCancel = { picking = Picking.NOTHING },
-            )
-        }
-
-        Picking.DELETE -> {
-            ConfirmDeleteDialog(
-                onConfirm = {
-                    viewModel.delete()
-                    picking = Picking.NOTHING
-                },
-                onCancel = { picking = Picking.NOTHING },
-            )
-        }
-
-        Picking.NOTHING -> {
-            Unit
-        }
-    }
+    FormDialog(picking = picking, state = state, viewModel = viewModel, onClose = { picking = Picking.NOTHING })
 }
 
 @Composable
 private fun EntryForm(
     state: ExpenseFormUiState,
     merchants: List<Merchant>,
+    cards: List<Card>,
     viewModel: ExpenseFormViewModel,
     onPick: (Picking) -> Unit,
     onCancel: () -> Unit,
 ) {
+    // Scrolls because a split-screen window, or the keyboard, can leave less
+    // height than the form needs — and Save is the last thing in it.
     Column(
         Modifier
             .fillMaxSize()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -134,6 +114,8 @@ private fun EntryForm(
             stringResource(if (state.isEditing) R.string.edit_title else R.string.manual_title),
             style = MaterialTheme.typography.titleLarge,
         )
+
+        KindToggle(kind = state.kind, onChange = viewModel::onKindChange)
 
         OutlinedTextField(
             value = state.amountText,
@@ -148,7 +130,7 @@ private fun EntryForm(
         OutlinedTextField(
             value = state.merchantText,
             onValueChange = viewModel::onMerchantChange,
-            label = { Text(stringResource(R.string.manual_merchant)) },
+            label = { Text(stringResource(merchantLabel(state.kind))) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -159,6 +141,10 @@ private fun EntryForm(
             onPick = viewModel::onMerchantChange,
         )
 
+        if (state.kind == TransactionKind.EXPENSE) {
+            PaidWithField(state, cards, onPick = viewModel::onPaymentChange, onAddCard = { onPick(Picking.ADD_CARD) })
+        }
+
         WhenRow(state = state, onPick = onPick)
 
         OutlinedTextField(
@@ -168,24 +154,74 @@ private fun EntryForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = viewModel::save, enabled = state.canSave) {
-                Text(stringResource(R.string.manual_save))
-            }
-            TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
-            if (state.isEditing) {
-                Spacer(Modifier.weight(1f))
-                TextButton(
-                    onClick = { onPick(Picking.DELETE) },
-                    enabled = !state.saving,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                ) {
-                    Text(stringResource(R.string.edit_delete))
-                }
+        FormActions(
+            state = state,
+            onSave = viewModel::save,
+            onCancel = onCancel,
+            onDelete = { onPick(Picking.DELETE) },
+        )
+    }
+}
+
+/** Save and Cancel together; Delete kept apart at the far end, and only when there is something to delete. */
+@Composable
+private fun FormActions(
+    state: ExpenseFormUiState,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(onClick = onSave, enabled = state.canSave) {
+            Text(stringResource(R.string.manual_save))
+        }
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
+        if (state.isEditing) {
+            Spacer(Modifier.weight(1f))
+            TextButton(
+                onClick = onDelete,
+                enabled = !state.saving,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text(stringResource(R.string.edit_delete))
             }
         }
     }
 }
+
+/**
+ * Expense or income, first on the form because it changes what the rest of it
+ * asks: income comes from a source, not a merchant.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun KindToggle(
+    kind: TransactionKind,
+    onChange: (TransactionKind) -> Unit,
+) {
+    val options =
+        listOf(
+            TransactionKind.EXPENSE to R.string.form_kind_expense,
+            TransactionKind.INCOME to R.string.form_kind_income,
+        )
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (option, label) ->
+            SegmentedButton(
+                selected = kind == option,
+                onClick = { onChange(option) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+            ) {
+                Text(stringResource(label))
+            }
+        }
+    }
+}
+
+private fun merchantLabel(kind: TransactionKind): Int =
+    when (kind) {
+        TransactionKind.EXPENSE -> R.string.manual_merchant
+        TransactionKind.INCOME -> R.string.form_source
+    }
 
 /** Defaults to now, because that is when almost every cash purchase is entered. */
 @Composable
@@ -204,9 +240,6 @@ private fun WhenRow(
         }
     }
 }
-
-/** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
-private enum class Picking { NOTHING, DATE, TIME, DELETE }
 
 /**
  * Names you have used before, filtered as you type.
@@ -243,78 +276,6 @@ private fun MerchantSuggestions(
         }
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DatePickerSheet(
-    date: LocalDate,
-    onPicked: (LocalDate) -> Unit,
-    onCancel: () -> Unit,
-) {
-    // The picker speaks UTC millis; the date is held as a plain LocalDate, so the
-    // conversion is pinned to UTC at both ends rather than to a zone that would
-    // shift the day by one either side of midnight.
-    val pickerState = rememberDatePickerState(initialSelectedDateMillis = date.toUtcMillis())
-
-    AlertDialog(
-        onDismissRequest = onCancel,
-        confirmButton = {
-            TextButton(
-                onClick = { pickerState.selectedDateMillis?.let { onPicked(it.toUtcLocalDate()) } },
-            ) {
-                Text(stringResource(R.string.manual_save))
-            }
-        },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
-        text = { DatePicker(state = pickerState) },
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerSheet(
-    time: LocalTime,
-    onPicked: (LocalTime) -> Unit,
-    onCancel: () -> Unit,
-) {
-    val pickerState = rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = true)
-
-    AlertDialog(
-        onDismissRequest = onCancel,
-        confirmButton = {
-            TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
-                Text(stringResource(R.string.manual_save))
-            }
-        },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
-        text = { TimePicker(state = pickerState) },
-    )
-}
-
-@Composable
-private fun ConfirmDeleteDialog(
-    onConfirm: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onCancel,
-        title = { Text(stringResource(R.string.edit_delete_title)) },
-        text = { Text(stringResource(R.string.edit_delete_body)) },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            ) {
-                Text(stringResource(R.string.edit_delete))
-            }
-        },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
-    )
-}
-
-private fun LocalDate.toUtcMillis(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-
-private fun Long.toUtcLocalDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
 private fun LocalTime.toInstantOn(date: LocalDate): Instant = date.atTime(this).toInstant(ZoneOffset.UTC)
 

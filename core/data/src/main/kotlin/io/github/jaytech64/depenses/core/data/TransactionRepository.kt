@@ -7,7 +7,9 @@ import io.github.jaytech64.depenses.core.database.ReportDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Payment
 import io.github.jaytech64.depenses.core.model.Transaction
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.model.localDateEpochDay
@@ -57,8 +59,8 @@ class TransactionRepository
         fun count(): Flow<Int> = transactions.count()
 
         /**
-         * Records a purchase no notification will ever describe — cash, Interac, a
-         * card this phone does not carry.
+         * Records a transaction no notification will ever describe — cash, Interac,
+         * a card this phone does not carry, or money coming in.
          *
          * Such a row has no natural identity, so it is given one: a random key under
          * a source package no parser claims. That keeps the uniqueness constraint
@@ -68,12 +70,16 @@ class TransactionRepository
          * The zone is the one you are in as you type, which is also the zone the day
          * bucket is computed in — a purchase entered on a trip belongs to the day it
          * was that trip, not the day it was back home.
+         *
+         * [payment] is null when nothing was said about it, and always for income.
          */
         suspend fun addManual(
             amount: Money,
             merchantName: String?,
             occurredAt: Instant,
             note: String?,
+            kind: TransactionKind,
+            payment: Payment?,
         ): Long {
             val zone = zoneId.get()
             val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
@@ -100,6 +106,9 @@ class TransactionRepository
                     cardLabel = null,
                     cardLast4 = null,
                     note = note?.takeIf { it.isNotBlank() }?.trim(),
+                    kind = kind,
+                    paymentMethod = payment.method(),
+                    cardId = payment.cardId(),
                 ),
             )
         }
@@ -149,7 +158,11 @@ internal fun toDomain(row: TransactionWithMerchant): Transaction =
             source = source,
             status = status,
             cardLabel = cardLabel,
-            cardLast4 = cardLast4,
+            cardLast4 = row.resolvedCardLast4 ?: cardLast4,
             note = note,
+            kind = kind,
+            paymentMethod = paymentMethod,
+            cardId = cardId,
+            cardName = row.cardName,
         )
     }

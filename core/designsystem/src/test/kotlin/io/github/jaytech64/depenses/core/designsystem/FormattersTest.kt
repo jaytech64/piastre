@@ -55,6 +55,17 @@ class FormattersTest {
     }
 
     @Test
+    fun `a balance states its direction, and zero states none`() {
+        val gain = Formatters.signedMoney(Money(10_790, Money.CAD), Locale.CANADA_FRENCH)
+        val loss = Formatters.signedMoney(Money(-4_210, Money.CAD), Locale.CANADA_FRENCH)
+        val zero = Formatters.signedMoney(Money(0, Money.CAD), Locale.CANADA)
+
+        assertTrue(gain, gain.startsWith("+") && gain.contains("107,90"))
+        assertTrue(loss, (loss.startsWith("-") || loss.startsWith("−")) && loss.contains("42,10"))
+        assertEquals(Formatters.money(Money(0, Money.CAD), Locale.CANADA), zero)
+    }
+
+    @Test
     fun `minor units are never truncated to whole dollars`() {
         assertEquals("$0.07", Formatters.money(Money(7, Money.CAD), Locale.CANADA))
     }
@@ -95,6 +106,13 @@ class FormattersTest {
 
         assertTrue(shown, shown.contains("12"))
         assertTrue(shown, shown.contains("47"))
+    }
+
+    @Test
+    fun `a card is called by its name, and by its digits until it has one`() {
+        assertEquals("Débit Desrives", Formatters.cardName("Débit Desrives", "0000"))
+        assertEquals("\u2022\u20220000", Formatters.cardName(null, "0000"))
+        assertNull(Formatters.cardName(null, null))
     }
 
     @Test

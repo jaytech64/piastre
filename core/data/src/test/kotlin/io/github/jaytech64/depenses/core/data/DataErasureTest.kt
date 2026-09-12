@@ -3,10 +3,12 @@
 package io.github.jaytech64.depenses.core.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import io.github.jaytech64.depenses.core.database.CardEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.database.RawNotificationEventEntity
+import io.github.jaytech64.depenses.core.model.CardOrigin
 import io.github.jaytech64.depenses.core.model.ParseState
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -74,6 +76,7 @@ class DataErasureTest {
             assertEquals(0, database.rawNotificationEventDao().count().first())
             assertEquals(0, database.transactionDao().count().first())
             assertTrue(database.merchantDao().allOnce().isEmpty())
+            assertTrue("the names you gave your cards are data about you", database.cardDao().allOnce().isEmpty())
         }
 
     @Test
@@ -115,6 +118,9 @@ class DataErasureTest {
                 parseState = ParseState.PARSED,
                 parsedByVersion = 1,
             ),
+        )
+        database.cardDao().insert(
+            CardEntity(name = "Débit Desrives", issuerLabel = null, last4 = "6262", origin = CardOrigin.USER),
         )
         val merchantId =
             database.merchantDao().insert(

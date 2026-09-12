@@ -51,6 +51,7 @@ class ParsePipelineTest {
                 transactions = database.transactionDao(),
                 registry = ParserRegistry(listOf(GoogleWalletParser())),
                 merchants = merchants,
+                cards = CardRepository(database.cardDao()),
                 zoneId = Provider { ZONE },
             )
         capture = NotificationCapture(rawEvents, pipeline)

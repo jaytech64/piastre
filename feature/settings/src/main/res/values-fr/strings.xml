@@ -45,6 +45,17 @@
     <string name="onboarding_grant">Autoriser l\'accès aux notifications</string>
     <string name="onboarding_later">Plus tard</string>
 
+    <string name="settings_cards_section">Cartes</string>
+    <string name="settings_cards_add">Ajouter une carte</string>
+    <string name="settings_cards_unnamed">Touchez pour la nommer</string>
+    <string name="settings_cards_added">Ajoutée à la main</string>
+    <plurals name="settings_cards_purchases">
+        <item quantity="one">%d achat</item>
+        <item quantity="other">%d achats</item>
+    </plurals>
+    <string name="settings_cards_empty">Aucune carte pour l\'instant. Une carte apparaît ici après son premier paiement Wallet, ou vous pouvez en ajouter une.</string>
+    <string name="settings_cards_still_used">Cette carte est encore utilisée par une transaction, elle reste donc.</string>
+
     <string name="settings_data_section">Vos données</string>
     <string name="settings_export">Exporter</string>
     <string name="settings_export_body">CSV et JSON, vers un fichier que vous choisissez.</string>
@@ -82,4 +93,7 @@
     <string name="export_column_status">statut</string>
     <string name="export_column_card">carte</string>
     <string name="export_column_note">note</string>
+    <string name="export_column_type">type</string>
+    <string name="export_column_payment">paiement</string>
+    <string name="export_column_card_name">nom de la carte</string>
 </resources>

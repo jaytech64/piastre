@@ -3,12 +3,16 @@
 package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
+import io.github.jaytech64.depenses.core.data.CardRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Payment
+import io.github.jaytech64.depenses.core.model.PaymentMethod
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -69,6 +73,7 @@ class ExpenseFormViewModelTest {
             transactions = repository,
             editor = TransactionEditor(database.transactionDao(), merchants, Clock.systemUTC()),
             merchants = merchants,
+            cards = CardRepository(database.cardDao()),
             zoneId = Provider { ZONE },
         )
 
@@ -101,6 +106,7 @@ class ExpenseFormViewModelTest {
             viewModel.onAmountChange("12,50")
             viewModel.onMerchantChange("Dépanneur du coin")
             viewModel.onNoteChange("Argent comptant")
+            viewModel.onPaymentChange(Payment.Cash)
             viewModel.onDateChange(LocalDate.of(2026, 9, 7))
             viewModel.onTimeChange(LocalTime.of(9, 41))
 
@@ -113,6 +119,7 @@ class ExpenseFormViewModelTest {
             assertEquals(TransactionSource.MANUAL, stored.source)
             assertEquals(TransactionStatus.CONFIRMED, stored.status)
             assertEquals("Argent comptant", stored.note)
+            assertEquals(Payment.Cash, stored.payment)
             assertEquals(LocalDate.of(2026, 9, 7), stored.localDate)
         }
 
@@ -218,6 +225,84 @@ class ExpenseFormViewModelTest {
             awaitDone()
         }
 
+    @Test
+    fun `money received is saved as income`() =
+        runTest {
+            viewModel.onKindChange(TransactionKind.INCOME)
+            viewModel.onAmountChange("150,00")
+            viewModel.onMerchantChange("Acme inc.")
+            viewModel.save()
+            awaitDone()
+
+            val stored = repository.confirmed().first().single()
+            assertEquals(TransactionKind.INCOME, stored.kind)
+            assertEquals(15_000L, stored.amount.minor)
+        }
+
+    @Test
+    fun `editing opens on the kind that was saved`() =
+        runTest {
+            viewModel.onKindChange(TransactionKind.INCOME)
+            viewModel.onAmountChange("150,00")
+            viewModel.save()
+            awaitDone()
+            val id =
+                repository
+                    .confirmed()
+                    .first()
+                    .single()
+                    .id
+
+            viewModel = newViewModel(editing = id)
+
+            assertEquals(TransactionKind.INCOME, viewModel.uiState.first { !it.loading }.kind)
+        }
+
+    @Test
+    fun `a card added from the form is picked and paid with`() =
+        runTest {
+            viewModel.onAmountChange("6,25")
+            viewModel.addCard(name = "Amex papier", last4 = "8484")
+            viewModel.uiState.first { it.payment is Payment.ByCard }
+
+            viewModel.save()
+            awaitDone()
+
+            val stored = repository.confirmed().first().single()
+            assertEquals(PaymentMethod.CARD, stored.paymentMethod)
+            assertEquals("Amex papier", stored.cardName)
+        }
+
+    /** Income has no Paid with field, so what it said before the switch is not kept. */
+    @Test
+    fun `switching to income drops what it was paid with`() =
+        runTest {
+            viewModel.onAmountChange("150,00")
+            viewModel.onPaymentChange(Payment.Cash)
+            viewModel.onKindChange(TransactionKind.INCOME)
+
+            viewModel.save()
+            awaitDone()
+
+            assertNull(
+                repository
+                    .confirmed()
+                    .first()
+                    .single()
+                    .paymentMethod,
+            )
+        }
+
+    @Test
+    fun `editing opens on what it was paid with`() =
+        runTest {
+            val id = addCashPurchase()
+
+            viewModel = newViewModel(editing = id)
+
+            assertEquals(Payment.Cash, viewModel.uiState.first { !it.loading }.payment)
+        }
+
     private suspend fun addCashPurchase(): Long =
         repository.addManual(
             amount = Money(1_250, Money.CAD),
@@ -229,6 +314,8 @@ class ExpenseFormViewModelTest {
                     .atZone(ZONE)
                     .toInstant(),
             note = "Argent comptant",
+            kind = TransactionKind.EXPENSE,
+            payment = Payment.Cash,
         )
 
     /**

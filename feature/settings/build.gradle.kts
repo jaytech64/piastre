@@ -11,6 +11,7 @@ dependencies {
     // is still bound — so the answer lives there and this screen only shows it.
     implementation(project(":capture:listener"))
 
+    testImplementation(project(":core:testing"))
     testImplementation(libs.androidx.datastore.preferences)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)

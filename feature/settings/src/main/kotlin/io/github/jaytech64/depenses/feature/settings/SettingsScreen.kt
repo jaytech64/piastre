@@ -67,6 +67,8 @@ fun SettingsScreen(
             body = pluralStringResource(R.plurals.settings_raw_log_count, state.rawEventCount, state.rawEventCount),
         )
 
+        CardsSection()
+
         DataSection(lastAction = lastAction, viewModel = viewModel)
 
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))

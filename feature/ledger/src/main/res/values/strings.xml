@@ -1,7 +1,9 @@
 <resources>
     <string name="ledger_today">Today</string>
     <string name="ledger_yesterday">Yesterday</string>
-    <string name="ledger_spent_today">Spent today</string>
+    <string name="ledger_balance_today">Today\'s balance</string>
+    <string name="ledger_income">Income</string>
+    <string name="ledger_cash">Cash</string>
     <string name="ledger_manual_entry">manual entry</string>
     <string name="ledger_unknown_merchant">Unknown merchant</string>
     <string name="ledger_empty_title">No expenses yet</string>
@@ -10,15 +12,22 @@
         <item quantity="one">%d to review</item>
         <item quantity="other">%d to review</item>
     </plurals>
-    <string name="manual_add">Add an expense</string>
-    <string name="manual_title">Add an expense</string>
+    <string name="manual_add">Add a transaction</string>
+    <string name="manual_title">New transaction</string>
     <string name="manual_amount">Amount</string>
     <string name="manual_merchant">Merchant</string>
     <string name="manual_note">Note (optional)</string>
     <string name="manual_save">Save</string>
     <string name="manual_cancel">Cancel</string>
-    <string name="edit_title">Edit expense</string>
+    <string name="edit_title">Edit transaction</string>
     <string name="edit_delete">Delete</string>
-    <string name="edit_delete_title">Delete this expense?</string>
+    <string name="edit_delete_title">Delete this transaction?</string>
     <string name="edit_delete_body">It will no longer appear in the ledger or in any total.</string>
+    <string name="form_kind_expense">Expense</string>
+    <string name="form_kind_income">Income</string>
+    <string name="form_source">Source</string>
+    <string name="form_paid_with">Paid with</string>
+    <string name="form_paid_with_none">Not specified</string>
+    <string name="form_paid_with_cash">Cash</string>
+    <string name="form_add_card">Add a card…</string>
 </resources>

@@ -59,7 +59,7 @@ fun LedgerScreen(
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TodayHeader(
-                spent = state.spentToday,
+                balance = state.balanceToday,
                 needsReview = state.needsReview,
                 onReviewClick = onReviewClick,
             )
@@ -84,7 +84,7 @@ fun LedgerScreen(
 
 @Composable
 private fun TodayHeader(
-    spent: Money,
+    balance: Money,
     needsReview: Int,
     onReviewClick: () -> Unit,
 ) {
@@ -96,11 +96,11 @@ private fun TodayHeader(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                stringResource(R.string.ledger_spent_today),
+                stringResource(R.string.ledger_balance_today),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(Formatters.money(spent), style = MaterialTheme.typography.headlineMedium)
+            Text(Formatters.signedMoney(balance), style = MaterialTheme.typography.headlineMedium)
 
             // Shown only when there is something to say. Totals exclude unreviewed
             // purchases, so without this a low number would be a silent lie — and
@@ -129,7 +129,7 @@ private fun DayList(
             yesterday = stringResource(R.string.ledger_yesterday),
         )
 
-    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+    LazyColumn(contentPadding = PaddingValues(bottom = ADD_BUTTON_CLEARANCE)) {
         days.forEach { day ->
             item(key = day.date.toEpochDay()) {
                 DayHeader(
@@ -162,94 +162,12 @@ private fun DayHeader(
             modifier = Modifier.weight(1f),
         )
         Text(
-            Formatters.money(total),
+            Formatters.signedMoney(total),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
-
-@Composable
-private fun TransactionRow(
-    transaction: Transaction,
-    locale: Locale,
-    onClick: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        MerchantInitials(transaction.displayMerchant)
-
-        Column(Modifier.weight(1f)) {
-            Text(
-                transaction.displayMerchant ?: stringResource(R.string.ledger_unknown_merchant),
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                transaction.subtitle(locale),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        Text(Formatters.money(transaction.amount, locale), style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-/**
- * The time, then whichever of the card or the manual marker applies — enough to
- * tell two purchases at one merchant apart without a detail screen.
- */
-@Composable
-private fun Transaction.subtitle(locale: Locale): String {
-    val manual = stringResource(R.string.ledger_manual_entry)
-    val parts =
-        listOfNotNull(
-            Formatters.time(occurredAt, zoneId, locale),
-            Formatters.cardMask(cardLast4),
-            manual.takeIf { source == TransactionSource.MANUAL },
-        )
-    return parts.joinToString(SEPARATOR)
-}
-
-@Composable
-private fun MerchantInitials(merchant: String?) {
-    Surface(
-        Modifier.size(36.dp),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-    ) {
-        Column(
-            Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                merchant.initials(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-        }
-    }
-}
-
-private fun String?.initials(): String =
-    orEmpty()
-        .split(' ')
-        .filter { it.isNotBlank() }
-        .take(2)
-        .map { it.first().uppercaseChar() }
-        .joinToString("")
-        .ifEmpty { "?" }
 
 @Composable
 private fun EmptyLedger() {
@@ -279,4 +197,9 @@ private fun EmptyLedger() {
 @Composable
 private fun currentLocale(): Locale = LocalConfiguration.current.locales[0]
 
-private const val SEPARATOR = " · "
+/**
+ * Room below the last row for the floating add button: its 56 dp height, its
+ * 16 dp margin, and 16 dp of air. Without it the newest-first list ends with the
+ * oldest purchase's amount hidden under the button, unreachable by scrolling.
+ */
+private val ADD_BUTTON_CLEARANCE = 88.dp

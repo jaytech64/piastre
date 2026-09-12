@@ -13,6 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ExpenseTransactionEntity::class,
         MerchantEntity::class,
         MerchantAliasEntity::class,
+        CardEntity::class,
     ],
     version = DepensesDatabase.VERSION,
     exportSchema = true,
@@ -26,15 +27,17 @@ abstract class DepensesDatabase : RoomDatabase() {
 
     abstract fun reportDao(): ReportDao
 
+    abstract fun cardDao(): CardDao
+
     companion object {
-        const val VERSION: Int = 6
+        const val VERSION: Int = 7
 
         /**
          * Migrations are listed here rather than passed at the call site so that
          * adding one cannot be forgotten in a second place.
          */
         val MIGRATIONS: Array<Migration> =
-            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+            arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 
         const val NAME: String = "depenses.db"
     }
@@ -148,5 +151,52 @@ private val MIGRATION_5_6 =
     object : Migration(5, 6) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE raw_notification_event ADD COLUMN redactedAtUtcMillis INTEGER DEFAULT NULL")
+        }
+    }
+
+/**
+ * Schema 7 adds cards, income and how a transaction was paid.
+ *
+ * Every card already seen in a notification becomes a card row and its purchases
+ * point at it, so the Cards screen opens on the cards you actually use rather
+ * than on an empty list. Every existing row stays an expense, which keeps every
+ * total the app has ever shown exactly as it was.
+ */
+private val MIGRATION_6_7 =
+    object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `card` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`name` TEXT, `issuerLabel` TEXT, `last4` TEXT, `origin` TEXT NOT NULL)",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_card_issuerLabel_last4` ON `card` (`issuerLabel`, `last4`)",
+            )
+            db.execSQL(
+                """
+                INSERT INTO card (issuerLabel, last4, origin)
+                SELECT DISTINCT cardLabel, cardLast4, 'WALLET' FROM expense_transaction
+                WHERE source = 'NOTIFICATION' AND cardLast4 IS NOT NULL
+                """.trimIndent(),
+            )
+            db.execSQL("ALTER TABLE expense_transaction ADD COLUMN kind TEXT NOT NULL DEFAULT 'EXPENSE'")
+            db.execSQL("ALTER TABLE expense_transaction ADD COLUMN paymentMethod TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE expense_transaction ADD COLUMN cardId INTEGER DEFAULT NULL")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_expense_transaction_cardId` ON `expense_transaction` (`cardId`)",
+            )
+            db.execSQL(
+                """
+                UPDATE expense_transaction SET
+                    cardId = (
+                        SELECT c.id FROM card c
+                        WHERE c.origin = 'WALLET'
+                          AND c.issuerLabel IS expense_transaction.cardLabel
+                          AND c.last4 = expense_transaction.cardLast4
+                    ),
+                    paymentMethod = 'CARD'
+                WHERE source = 'NOTIFICATION' AND cardLast4 IS NOT NULL
+                """.trimIndent(),
+            )
         }
     }

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
+import io.github.jaytech64.depenses.core.database.CardDao
 import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
@@ -43,8 +44,13 @@ data class CsvLabels(
     val status: String,
     val card: String,
     val note: String,
+    val type: String,
+    val payment: String,
+    val cardName: String,
 ) {
-    internal fun headerRow(): List<String> = listOf(date, time, merchant, amount, currency, source, status, card, note)
+    /** The columns added with income and cards come last, so every earlier column keeps its position. */
+    internal fun headerRow(): List<String> =
+        listOf(date, time, merchant, amount, currency, source, status, card, note, type, payment, cardName)
 }
 
 /**
@@ -61,6 +67,7 @@ class LedgerExport
     constructor(
         private val transactions: TransactionDao,
         private val merchants: MerchantDao,
+        private val cards: CardDao,
         private val clock: Clock,
     ) {
         /** Returns how many transactions were written. */
@@ -113,6 +120,9 @@ class LedgerExport
                 transaction.status.name,
                 transaction.cardLast4.orEmpty(),
                 transaction.note.orEmpty(),
+                transaction.kind.name,
+                transaction.paymentMethod?.name.orEmpty(),
+                cardName.orEmpty(),
             )
         }
 
@@ -161,6 +171,16 @@ class LedgerExport
                         merchants.allAliases().map {
                             ExportedAlias(it.id, it.merchantId, it.pattern, it.matchType.name, it.createdBy.name)
                         },
+                    cards =
+                        cards.allOnce().map {
+                            ExportedCard(
+                                it.id,
+                                it.name,
+                                it.issuerLabel,
+                                it.last4,
+                                it.origin.name,
+                            )
+                        },
                     transactions = rows.map { it.toExported() },
                 )
             out.bufferedWriter(Charsets.UTF_8).apply {
@@ -189,12 +209,17 @@ class LedgerExport
                 cardLabel = transaction.cardLabel,
                 cardLast4 = transaction.cardLast4,
                 note = transaction.note,
+                kind = transaction.kind.name,
+                paymentMethod = transaction.paymentMethod?.name,
+                cardId = transaction.cardId,
+                cardName = cardName,
             )
 
         private companion object {
             /**
              * Bumped whenever a field is removed or changes meaning. A reader that
-             * does not recognise the number should refuse rather than guess.
+             * does not recognise the number should refuse rather than guess. Income
+             * and cards only added fields, so they did not bump it.
              */
             const val FORMAT_VERSION = 1
 
@@ -223,7 +248,18 @@ private data class ExportDocument(
     val exportedAtUtc: String,
     val merchants: List<ExportedMerchant>,
     val aliases: List<ExportedAlias>,
+    val cards: List<ExportedCard>,
     val transactions: List<ExportedTransaction>,
+)
+
+/** A card, with the name you gave it — which is data about you, so it leaves with the rest. */
+@Serializable
+private data class ExportedCard(
+    val id: Long,
+    val name: String?,
+    val issuerLabel: String?,
+    val last4: String?,
+    val origin: String,
 )
 
 @Serializable
@@ -262,4 +298,8 @@ private data class ExportedTransaction(
     val cardLabel: String?,
     val cardLast4: String?,
     val note: String?,
+    val kind: String,
+    val paymentMethod: String?,
+    val cardId: Long?,
+    val cardName: String?,
 )
