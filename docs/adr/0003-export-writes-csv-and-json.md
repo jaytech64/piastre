@@ -69,6 +69,11 @@ Null and zero are kept apart on purpose, because an import fills in a balance no
 Nothing was removed and no field changed meaning, so the format stays at version 2, and a version-2 file written before this change reads as having no opening balances.
 The CSV is unchanged: it lists transactions, and an opening balance is not one.
 
+## Amended 2026-09-12 — the import exists
+
+The import this record deferred has been written, and reads version 2 only.
+How it treats a ledger that already holds data is its own decision: see [ADR-0005](0005-import-merges-and-never-replaces.md).
+
 ## Where this lives in the code
 
 - `core/data/src/main/kotlin/.../LedgerExport.kt` — both writers, the BOM, the separator, the hand-rolled decimal.
