@@ -145,6 +145,12 @@ data class AccountEntity(
     val issuerLabel: String?,
     val last4: String?,
     val origin: AccountOrigin,
+    /**
+     * What the account held before any transaction the ledger knows about, in
+     * minor units of the home currency, negative for money owed. Null when it was
+     * never given — which an import tells apart from a balance you set to zero.
+     */
+    val openingBalanceMinor: Long? = null,
 )
 
 /**

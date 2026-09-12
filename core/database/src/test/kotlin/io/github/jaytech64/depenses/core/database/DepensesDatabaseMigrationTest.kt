@@ -235,6 +235,25 @@ class DepensesDatabaseMigrationTest {
         assertEquals(3, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE kind = 'EXPENSE'"))
     }
 
+    @Test
+    fun `migrating to schema 9 leaves every account without an opening balance`() {
+        helper.createDatabase(NAME, 8).use { database ->
+            database.execSQL(
+                "INSERT INTO account (name, type, issuerLabel, last4, origin) " +
+                    "VALUES ('Visa perso', 'CARD', 'Récompenses Visa', '4821', 'WALLET')",
+            )
+            database.execSQL(
+                "INSERT INTO account (name, type, issuerLabel, last4, origin) " +
+                    "VALUES (NULL, 'CASH', NULL, NULL, 'USER')",
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 9, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(2, migrated.count("account"))
+        assertEquals(2, migrated.singleInt("SELECT COUNT(*) FROM account WHERE openingBalanceMinor IS NULL"))
+    }
+
     private fun SupportSQLiteDatabase.insertSchema7Transaction(
         sourceKey: String,
         paymentMethod: String?,

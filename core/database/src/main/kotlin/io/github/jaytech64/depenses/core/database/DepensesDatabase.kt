@@ -30,7 +30,7 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
 
     companion object {
-        const val VERSION: Int = 8
+        const val VERSION: Int = 9
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -45,6 +45,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_5_6,
                 MIGRATION_6_7,
                 MIGRATION_7_8,
+                MIGRATION_8_9,
             )
 
         const val NAME: String = "depenses.db"
@@ -304,6 +305,20 @@ private fun SupportSQLiteDatabase.rebuildTransactionsOntoAccounts() {
     execSQL("ALTER TABLE expense_transaction_new RENAME TO expense_transaction")
     recreateTransactionIndices()
 }
+
+/**
+ * Schema 9 lets an account start from a balance.
+ *
+ * Every existing account gets null rather than zero. Nobody has said what any of
+ * them held, and zero would be a claim — one an import would then have to treat
+ * as a balance you chose and refuse to fill in.
+ */
+private val MIGRATION_8_9 =
+    object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE account ADD COLUMN openingBalanceMinor INTEGER DEFAULT NULL")
+        }
+    }
 
 private fun SupportSQLiteDatabase.recreateTransactionIndices() {
     execSQL(
