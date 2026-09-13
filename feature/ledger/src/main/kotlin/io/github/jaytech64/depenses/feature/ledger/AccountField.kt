@@ -22,8 +22,9 @@ import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.TransactionKind
 
 /**
- * One account slot on the form: what an expense came from, or either end of a
- * transfer — with a way to add the account that is missing without leaving.
+ * One account slot on the form: what an expense came from, what income went
+ * into, or either end of a transfer — with a way to add the account that is
+ * missing without leaving.
  *
  * [readOnly] carries the account of a captured purchase: the notification
  * already named it, so it is shown rather than offered.
@@ -94,8 +95,9 @@ internal fun AccountField(
 }
 
 /**
- * The account slots this kind of transaction needs: one for an expense, two for
- * a transfer, none for income — money arriving has no account to spend from.
+ * The account slots this kind of transaction needs: the account an expense came
+ * from or income went into, or both ends of a transfer. Income asks "into" so the
+ * direction is on the form, the way a transfer says from and to.
  */
 @Composable
 internal fun AccountFields(
@@ -107,7 +109,14 @@ internal fun AccountFields(
     val captured = state.capturedAccountLabel.takeIf { state.isCaptured }
     when (state.kind) {
         TransactionKind.INCOME -> {
-            Unit
+            AccountField(
+                label = R.string.form_into,
+                selectedId = state.accountId,
+                accounts = accounts,
+                onPick = { viewModel.onAccountChange(AccountSlot.SOURCE, it) },
+                onAddAccount = { onAddFor(AccountSlot.SOURCE) },
+                readOnly = captured,
+            )
         }
 
         TransactionKind.EXPENSE -> {

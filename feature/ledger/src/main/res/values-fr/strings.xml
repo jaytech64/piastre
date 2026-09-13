@@ -2,7 +2,6 @@
     <string name="ledger_today">Aujourd\'hui</string>
     <string name="ledger_yesterday">Hier</string>
     <string name="ledger_balance_today">Solde du jour</string>
-    <string name="ledger_income">Revenu</string>
     <string name="ledger_cash">Comptant</string>
     <string name="ledger_transfer">Virement</string>
     <string name="ledger_account">Compte</string>
@@ -33,5 +32,6 @@
     <string name="form_account_none">Non précisé</string>
     <string name="form_from">De</string>
     <string name="form_to">À</string>
+    <string name="form_into">Déposé dans</string>
     <string name="form_add_account">Ajouter un compte…</string>
 </resources>

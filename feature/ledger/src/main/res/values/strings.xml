@@ -2,7 +2,6 @@
     <string name="ledger_today">Today</string>
     <string name="ledger_yesterday">Yesterday</string>
     <string name="ledger_balance_today">Today\'s balance</string>
-    <string name="ledger_income">Income</string>
     <string name="ledger_cash">Cash</string>
     <string name="ledger_transfer">Transfer</string>
     <string name="ledger_account">Account</string>
@@ -33,5 +32,6 @@
     <string name="form_account_none">Not specified</string>
     <string name="form_from">From</string>
     <string name="form_to">To</string>
+    <string name="form_into">Into</string>
     <string name="form_add_account">Add an account…</string>
 </resources>

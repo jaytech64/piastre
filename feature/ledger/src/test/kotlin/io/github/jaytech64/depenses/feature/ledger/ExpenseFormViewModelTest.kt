@@ -281,22 +281,62 @@ class ExpenseFormViewModelTest {
 
     /** Income has no account field, so what an expense said before the switch is not kept. */
     @Test
-    fun `switching to income drops the account it was spent from`() =
+    fun `income goes into the account it was saved to, and raises that account's balance`() =
         runTest {
-            viewModel.onAmountChange("150,00")
-            viewModel.onAccountChange(AccountSlot.SOURCE, cashAccount())
+            val bank = accounts.add(name = "Débit", type = AccountType.BANK, last4 = null)
             viewModel.onKindChange(TransactionKind.INCOME)
+            viewModel.onAmountChange("150,00")
+            viewModel.onAccountChange(AccountSlot.SOURCE, bank)
 
             viewModel.save()
             awaitDone()
 
-            assertNull(
+            assertEquals(
+                bank,
                 repository
                     .confirmed()
                     .first()
                     .single()
                     .accountId,
             )
+            assertEquals(
+                15_000L,
+                accounts
+                    .all()
+                    .first()
+                    .single { it.id == bank }
+                    .balance.minor,
+            )
+        }
+
+    /** An income saved untouched must not lose its account, or its balance silently drops it. */
+    @Test
+    fun `editing an income keeps the account it went into`() =
+        runTest {
+            val bank = accounts.add(name = "Débit", type = AccountType.BANK, last4 = null)
+            val id =
+                repository.addManual(
+                    amount = Money(15_000, Money.CAD),
+                    merchantName = "Desrives",
+                    occurredAt =
+                        LocalDate
+                            .of(2026, 9, 7)
+                            .atTime(0, 0)
+                            .atZone(ZONE)
+                            .toInstant(),
+                    note = null,
+                    kind = TransactionKind.INCOME,
+                    accountId = bank,
+                    toAccountId = null,
+                )
+            viewModel = newViewModel(editing = id)
+            assertEquals(bank, viewModel.uiState.first { !it.loading }.accountId)
+
+            viewModel.onAmountChange("175,00")
+            viewModel.save()
+            awaitDone()
+
+            assertEquals(bank, repository.byId(id)?.accountId)
         }
 
     @Test

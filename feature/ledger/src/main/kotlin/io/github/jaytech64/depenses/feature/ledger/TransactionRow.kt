@@ -124,16 +124,16 @@ private fun accountLabel(
         ?: stringResource(if (type == AccountType.CASH) R.string.ledger_cash else R.string.ledger_account)
 
 /**
- * The time, then what the row is: a transfer, income, the account it came from,
- * or failing all of those that it was typed by hand. Enough to tell two
- * purchases at one merchant apart without a detail screen.
+ * The time, then what the row is: a transfer, the account the money came from or
+ * went into, or failing both that it was typed by hand. Income is not named
+ * here: its plus sign and colour already say so. Enough to tell two purchases at
+ * one merchant apart without a detail screen.
  */
 @Composable
 private fun Transaction.subtitle(locale: Locale): String {
     val what =
         when {
             kind == TransactionKind.TRANSFER -> stringResource(R.string.ledger_transfer)
-            kind == TransactionKind.INCOME -> stringResource(R.string.ledger_income)
             accountId != null -> accountLabel(accountName, accountType, cardLast4)
             source == TransactionSource.MANUAL -> stringResource(R.string.ledger_manual_entry)
             else -> Formatters.cardMask(cardLast4)

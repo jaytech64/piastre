@@ -65,7 +65,7 @@ data class Transaction(
     val cardLast4: String?,
     val note: String?,
     val kind: TransactionKind = TransactionKind.EXPENSE,
-    /** Where the money came from, or left from on a transfer. Null when nothing was said. */
+    /** Where the money came from, went into for income, or left from on a transfer. Null when nothing was said. */
     val accountId: Long? = null,
     /** The name you gave that account, or null until you do. */
     val accountName: String? = null,

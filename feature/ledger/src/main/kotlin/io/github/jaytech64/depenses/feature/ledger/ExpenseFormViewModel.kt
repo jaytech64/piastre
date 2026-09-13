@@ -51,7 +51,10 @@ data class ExpenseFormUiState(
     val time: LocalTime,
     val note: String = "",
     val kind: TransactionKind = TransactionKind.EXPENSE,
-    /** Where the money came from, or left from on a transfer. Null when nothing was said. */
+    /**
+     * The account the money came from, went into for income, or left on a transfer.
+     * Null when nothing was said. Kept across a change of kind: every kind has one.
+     */
     val accountId: Long? = null,
     /** Where a transfer lands. Null on anything else. */
     val toAccountId: Long? = null,
@@ -69,9 +72,6 @@ data class ExpenseFormUiState(
 
     /** A transaction needs an amount; a transfer also needs two accounts, and two different ones. */
     val canSave: Boolean get() = amount != null && !saving && !loading && transferIsSettled
-
-    /** Income has no account field, so what an expense said is not carried into it. */
-    val sourceToSave: Long? get() = accountId.takeIf { kind != TransactionKind.INCOME }
 
     /** Only a transfer has a destination; switching away from one drops it. */
     val destinationToSave: Long? get() = toAccountId.takeIf { kind == TransactionKind.TRANSFER }
@@ -198,7 +198,7 @@ class ExpenseFormViewModel
                         occurredAt = state.occurredAt(zoneId.get()),
                         note = state.note,
                         kind = state.kind,
-                        accountId = state.sourceToSave,
+                        accountId = state.accountId,
                         toAccountId = state.destinationToSave,
                     )
                 } else {
@@ -209,7 +209,7 @@ class ExpenseFormViewModel
                         merchantName = state.merchantText,
                         occurredAt = state.occurredAtLike(editing),
                         note = state.note,
-                        accountId = state.sourceToSave,
+                        accountId = state.accountId,
                         toAccountId = state.destinationToSave,
                     )
                 }
