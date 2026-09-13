@@ -44,13 +44,11 @@ enum class MatchType { EXACT, PREFIX, REGEX }
 enum class AliasOrigin { AUTO, USER }
 
 /**
- * Which way the money went. Amounts are stored as magnitudes either way; the
- * kind is what decides whether a transaction adds to a balance or takes from it.
+ * Which way the money went. Amounts are stored as magnitudes whichever it is;
+ * the kind decides whether a transaction adds to a balance, takes from it, or
+ * only moves money between two accounts of yours.
  */
-enum class TransactionKind { EXPENSE, INCOME }
-
-/** How a transaction was paid, when that is known. The card itself is [Transaction.cardId]. */
-enum class PaymentMethod { CARD, CASH }
+enum class TransactionKind { EXPENSE, INCOME, TRANSFER }
 
 data class Transaction(
     val id: Long,
@@ -67,10 +65,16 @@ data class Transaction(
     val cardLast4: String?,
     val note: String?,
     val kind: TransactionKind = TransactionKind.EXPENSE,
-    val paymentMethod: PaymentMethod? = null,
-    val cardId: Long? = null,
-    /** The name you gave the card, or null until you do. */
-    val cardName: String? = null,
+    /** Where the money came from, went into for income, or left from on a transfer. Null when nothing was said. */
+    val accountId: Long? = null,
+    /** The name you gave that account, or null until you do. */
+    val accountName: String? = null,
+    val accountType: AccountType? = null,
+    /** Where a transfer landed. Null on anything else. */
+    val toAccountId: Long? = null,
+    val toAccountName: String? = null,
+    val toAccountLast4: String? = null,
+    val toAccountType: AccountType? = null,
 ) {
     /**
      * What to put on screen. The canonical merchant if the raw string resolved to
@@ -79,16 +83,17 @@ data class Transaction(
      */
     val displayMerchant: String? get() = merchantName ?: merchantRaw
 
-    /** The amount as it moves a balance: income adds to it, an expense takes from it. */
-    val signedAmount: Money get() = if (kind == TransactionKind.INCOME) amount else -amount
-
-    /** What it was paid with, as the form offers it: cash, a card, or nothing said. */
-    val payment: Payment?
+    /**
+     * The amount as it moves a balance: income adds to it, an expense takes from
+     * it, and a transfer moves your own money, so it moves the balance by nothing.
+     * Counting one would charge you twice for the purchases a card payment settles.
+     */
+    val signedAmount: Money
         get() =
-            when (paymentMethod) {
-                PaymentMethod.CASH -> Payment.Cash
-                PaymentMethod.CARD -> cardId?.let(Payment::ByCard)
-                null -> null
+            when (kind) {
+                TransactionKind.INCOME -> amount
+                TransactionKind.EXPENSE -> -amount
+                TransactionKind.TRANSFER -> Money(0, amount.currency)
             }
 }
 

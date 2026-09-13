@@ -3,15 +3,14 @@
 package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
-import io.github.jaytech64.depenses.core.data.CardRepository
+import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
-import io.github.jaytech64.depenses.core.model.Payment
-import io.github.jaytech64.depenses.core.model.PaymentMethod
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -50,6 +49,7 @@ class ExpenseFormViewModelTest {
     private lateinit var database: DepensesDatabase
     private lateinit var repository: TransactionRepository
     private lateinit var merchants: MerchantRepository
+    private lateinit var accounts: AccountRepository
     private lateinit var viewModel: ExpenseFormViewModel
 
     @Before
@@ -57,6 +57,7 @@ class ExpenseFormViewModelTest {
         Dispatchers.setMain(StandardTestDispatcher())
         database = inMemoryDatabase()
         merchants = MerchantRepository(database.merchantDao())
+        accounts = AccountRepository(database.accountDao())
         repository =
             TransactionRepository(
                 transactions = database.transactionDao(),
@@ -73,7 +74,7 @@ class ExpenseFormViewModelTest {
             transactions = repository,
             editor = TransactionEditor(database.transactionDao(), merchants, Clock.systemUTC()),
             merchants = merchants,
-            cards = CardRepository(database.cardDao()),
+            accounts = accounts,
             zoneId = Provider { ZONE },
         )
 
@@ -106,7 +107,7 @@ class ExpenseFormViewModelTest {
             viewModel.onAmountChange("12,50")
             viewModel.onMerchantChange("Dépanneur du coin")
             viewModel.onNoteChange("Argent comptant")
-            viewModel.onPaymentChange(Payment.Cash)
+            viewModel.onAccountChange(AccountSlot.SOURCE, cashAccount())
             viewModel.onDateChange(LocalDate.of(2026, 9, 7))
             viewModel.onTimeChange(LocalTime.of(9, 41))
 
@@ -119,7 +120,7 @@ class ExpenseFormViewModelTest {
             assertEquals(TransactionSource.MANUAL, stored.source)
             assertEquals(TransactionStatus.CONFIRMED, stored.status)
             assertEquals("Argent comptant", stored.note)
-            assertEquals(Payment.Cash, stored.payment)
+            assertEquals(cashAccount(), stored.accountId)
             assertEquals(LocalDate.of(2026, 9, 7), stored.localDate)
         }
 
@@ -259,27 +260,145 @@ class ExpenseFormViewModelTest {
         }
 
     @Test
-    fun `a card added from the form is picked and paid with`() =
+    fun `an account added from the form is picked and spent from`() =
         runTest {
             viewModel.onAmountChange("6,25")
-            viewModel.addCard(name = "Amex papier", last4 = "8484")
-            viewModel.uiState.first { it.payment is Payment.ByCard }
+            viewModel.addAccount("Amex papier", AccountType.CARD, "8484", openingBalance = null, AccountSlot.SOURCE)
+            viewModel.uiState.first { it.accountId != null }
+
+            viewModel.save()
+            awaitDone()
+
+            assertEquals(
+                "Amex papier",
+                repository
+                    .confirmed()
+                    .first()
+                    .single()
+                    .accountName,
+            )
+        }
+
+    /** Income has no account field, so what an expense said before the switch is not kept. */
+    @Test
+    fun `income goes into the account it was saved to, and raises that account's balance`() =
+        runTest {
+            val bank = accounts.add(name = "Débit", type = AccountType.BANK, last4 = null)
+            viewModel.onKindChange(TransactionKind.INCOME)
+            viewModel.onAmountChange("150,00")
+            viewModel.onAccountChange(AccountSlot.SOURCE, bank)
+
+            viewModel.save()
+            awaitDone()
+
+            assertEquals(
+                bank,
+                repository
+                    .confirmed()
+                    .first()
+                    .single()
+                    .accountId,
+            )
+            assertEquals(
+                15_000L,
+                accounts
+                    .all()
+                    .first()
+                    .single { it.id == bank }
+                    .balance.minor,
+            )
+        }
+
+    /** An income saved untouched must not lose its account, or its balance silently drops it. */
+    @Test
+    fun `editing an income keeps the account it went into`() =
+        runTest {
+            val bank = accounts.add(name = "Débit", type = AccountType.BANK, last4 = null)
+            val id =
+                repository.addManual(
+                    amount = Money(15_000, Money.CAD),
+                    merchantName = "Desrives",
+                    occurredAt =
+                        LocalDate
+                            .of(2026, 9, 7)
+                            .atTime(0, 0)
+                            .atZone(ZONE)
+                            .toInstant(),
+                    note = null,
+                    kind = TransactionKind.INCOME,
+                    accountId = bank,
+                    toAccountId = null,
+                )
+            viewModel = newViewModel(editing = id)
+            assertEquals(bank, viewModel.uiState.first { !it.loading }.accountId)
+
+            viewModel.onAmountChange("175,00")
+            viewModel.save()
+            awaitDone()
+
+            assertEquals(bank, repository.byId(id)?.accountId)
+        }
+
+    @Test
+    fun `editing opens on the account it came from`() =
+        runTest {
+            val id = addCashPurchase()
+
+            viewModel = newViewModel(editing = id)
+
+            assertEquals(cashAccount(), viewModel.uiState.first { !it.loading }.accountId)
+        }
+
+    /** A transfer into the account it came from is a typo, not a transaction. */
+    @Test
+    fun `a transfer needs two accounts, and two different ones`() =
+        runTest {
+            val cash = cashAccount()
+            val card = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "8484")
+            viewModel.onKindChange(TransactionKind.TRANSFER)
+            viewModel.onAmountChange("450,00")
+
+            viewModel.onAccountChange(AccountSlot.SOURCE, cash)
+            assertFalse(viewModel.uiState.value.canSave)
+
+            viewModel.onAccountChange(AccountSlot.DESTINATION, cash)
+            assertFalse(viewModel.uiState.value.canSave)
+
+            viewModel.onAccountChange(AccountSlot.DESTINATION, card)
+            assertTrue(viewModel.uiState.value.canSave)
+        }
+
+    @Test
+    fun `a transfer is saved between both accounts and moves the balance by nothing`() =
+        runTest {
+            val cash = cashAccount()
+            val card = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "8484")
+            viewModel.onKindChange(TransactionKind.TRANSFER)
+            viewModel.onAmountChange("450,00")
+            viewModel.onAccountChange(AccountSlot.SOURCE, cash)
+            viewModel.onAccountChange(AccountSlot.DESTINATION, card)
 
             viewModel.save()
             awaitDone()
 
             val stored = repository.confirmed().first().single()
-            assertEquals(PaymentMethod.CARD, stored.paymentMethod)
-            assertEquals("Amex papier", stored.cardName)
+            assertEquals(TransactionKind.TRANSFER, stored.kind)
+            assertEquals(cash, stored.accountId)
+            assertEquals(card, stored.toAccountId)
+            assertEquals("Amex papier", stored.toAccountName)
+            assertEquals(0L, stored.signedAmount.minor)
         }
 
-    /** Income has no Paid with field, so what it said before the switch is not kept. */
     @Test
-    fun `switching to income drops what it was paid with`() =
+    fun `switching a transfer back to an expense drops where it was going`() =
         runTest {
-            viewModel.onAmountChange("150,00")
-            viewModel.onPaymentChange(Payment.Cash)
-            viewModel.onKindChange(TransactionKind.INCOME)
+            val cash = cashAccount()
+            val card = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "8484")
+            viewModel.onAmountChange("450,00")
+            viewModel.onKindChange(TransactionKind.TRANSFER)
+            viewModel.onAccountChange(AccountSlot.SOURCE, cash)
+            viewModel.onAccountChange(AccountSlot.DESTINATION, card)
+            viewModel.onKindChange(TransactionKind.EXPENSE)
 
             viewModel.save()
             awaitDone()
@@ -289,18 +408,8 @@ class ExpenseFormViewModelTest {
                     .confirmed()
                     .first()
                     .single()
-                    .paymentMethod,
+                    .toAccountId,
             )
-        }
-
-    @Test
-    fun `editing opens on what it was paid with`() =
-        runTest {
-            val id = addCashPurchase()
-
-            viewModel = newViewModel(editing = id)
-
-            assertEquals(Payment.Cash, viewModel.uiState.first { !it.loading }.payment)
         }
 
     private suspend fun addCashPurchase(): Long =
@@ -315,8 +424,18 @@ class ExpenseFormViewModelTest {
                     .toInstant(),
             note = "Argent comptant",
             kind = TransactionKind.EXPENSE,
-            payment = Payment.Cash,
+            accountId = cashAccount(),
+            toAccountId = null,
         )
+
+    /** The cash account every real database is created with, made on demand here. */
+    private suspend fun cashAccount(): Long =
+        accounts
+            .all()
+            .first()
+            .firstOrNull { it.type == AccountType.CASH }
+            ?.id
+            ?: accounts.add(name = null, type = AccountType.CASH, last4 = null)
 
     /**
      * Room's writes run on its own executor, off the test scheduler, so the flag is

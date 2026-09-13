@@ -45,16 +45,16 @@
     <string name="onboarding_grant">Autoriser l\'accès aux notifications</string>
     <string name="onboarding_later">Plus tard</string>
 
-    <string name="settings_cards_section">Cartes</string>
-    <string name="settings_cards_add">Ajouter une carte</string>
-    <string name="settings_cards_unnamed">Touchez pour la nommer</string>
-    <string name="settings_cards_added">Ajoutée à la main</string>
-    <plurals name="settings_cards_purchases">
-        <item quantity="one">%d achat</item>
-        <item quantity="other">%d achats</item>
+    <string name="settings_accounts_section">Comptes</string>
+    <string name="settings_accounts_add">Ajouter un compte</string>
+    <string name="settings_accounts_unnamed">Touchez pour le nommer</string>
+    <string name="settings_accounts_added">Ajouté à la main</string>
+    <plurals name="settings_accounts_transactions">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
     </plurals>
-    <string name="settings_cards_empty">Aucune carte pour l\'instant. Une carte apparaît ici après son premier paiement Wallet, ou vous pouvez en ajouter une.</string>
-    <string name="settings_cards_still_used">Cette carte est encore utilisée par une transaction, elle reste donc.</string>
+    <string name="settings_accounts_empty">Rien que le comptant pour l\'instant. Une carte apparaît ici après son premier paiement Wallet, et vous pouvez ajouter un compte vous-même.</string>
+    <string name="settings_accounts_still_used">Ce compte est encore utilisé par une transaction, il reste donc.</string>
 
     <string name="settings_data_section">Vos données</string>
     <string name="settings_export">Exporter</string>
@@ -67,6 +67,32 @@
     </plurals>
     <string name="settings_export_failed">L\'exportation a échoué : %1$s</string>
     <string name="settings_export_failed_unknown">L\'exportation a échoué. Le fichier n\'a pas pu être écrit.</string>
+
+    <string name="settings_import">Importer</string>
+    <string name="settings_import_body">Un export JSON de cette application. Il s\'ajoute à vos données sans rien remplacer.</string>
+    <string name="settings_import_action">Choisir un fichier…</string>
+    <plurals name="settings_import_title">
+        <item quantity="one">Importer %d transaction ?</item>
+        <item quantity="other">Importer %d transactions ?</item>
+    </plurals>
+    <string name="settings_import_period">Du %1$s au %2$s</string>
+    <string name="settings_import_accounts">Comptes : %1$d déjà présents, %2$d à créer</string>
+    <string name="settings_import_opening">Soldes d\'ouverture ajoutés : %1$d</string>
+    <string name="settings_import_kept">%1$s : le fichier indique %2$s, on garde %3$s</string>
+    <string name="settings_import_merchants">Nouveaux marchands : %1$d</string>
+    <string name="settings_import_already">Déjà présentes, laissées telles quelles : %1$d</string>
+    <string name="settings_import_no_undo">Impossible d\'annuler. Exportez d\'abord si vous voulez pouvoir revenir en arrière.</string>
+    <string name="settings_import_confirm">Importer</string>
+    <plurals name="settings_import_done">
+        <item quantity="one">%1$d transaction importée, %2$d déjà présentes</item>
+        <item quantity="other">%1$d transactions importées, %2$d déjà présentes</item>
+    </plurals>
+    <string name="settings_import_not_export">Ce fichier n\'est pas un export de cette application.</string>
+    <string name="settings_import_version">Cet export est au format %1$d, que cette version de l\'application ne sait pas lire.</string>
+    <string name="settings_import_inconsistent">Cet export se contredit, rien n\'a donc été importé : %1$s</string>
+    <string name="settings_import_ambiguous">Deux de vos comptes s\'appellent %1$s. Renommez-en un, puis importez de nouveau.</string>
+    <string name="settings_import_unreadable">Le fichier n\'a pas pu être lu : %1$s</string>
+    <string name="settings_import_unreadable_unknown">Le fichier n\'a pas pu être lu.</string>
 
     <string name="settings_clear_raw">Effacer le journal brut</string>
     <string name="settings_clear_raw_body">Vos dépenses sont conservées. Une correction future de l\'analyseur ne pourra plus relire ce qui est supprimé ici.</string>
@@ -94,6 +120,6 @@
     <string name="export_column_card">carte</string>
     <string name="export_column_note">note</string>
     <string name="export_column_type">type</string>
-    <string name="export_column_payment">paiement</string>
-    <string name="export_column_card_name">nom de la carte</string>
+    <string name="export_column_account">compte</string>
+    <string name="export_column_to_account">compte de destination</string>
 </resources>

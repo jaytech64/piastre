@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.review
 
-import io.github.jaytech64.depenses.core.data.CardRepository
+import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.NotificationCapture
 import io.github.jaytech64.depenses.core.data.ParsePipeline
@@ -53,7 +53,7 @@ class ReviewViewModelTest {
                     transactions = database.transactionDao(),
                     registry = ParserRegistry(listOf(GoogleWalletParser())),
                     merchants = merchants,
-                    cards = CardRepository(database.cardDao()),
+                    accounts = AccountRepository(database.accountDao()),
                     zoneId = Provider { ZONE },
                 ),
             )

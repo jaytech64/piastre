@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.Formatters
-import io.github.jaytech64.depenses.core.model.Card
+import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import java.time.Instant
@@ -70,7 +70,7 @@ fun ExpenseFormScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val merchants by viewModel.knownMerchants.collectAsStateWithLifecycle()
-    val cards by viewModel.knownCards.collectAsStateWithLifecycle()
+    val accounts by viewModel.knownAccounts.collectAsStateWithLifecycle()
     var picking by remember { mutableStateOf(Picking.NOTHING) }
 
     LaunchedEffect(state.done) {
@@ -82,7 +82,7 @@ fun ExpenseFormScreen(
     EntryForm(
         state = state,
         merchants = merchants,
-        cards = cards,
+        accounts = accounts,
         viewModel = viewModel,
         onPick = { picking = it },
         onCancel = onDone,
@@ -95,7 +95,7 @@ fun ExpenseFormScreen(
 private fun EntryForm(
     state: ExpenseFormUiState,
     merchants: List<Merchant>,
-    cards: List<Card>,
+    accounts: List<Account>,
     viewModel: ExpenseFormViewModel,
     onPick: (Picking) -> Unit,
     onCancel: () -> Unit,
@@ -127,23 +127,24 @@ private fun EntryForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        OutlinedTextField(
-            value = state.merchantText,
-            onValueChange = viewModel::onMerchantChange,
-            label = { Text(stringResource(merchantLabel(state.kind))) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        // A transfer moves your own money, so it has no merchant to name.
+        if (state.kind != TransactionKind.TRANSFER) {
+            OutlinedTextField(
+                value = state.merchantText,
+                onValueChange = viewModel::onMerchantChange,
+                label = { Text(stringResource(merchantLabel(state.kind))) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
-        MerchantSuggestions(
-            merchants = merchants,
-            typed = state.merchantText,
-            onPick = viewModel::onMerchantChange,
-        )
-
-        if (state.kind == TransactionKind.EXPENSE) {
-            PaidWithField(state, cards, onPick = viewModel::onPaymentChange, onAddCard = { onPick(Picking.ADD_CARD) })
+            MerchantSuggestions(
+                merchants = merchants,
+                typed = state.merchantText,
+                onPick = viewModel::onMerchantChange,
+            )
         }
+
+        AccountFields(state, accounts, viewModel, onAddFor = { slot -> onPick(slot.picking()) })
 
         WhenRow(state = state, onPick = onPick)
 
@@ -203,6 +204,7 @@ private fun KindToggle(
         listOf(
             TransactionKind.EXPENSE to R.string.form_kind_expense,
             TransactionKind.INCOME to R.string.form_kind_income,
+            TransactionKind.TRANSFER to R.string.form_kind_transfer,
         )
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         options.forEachIndexed { index, (option, label) ->
@@ -219,8 +221,15 @@ private fun KindToggle(
 
 private fun merchantLabel(kind: TransactionKind): Int =
     when (kind) {
-        TransactionKind.EXPENSE -> R.string.manual_merchant
         TransactionKind.INCOME -> R.string.form_source
+        else -> R.string.manual_merchant
+    }
+
+/** Which dialog adding an account from a given slot should open. */
+private fun AccountSlot.picking(): Picking =
+    when (this) {
+        AccountSlot.SOURCE -> Picking.ADD_ACCOUNT
+        AccountSlot.DESTINATION -> Picking.ADD_DESTINATION
     }
 
 /** Defaults to now, because that is when almost every cash purchase is entered. */

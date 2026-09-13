@@ -6,11 +6,11 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import io.github.jaytech64.depenses.core.model.AccountOrigin
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.AliasOrigin
-import io.github.jaytech64.depenses.core.model.CardOrigin
 import io.github.jaytech64.depenses.core.model.MatchType
 import io.github.jaytech64.depenses.core.model.ParseState
-import io.github.jaytech64.depenses.core.model.PaymentMethod
 import io.github.jaytech64.depenses.core.model.ReviewReason
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -81,7 +81,8 @@ data class RawNotificationEventEntity(
         Index("localDateEpochDay"),
         Index("merchantId"),
         Index("status"),
-        Index("cardId"),
+        Index("accountId"),
+        Index("toAccountId"),
     ],
 )
 data class ExpenseTransactionEntity(
@@ -114,34 +115,42 @@ data class ExpenseTransactionEntity(
     val note: String?,
     /** Yours to set, so a re-parse keeps it: see [TransactionDao.insertOrUpdate]. */
     @ColumnInfo(defaultValue = "EXPENSE") val kind: TransactionKind = TransactionKind.EXPENSE,
-    val paymentMethod: PaymentMethod? = null,
     /**
-     * The card [cardLabel] and [cardLast4] resolved to, or the one you picked for
-     * a manual entry. The raw pair stays beside it as the bank's evidence, the way
-     * [merchantRaw] stays beside [merchantId].
+     * The account [cardLabel] and [cardLast4] resolved to, or the one you picked
+     * for a manual entry, or the one a transfer left. The raw pair stays beside it
+     * as the bank's evidence, the way [merchantRaw] stays beside [merchantId].
      */
-    val cardId: Long? = null,
+    val accountId: Long? = null,
+    /** Where a transfer landed; null on anything else. */
+    val toAccountId: Long? = null,
 )
 
 /**
- * A card, as Wallet reports it or as you entered it.
+ * An account money sits in: cash, a card Wallet named, a bank account you typed.
  *
- * A Wallet card is identified by the issuer's label together with the last four
- * digits — the pair every notification carries. The digits alone collide across
- * issuers often enough to merge two cards into one. SQLite treats NULLs as
- * distinct in a unique index, so a card you add by hand, which has no issuer
- * label, is never refused for sharing its digits with another.
+ * A card is identified by the issuer's label together with the last four digits —
+ * the pair every notification carries. The digits alone collide across issuers
+ * often enough to merge two cards into one. SQLite treats NULLs as distinct in a
+ * unique index, so an account you add by hand, which has no issuer label, is
+ * never refused for sharing its digits with another.
  */
 @Entity(
-    tableName = "card",
+    tableName = "account",
     indices = [Index(value = ["issuerLabel", "last4"], unique = true)],
 )
-data class CardEntity(
+data class AccountEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String?,
+    val type: AccountType,
     val issuerLabel: String?,
     val last4: String?,
-    val origin: CardOrigin,
+    val origin: AccountOrigin,
+    /**
+     * What the account held before any transaction the ledger knows about, in
+     * minor units of the home currency, negative for money owed. Null when it was
+     * never given — which an import tells apart from a balance you set to zero.
+     */
+    val openingBalanceMinor: Long? = null,
 )
 
 /**

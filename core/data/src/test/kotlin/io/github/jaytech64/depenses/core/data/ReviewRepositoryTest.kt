@@ -51,7 +51,7 @@ class ReviewRepositoryTest {
                 transactions = database.transactionDao(),
                 registry = ParserRegistry(listOf(GoogleWalletParser())),
                 merchants = merchants,
-                cards = CardRepository(database.cardDao()),
+                accounts = AccountRepository(database.accountDao()),
                 zoneId = Provider { ZONE },
             )
         capture = NotificationCapture(RawEventRepository(database.rawNotificationEventDao()), pipeline)
@@ -196,7 +196,7 @@ class ReviewRepositoryTest {
         const val WALLET = "com.google.android.apps.walletnfcrel"
         const val KEY = "0|com.google.android.apps.walletnfcrel|1001|tag-77|10348"
 
-        /** Amount and card read, merchant absent — the parser's MISSING_MERCHANT case. */
+        /** Amount and account read, merchant absent — the parser's MISSING_MERCHANT case. */
         const val UNNAMED_TEXT = "102,00 $ avec Carte d'accès Desrives ••0000"
         const val POSTED_AT = 1_788_740_166_564L
         const val RE_POST_DELAY_MILLIS = 1_800_000L

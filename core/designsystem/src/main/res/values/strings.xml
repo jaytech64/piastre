@@ -1,11 +1,16 @@
 <resources>
-    <string name="card_dialog_add_title">Add a card</string>
-    <string name="card_dialog_edit_title">Name this card</string>
-    <string name="card_dialog_from_wallet">%1$s, as Wallet reports it</string>
-    <string name="card_dialog_name">Name</string>
-    <string name="card_dialog_last4">Last 4 digits (optional)</string>
-    <string name="card_dialog_last4_locked">Last 4 digits · from Wallet</string>
-    <string name="card_dialog_remove">Remove</string>
-    <string name="card_dialog_save">Save</string>
-    <string name="card_dialog_cancel">Cancel</string>
+    <string name="account_dialog_add_title">Add an account</string>
+    <string name="account_dialog_edit_title">Name this account</string>
+    <string name="account_dialog_from_wallet">%1$s, as Wallet reports it</string>
+    <string name="account_dialog_name">Name</string>
+    <string name="account_dialog_last4">Last 4 digits (optional)</string>
+    <string name="account_dialog_last4_locked">Last 4 digits · from Wallet</string>
+    <string name="account_dialog_opening_balance">Opening balance (optional)</string>
+    <string name="account_dialog_opening_balance_help">What it held before any transaction here. Negative for money you owe.</string>
+    <string name="account_dialog_remove">Remove</string>
+    <string name="account_dialog_save">Save</string>
+    <string name="account_dialog_cancel">Cancel</string>
+    <string name="account_type_cash">Cash</string>
+    <string name="account_type_card">Card</string>
+    <string name="account_type_bank">Bank</string>
 </resources>

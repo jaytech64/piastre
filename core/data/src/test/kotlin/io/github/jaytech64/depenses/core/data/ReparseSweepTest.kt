@@ -160,7 +160,7 @@ class ReparseSweepTest {
                             listOf(StubParser(OTHER_PACKAGE, version = 9) { ParseResult.NotApplicable }),
                         ),
                     merchants = MerchantRepository(database.merchantDao()),
-                    cards = CardRepository(database.cardDao()),
+                    accounts = AccountRepository(database.accountDao()),
                     zoneId = Provider { ZONE },
                 )
 
@@ -240,7 +240,7 @@ class ReparseSweepTest {
             transactions = database.transactionDao(),
             registry = ParserRegistry(listOf(parser)),
             merchants = MerchantRepository(database.merchantDao()),
-            cards = CardRepository(database.cardDao()),
+            accounts = AccountRepository(database.accountDao()),
             zoneId = Provider { ZONE },
         )
 

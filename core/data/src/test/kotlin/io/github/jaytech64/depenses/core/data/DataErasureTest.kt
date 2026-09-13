@@ -3,12 +3,13 @@
 package io.github.jaytech64.depenses.core.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import io.github.jaytech64.depenses.core.database.CardEntity
+import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.database.RawNotificationEventEntity
-import io.github.jaytech64.depenses.core.model.CardOrigin
+import io.github.jaytech64.depenses.core.model.AccountOrigin
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.ParseState
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -76,7 +77,7 @@ class DataErasureTest {
             assertEquals(0, database.rawNotificationEventDao().count().first())
             assertEquals(0, database.transactionDao().count().first())
             assertTrue(database.merchantDao().allOnce().isEmpty())
-            assertTrue("the names you gave your cards are data about you", database.cardDao().allOnce().isEmpty())
+            assertTrue("the names you gave your accounts are data about you", database.accountDao().allOnce().isEmpty())
         }
 
     @Test
@@ -119,8 +120,14 @@ class DataErasureTest {
                 parsedByVersion = 1,
             ),
         )
-        database.cardDao().insert(
-            CardEntity(name = "Débit Desrives", issuerLabel = null, last4 = "6262", origin = CardOrigin.USER),
+        database.accountDao().insert(
+            AccountEntity(
+                name = "Débit Desrives",
+                type = AccountType.CARD,
+                issuerLabel = null,
+                last4 = "6262",
+                origin = AccountOrigin.USER,
+            ),
         )
         val merchantId =
             database.merchantDao().insert(

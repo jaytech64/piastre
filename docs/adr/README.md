@@ -14,6 +14,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0002](0002-totals-exclude-unreviewed-rows.md) | Totals exclude unreviewed rows | Accepted — implemented |
 | [0003](0003-export-writes-csv-and-json.md) | Export writes both CSV and JSON | Accepted — implemented |
 | [0004](0004-capture-health-banner-without-a-notification.md) | A banner for broken capture, and no notification | Accepted, revised — implemented |
+| [0005](0005-import-merges-and-never-replaces.md) | Import merges into the ledger and never replaces it | Accepted — implemented |
 
 These four are the calls that were the product owner's to make during Phase 2, backfilled here from the phase plan in `.lavish/phase-2-capture-mvp.html`.
 The engineering decisions that plan also records — parsing inline with a catch-up pass, the raw log's uniqueness rule, the `extrasJson` allowlist — are documented in the KDoc of the classes that implement them, where they are impossible to read the code without seeing.

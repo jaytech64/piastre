@@ -55,6 +55,11 @@ class MerchantRepository
          * normaliser had inferred, so the next notification carrying the same string
          * resolves the way you corrected it rather than the way the rules read it.
          * Correcting one purchase is how the app learns a merchant.
+         *
+         * The merchant is also renamed to what you typed. Matching folds case and
+         * accents, so `MCDONALD'S` and `McDonald's` are one merchant — and without
+         * this, retyping the capitalisation would find that merchant and silently
+         * keep the shouted name the notification arrived with.
          */
         suspend fun assign(
             raw: String?,
@@ -62,6 +67,9 @@ class MerchantRepository
         ): Long? {
             val name = MerchantNormaliser.normalise(displayName) ?: return null
             val merchant = findOrCreate(name.displayName, name.normalisedName) ?: return null
+            if (merchant.displayName != name.displayName) {
+                merchants.renameMerchant(merchant.id, name.displayName)
+            }
             if (!raw.isNullOrBlank()) {
                 merchants.upsertAlias(
                     MerchantAliasEntity(
@@ -73,6 +81,16 @@ class MerchantRepository
                 )
             }
             return merchant.id
+        }
+
+        /**
+         * The merchant a name belongs to, created when there is none yet. One already
+         * here keeps the name it has: bringing a file in must not rename a merchant
+         * you have already named.
+         */
+        suspend fun named(displayName: String): Long? {
+            val name = MerchantNormaliser.normalise(displayName) ?: return null
+            return findOrCreate(name.displayName, name.normalisedName)?.id
         }
 
         fun all(): Flow<List<Merchant>> =

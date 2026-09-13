@@ -45,16 +45,16 @@
     <string name="onboarding_grant">Allow notification access</string>
     <string name="onboarding_later">Later</string>
 
-    <string name="settings_cards_section">Cards</string>
-    <string name="settings_cards_add">Add a card</string>
-    <string name="settings_cards_unnamed">Tap to name it</string>
-    <string name="settings_cards_added">Added by hand</string>
-    <plurals name="settings_cards_purchases">
-        <item quantity="one">%d purchase</item>
-        <item quantity="other">%d purchases</item>
+    <string name="settings_accounts_section">Accounts</string>
+    <string name="settings_accounts_add">Add an account</string>
+    <string name="settings_accounts_unnamed">Tap to name it</string>
+    <string name="settings_accounts_added">Added by hand</string>
+    <plurals name="settings_accounts_transactions">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
     </plurals>
-    <string name="settings_cards_empty">No card yet. A card appears here after its first Wallet payment, or you can add one.</string>
-    <string name="settings_cards_still_used">This card is still used by a transaction, so it stays.</string>
+    <string name="settings_accounts_empty">Only cash so far. A card appears here after its first Wallet payment, and you can add an account yourself.</string>
+    <string name="settings_accounts_still_used">This account is still used by a transaction, so it stays.</string>
 
     <string name="settings_data_section">Your data</string>
     <string name="settings_export">Export</string>
@@ -67,6 +67,32 @@
     </plurals>
     <string name="settings_export_failed">Export failed: %1$s</string>
     <string name="settings_export_failed_unknown">Export failed. The file could not be written.</string>
+
+    <string name="settings_import">Import</string>
+    <string name="settings_import_body">A JSON export from this app. It adds to your ledger and replaces nothing.</string>
+    <string name="settings_import_action">Choose a file…</string>
+    <plurals name="settings_import_title">
+        <item quantity="one">Import %d transaction?</item>
+        <item quantity="other">Import %d transactions?</item>
+    </plurals>
+    <string name="settings_import_period">%1$s to %2$s</string>
+    <string name="settings_import_accounts">Accounts: %1$d already here, %2$d to create</string>
+    <string name="settings_import_opening">Opening balances filled in: %1$d</string>
+    <string name="settings_import_kept">%1$s: the file says %2$s, keeping %3$s</string>
+    <string name="settings_import_merchants">New merchants: %1$d</string>
+    <string name="settings_import_already">Already here, left as they are: %1$d</string>
+    <string name="settings_import_no_undo">There is no undo. Export first if you want a way back.</string>
+    <string name="settings_import_confirm">Import</string>
+    <plurals name="settings_import_done">
+        <item quantity="one">%1$d transaction imported, %2$d already here</item>
+        <item quantity="other">%1$d transactions imported, %2$d already here</item>
+    </plurals>
+    <string name="settings_import_not_export">This file is not an export from this app.</string>
+    <string name="settings_import_version">This export is in format %1$d, which this version of the app cannot read.</string>
+    <string name="settings_import_inconsistent">This export contradicts itself, so nothing was imported: %1$s</string>
+    <string name="settings_import_ambiguous">Two of your accounts are named %1$s. Rename one, then import again.</string>
+    <string name="settings_import_unreadable">The file could not be read: %1$s</string>
+    <string name="settings_import_unreadable_unknown">The file could not be read.</string>
 
     <string name="settings_clear_raw">Clear the raw log</string>
     <string name="settings_clear_raw_body">Your expenses are kept. A later parser fix will no longer be able to re-read what this deletes.</string>
@@ -94,6 +120,6 @@
     <string name="export_column_card">card</string>
     <string name="export_column_note">note</string>
     <string name="export_column_type">type</string>
-    <string name="export_column_payment">payment</string>
-    <string name="export_column_card_name">card name</string>
+    <string name="export_column_account">account</string>
+    <string name="export_column_to_account">to account</string>
 </resources>
