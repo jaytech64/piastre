@@ -1,0 +1,42 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2026 Jérémy Mailhot
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Deletes the feature branches main has absorbed.
+#
+# The merge commit is the record of the work, so a merged branch ref has no job
+# left. Git gives this hook no argument naming what was just merged, so it
+# sweeps instead — which is why the guards below matter more than the delete.
+
+set -e
+
+# Only ever prunes from main. Merging main *into* a feature branch runs this
+# hook too, and there the branches merged into HEAD include main itself.
+[ "$(git symbolic-ref --quiet --short HEAD)" = "main" ] || exit 0
+
+# Main's own line of development: every commit reachable without stepping into
+# something that was merged in.
+mainline=$(git rev-list --first-parent HEAD)
+
+git for-each-ref --format='%(refname:short) %(objectname)' refs/heads |
+    while read -r branch tip; do
+        [ "$branch" = "main" ] && continue
+
+        # A branch sitting on that line never carried a commit of its own: it is
+        # a bookmark cut from main and not yet used, not work that came back.
+        # Merged work always sits off the line, on a merge commit's second parent.
+        case "$mainline" in
+            *"$tip"*) continue ;;
+        esac
+
+        git merge-base --is-ancestor "$tip" HEAD || continue
+
+        # -d, never -D: it refuses a branch still carrying unique commits, so a
+        # mistake in the walk above cannot become lost work. It also refuses a
+        # branch checked out in another worktree, which is the behaviour we want.
+        if git branch -d "$branch" >/dev/null 2>&1; then
+            echo "post-merge: pruned $branch, now in main"
+        fi
+    done
+
+exit 0

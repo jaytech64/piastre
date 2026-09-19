@@ -23,6 +23,9 @@ Categories, budgets and any payment source other than Wallet are out of scope so
   `brew install openjdk@17` provides one.
   The required version is declared in `gradle/gradle-daemon-jvm.properties`, so a mismatch fails with a readable message rather than a bare version number.
 - Android SDK 36.
+- Git hooks, once per clone: `git config core.hooksPath .githooks`.
+  `.githooks/post-merge` deletes a feature branch once `main` has absorbed it, since the merge commit is the record and the ref has no job left.
+  It prunes only from `main`, only branches git reports as merged, and only with `git branch -d`, which refuses anything still carrying unique commits.
 
 ## Building
 
