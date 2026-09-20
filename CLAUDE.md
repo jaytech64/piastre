@@ -185,6 +185,8 @@ Add a fixture, decide whether the parser can be certain, and if it cannot, leave
 **Totals exclude `NEEDS_REVIEW` rows** ([ADR-0002](docs/adr/0002-totals-exclude-unreviewed-rows.md)), and a transfer moves a balance by zero — counting one would charge you twice for what a card payment settles (`Transaction.signedAmount`).
 That zero is the ledger as a whole: a transfer moves the balance of each account it touches, so a total scoped to one account signs it by which end that account is on ([ADR-0006](docs/adr/0006-a-filtered-total-answers-for-one-account.md), `LedgerViewModel.balanceMovedOn`).
 
+A report counts expenses alone where the ledger's balance counts what came in too ([ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md)), so the same month reads as two different numbers and the word *dépensé* under the headline is what separates them.
+
 ### A parser fix repairs history
 
 Bump `NotificationParser.version` on **any** behaviour change.
