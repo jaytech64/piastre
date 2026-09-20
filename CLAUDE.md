@@ -183,6 +183,7 @@ Never widen a parser to make a review item disappear.
 Add a fixture, decide whether the parser can be certain, and if it cannot, leave it for the human.
 
 **Totals exclude `NEEDS_REVIEW` rows** ([ADR-0002](docs/adr/0002-totals-exclude-unreviewed-rows.md)), and a transfer moves a balance by zero — counting one would charge you twice for what a card payment settles (`Transaction.signedAmount`).
+That zero is the ledger as a whole: a transfer moves the balance of each account it touches, so a total scoped to one account signs it by which end that account is on ([ADR-0006](docs/adr/0006-a-filtered-total-answers-for-one-account.md), `LedgerViewModel.balanceMovedOn`).
 
 ### A parser fix repairs history
 
