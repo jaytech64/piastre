@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+import java.time.YearMonth
 import javax.inject.Inject
 
 /** One local day, with its balance: what came in minus what went out. */
@@ -27,8 +28,8 @@ data class LedgerUiState(
     val days: List<LedgerDay> = emptyList(),
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
-    /** Negative on a day you only spent, which is most days. */
-    val balanceToday: Money = Money(0, Money.CAD),
+    /** Negative on a month you only spent, which is most months. */
+    val balanceThisMonth: Money = Money(0, Money.CAD),
     val needsReview: Int = 0,
     val loading: Boolean = true,
 ) {
@@ -57,7 +58,7 @@ class LedgerViewModel
                 LedgerUiState(
                     days = days,
                     today = today,
-                    balanceToday = days.firstOrNull { it.date == today }?.total ?: Money(0, Money.CAD),
+                    balanceThisMonth = days.balanceIn(YearMonth.from(today)),
                     needsReview = needsReview,
                     loading = false,
                 )
@@ -81,6 +82,16 @@ class LedgerViewModel
                         transactions = forDay,
                     )
                 }.sortedByDescending { it.date }
+
+        /**
+         * Every day of the calendar month counts, including one dated ahead of
+         * today: a purchase the list shows is a purchase the headline above it has
+         * counted.
+         */
+        private fun List<LedgerDay>.balanceIn(month: YearMonth): Money =
+            filter { YearMonth.from(it.date) == month }
+                .map { it.total }
+                .reduceOrNull(Money::plus) ?: Money(0, Money.CAD)
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L

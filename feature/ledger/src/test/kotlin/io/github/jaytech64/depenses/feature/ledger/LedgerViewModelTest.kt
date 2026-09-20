@@ -80,26 +80,45 @@ class LedgerViewModelTest {
         }
 
     @Test
-    fun `each day carries its own total and today carries the headline`() =
+    fun `each day carries its own total and the month carries the headline`() =
         runTest {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 2_342, day = TODAY)
-            insert(amountMinor = 3_180, day = YESTERDAY)
+            insert(amountMinor = 3_180, day = ANOTHER_DAY_THIS_MONTH)
             val state = settled()
 
-            assertEquals(Money(-3_417, Money.CAD), state.days.first().total)
-            assertEquals(Money(-3_180, Money.CAD), state.days.last().total)
-            assertEquals(Money(-3_417, Money.CAD), state.balanceToday)
+            assertEquals(Money(-3_417, Money.CAD), state.days.single { it.date == TODAY }.total)
+            assertEquals(Money(-3_180, Money.CAD), state.days.single { it.date == ANOTHER_DAY_THIS_MONTH }.total)
+            assertEquals(Money(-6_597, Money.CAD), state.balanceThisMonth)
         }
 
     @Test
-    fun `a day with no spending shows a zero headline rather than the last day's`() =
+    fun `spending from last month stays out of this month's balance`() =
         runTest {
-            insert(amountMinor = 3_180, day = YESTERDAY)
+            insert(amountMinor = 1_075, day = TODAY)
+            insert(amountMinor = 9_900, day = LAST_MONTH)
+
+            assertEquals(Money(-1_075, Money.CAD), settled().balanceThisMonth)
+        }
+
+    @Test
+    fun `a month with nothing spent in it yet shows a zero headline rather than last month's`() =
+        runTest {
+            insert(amountMinor = 3_180, day = LAST_MONTH)
             val state = settled()
 
-            assertEquals(Money(0, Money.CAD), state.balanceToday)
+            assertEquals(Money(0, Money.CAD), state.balanceThisMonth)
             assertFalse(state.isEmpty)
+        }
+
+    /** A purchase dated ahead of today is still this month's spending. */
+    @Test
+    fun `an entry dated later this month counts toward the headline`() =
+        runTest {
+            insert(amountMinor = 1_075, day = TODAY)
+            insert(amountMinor = 2_000, day = TODAY.withDayOfMonth(TODAY.lengthOfMonth()))
+
+            assertEquals(Money(-3_075, Money.CAD), settled().balanceThisMonth)
         }
 
     /**
@@ -113,7 +132,7 @@ class LedgerViewModelTest {
             insert(amountMinor = 9_999, day = TODAY, status = TransactionStatus.NEEDS_REVIEW)
             val state = settled()
 
-            assertEquals(Money(-1_075, Money.CAD), state.balanceToday)
+            assertEquals(Money(-1_075, Money.CAD), state.balanceThisMonth)
             assertEquals(
                 1,
                 state.days
@@ -157,15 +176,15 @@ class LedgerViewModelTest {
             )
         }
 
-    /** Income and spending on one day meet in one signed balance, not two figures. */
+    /** Income and spending meet in one signed balance, not two figures. */
     @Test
-    fun `income lifts the day's balance above zero`() =
+    fun `income lifts the month's balance above zero`() =
         runTest {
             insert(amountMinor = 15_000, day = TODAY, kind = TransactionKind.INCOME)
             insert(amountMinor = 4_210, day = TODAY)
             val state = settled()
 
-            assertEquals(Money(10_790, Money.CAD), state.balanceToday)
+            assertEquals(Money(10_790, Money.CAD), state.balanceThisMonth)
             assertEquals(Money(10_790, Money.CAD), state.days.single().total)
         }
 
@@ -220,6 +239,13 @@ class LedgerViewModelTest {
         val ZONE: ZoneId = ZoneId.of("America/Toronto")
         val TODAY: LocalDate = LocalDate.now(ZONE)
         val YESTERDAY: LocalDate = TODAY.minusDays(1)
+        val LAST_MONTH: LocalDate = TODAY.minusMonths(1)
+
+        /**
+         * A second day inside the current month whichever day the suite runs on:
+         * yesterday belongs to the month before it on the first of every month.
+         */
+        val ANOTHER_DAY_THIS_MONTH: LocalDate = if (TODAY.dayOfMonth == 1) TODAY.plusDays(1) else YESTERDAY
         const val NOON = 12
     }
 }

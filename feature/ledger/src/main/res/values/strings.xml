@@ -1,7 +1,7 @@
 <resources>
     <string name="ledger_today">Today</string>
     <string name="ledger_yesterday">Yesterday</string>
-    <string name="ledger_balance_today">Today\'s balance</string>
+    <string name="ledger_balance_month">This month\'s balance</string>
     <string name="ledger_cash">Cash</string>
     <string name="ledger_transfer">Transfer</string>
     <string name="ledger_account">Account</string>

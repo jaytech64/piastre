@@ -58,8 +58,8 @@ fun LedgerScreen(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            TodayHeader(
-                balance = state.balanceToday,
+            MonthHeader(
+                balance = state.balanceThisMonth,
                 needsReview = state.needsReview,
                 onReviewClick = onReviewClick,
             )
@@ -83,7 +83,7 @@ fun LedgerScreen(
 }
 
 @Composable
-private fun TodayHeader(
+private fun MonthHeader(
     balance: Money,
     needsReview: Int,
     onReviewClick: () -> Unit,
@@ -96,7 +96,7 @@ private fun TodayHeader(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                stringResource(R.string.ledger_balance_today),
+                stringResource(R.string.ledger_balance_month),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
