@@ -2,12 +2,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import androidx.lifecycle.SavedStateHandle
+import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionRepository
+import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
+import io.github.jaytech64.depenses.core.model.AccountOrigin
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -22,6 +27,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -34,18 +40,24 @@ import javax.inject.Provider
 @RunWith(RobolectricTestRunner::class)
 class LedgerViewModelTest {
     private lateinit var database: DepensesDatabase
+    private lateinit var savedState: SavedStateHandle
     private lateinit var viewModel: LedgerViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher())
         database = inMemoryDatabase()
-        viewModel =
-            LedgerViewModel(
-                repository = transactionRepository(),
-                ticker = LocalDateTicker(Provider { ZONE }),
-            )
+        savedState = SavedStateHandle()
+        viewModel = ledgerViewModel(savedState)
     }
+
+    private fun ledgerViewModel(state: SavedStateHandle) =
+        LedgerViewModel(
+            repository = transactionRepository(),
+            accounts = AccountRepository(database.accountDao()),
+            ticker = LocalDateTicker(Provider { ZONE }),
+            savedState = state,
+        )
 
     private fun transactionRepository() =
         TransactionRepository(
@@ -188,6 +200,186 @@ class LedgerViewModelTest {
             assertEquals(Money(10_790, Money.CAD), state.days.single().total)
         }
 
+    @Test
+    fun `every account is offered, including one nothing has been spent from`() =
+        runTest {
+            val desrives = account("Desrives")
+            account("Épargne")
+            insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
+
+            assertEquals(listOf("Desrives", "Épargne"), settled().accounts.map { it.name })
+        }
+
+    @Test
+    fun `the ledger narrows to the account you pick`() =
+        runTest {
+            val desrives = account("Desrives")
+            val visa = account("Visa")
+            insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
+            insert(amountMinor = 4_820, day = TODAY, accountId = visa)
+
+            viewModel.onAccountSelected(desrives)
+            val state = settled()
+
+            assertEquals("Desrives", state.selectedAccount?.name)
+            assertEquals(Money(-1_075, Money.CAD), state.balanceThisMonth)
+            assertEquals(
+                listOf(1_075L),
+                state.days
+                    .single()
+                    .transactions
+                    .map { it.amount.minor },
+            )
+        }
+
+    /** A purchase with no account named is somebody's spending, but not this account's. */
+    @Test
+    fun `a purchase that named no account is left out of a filtered ledger`() =
+        runTest {
+            val desrives = account("Desrives")
+            insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
+            insert(amountMinor = 2_000, day = TODAY, accountId = null)
+
+            viewModel.onAccountSelected(desrives)
+
+            assertEquals(Money(-1_075, Money.CAD), settled().balanceThisMonth)
+        }
+
+    @Test
+    fun `a transfer shows on the account it left and on the one it reached`() =
+        runTest {
+            val desrives = account("Desrives")
+            val cash = account("Comptant")
+            insert(
+                amountMinor = 6_000,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = desrives,
+                toAccountId = cash,
+            )
+
+            viewModel.onAccountSelected(desrives)
+            assertEquals(
+                1,
+                settled()
+                    .days
+                    .single()
+                    .transactions.size,
+            )
+
+            viewModel.onAccountSelected(cash)
+            assertEquals(
+                1,
+                viewModel.uiState
+                    .first { it.selectedAccount?.id == cash }
+                    .days
+                    .single()
+                    .transactions.size,
+            )
+        }
+
+    /**
+     * The invariant that a transfer moves a balance by zero is about the ledger as
+     * a whole. One account is not the whole ledger: money that left for another
+     * account of yours has still left this one, and the balance the filter menu
+     * offers is already counted that way.
+     */
+    @Test
+    fun `a transfer takes from the account it left and adds to the one it reached`() =
+        runTest {
+            val desrives = account("Desrives")
+            val cash = account("Comptant")
+            insert(amountMinor = 575, day = TODAY, accountId = desrives)
+            insert(
+                amountMinor = 6_000,
+                day = YESTERDAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = desrives,
+                toAccountId = cash,
+            )
+
+            viewModel.onAccountSelected(desrives)
+            assertEquals(Money(-6_575, Money.CAD), settled().balanceThisMonth)
+
+            viewModel.onAccountSelected(cash)
+            assertEquals(
+                Money(6_000, Money.CAD),
+                viewModel.uiState.first { it.selectedAccount?.id == cash }.balanceThisMonth,
+            )
+        }
+
+    @Test
+    fun `a transfer still moves the whole ledger by nothing`() =
+        runTest {
+            val desrives = account("Desrives")
+            val cash = account("Comptant")
+            insert(
+                amountMinor = 6_000,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = desrives,
+                toAccountId = cash,
+            )
+
+            val state = settled()
+
+            assertEquals(Money(0, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(0, Money.CAD), state.days.single().total)
+        }
+
+    @Test
+    fun `an account nothing has touched shows an empty ledger rather than everybody else's`() =
+        runTest {
+            val desrives = account("Desrives")
+            val epargne = account("Épargne")
+            insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
+
+            viewModel.onAccountSelected(epargne)
+            val state = viewModel.uiState.first { it.selectedAccount?.id == epargne }
+
+            assertTrue(state.isEmpty)
+            assertEquals(Money(0, Money.CAD), state.balanceThisMonth)
+        }
+
+    /**
+     * The bottom bar pops the ledger and clears the view model scoped to it, so the
+     * filter has to come back from saved state or it is lost on the way to Reports.
+     */
+    @Test
+    fun `the filter survives the screen being thrown away and rebuilt`() =
+        runTest {
+            val desrives = account("Desrives")
+            insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
+            viewModel.onAccountSelected(desrives)
+            settled()
+
+            val rebuilt = ledgerViewModel(savedState)
+
+            assertEquals(
+                "Desrives",
+                rebuilt.uiState
+                    .first { !it.loading }
+                    .selectedAccount
+                    ?.name,
+            )
+        }
+
+    /** Filtering to an account that has since been deleted would show nothing, forever. */
+    @Test
+    fun `an account removed in settings stops filtering the ledger`() =
+        runTest {
+            val desrives = account("Desrives")
+            insert(amountMinor = 1_075, day = TODAY, accountId = null)
+            viewModel.onAccountSelected(desrives)
+            assertEquals("Desrives", settled().selectedAccount?.name)
+
+            database.accountDao().deleteIfUnused(desrives)
+            val state = viewModel.uiState.first { it.selectedAccount == null }
+
+            assertNull(state.selectedAccount)
+            assertEquals(Money(-1_075, Money.CAD), state.balanceThisMonth)
+        }
+
     /**
      * The state once the database has answered, awaited rather than polled.
      *
@@ -203,6 +395,8 @@ class LedgerViewModelTest {
         status: TransactionStatus = TransactionStatus.CONFIRMED,
         merchantId: Long? = null,
         kind: TransactionKind = TransactionKind.EXPENSE,
+        accountId: Long? = null,
+        toAccountId: Long? = null,
     ) = database.transactionDao().insertOrUpdate(
         ExpenseTransactionEntity(
             rawEventId = null,
@@ -227,13 +421,26 @@ class LedgerViewModelTest {
             parserId = "google-wallet",
             parserVersion = 1,
             sourcePackage = "com.google.android.apps.walletnfcrel",
-            sourceKey = "tag-$amountMinor-${day.toEpochDay()}-$status",
+            sourceKey = "tag-$amountMinor-${day.toEpochDay()}-$status-$accountId-$toAccountId",
             cardLabel = "Récompenses Visa",
             cardLast4 = "0000",
             note = null,
             kind = kind,
+            accountId = accountId,
+            toAccountId = toAccountId,
         ),
     )
+
+    private suspend fun account(name: String) =
+        database.accountDao().insert(
+            AccountEntity(
+                name = name,
+                type = AccountType.BANK,
+                issuerLabel = null,
+                last4 = null,
+                origin = AccountOrigin.USER,
+            ),
+        )
 
     private companion object {
         val ZONE: ZoneId = ZoneId.of("America/Toronto")
