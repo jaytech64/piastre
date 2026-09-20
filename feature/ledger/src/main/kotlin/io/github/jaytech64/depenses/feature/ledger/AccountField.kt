@@ -17,7 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import io.github.jaytech64.depenses.core.designsystem.accountMenuLabel
+import io.github.jaytech64.depenses.core.designsystem.accountLabel
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.TransactionKind
 
@@ -62,7 +62,7 @@ internal fun AccountField(
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
             value =
-                accounts.firstOrNull { it.id == selectedId }?.let(::accountMenuLabel)
+                accounts.firstOrNull { it.id == selectedId }?.let { accountLabel(it) }
                     ?: stringResource(R.string.form_account_none),
             onValueChange = {},
             readOnly = true,
@@ -81,7 +81,7 @@ internal fun AccountField(
                 )
             }
             accounts.forEach { account ->
-                DropdownMenuItem(text = { Text(accountMenuLabel(account)) }, onClick = { pick(account.id) })
+                DropdownMenuItem(text = { Text(accountLabel(account)) }, onClick = { pick(account.id) })
             }
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.form_add_account)) },
