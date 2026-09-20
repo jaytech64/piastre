@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.designsystem.accountMenuLabel
 import io.github.jaytech64.depenses.core.model.Account
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import java.time.LocalDate
 import java.util.Locale
@@ -114,7 +115,7 @@ private fun MonthHeader(
             Row(verticalAlignment = Alignment.Top) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        selected?.let { stringResource(R.string.ledger_balance_month_account, accountMenuLabel(it)) }
+                        selected?.let { stringResource(R.string.ledger_balance_month_account, it.label()) }
                             ?: stringResource(R.string.ledger_balance_month),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -134,7 +135,7 @@ private fun MonthHeader(
                     InputChip(
                         selected = true,
                         onClick = { onAccountSelected(null) },
-                        label = { Text(accountMenuLabel(selected), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        label = { Text(selected.label(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         trailingIcon = {
                             Icon(
                                 Icons.Default.Close,
@@ -216,7 +217,7 @@ private fun AccountFilterMenu(
             )
             accounts.forEach { account ->
                 DropdownMenuItem(
-                    text = { Text(accountMenuLabel(account), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    text = { Text(account.label(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingIcon = { SelectedMark(selected?.id == account.id) },
                     trailingIcon = {
                         Text(
@@ -231,6 +232,20 @@ private fun AccountFilterMenu(
         }
     }
 }
+
+/**
+ * The name to put on an account, never an empty one.
+ *
+ * [accountMenuLabel] builds its label out of the name and the digits, and the
+ * cash account every database is created with has neither — so it would
+ * otherwise arrive as a blank row carrying only a balance. The wording lives
+ * here because `:core:designsystem` has no strings of its own by design.
+ */
+@Composable
+private fun Account.label(): String =
+    accountMenuLabel(this).ifBlank {
+        stringResource(if (type == AccountType.CASH) R.string.ledger_cash else R.string.ledger_account)
+    }
 
 /** Always occupies the slot, so the names line up whichever row is checked. */
 @Composable
