@@ -3,7 +3,6 @@
 package io.github.jaytech64.depenses.feature.reports
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -122,25 +122,30 @@ private fun DayCell(
         return
     }
 
-    // A day that has not happened is not a day that cost nothing, so it carries
-    // no cell colour at all rather than the colour of zero.
-    val background =
-        when {
-            isFuture -> Color.Transparent
-            else -> MaterialTheme.colorScheme.primary.copy(alpha = heatAlpha(spent?.minor ?: 0L, heaviest))
-        }
+    val level = heatLevel(spent?.minor ?: 0L, heaviest)
 
-    val outlined =
-        if (isSelected) {
-            cell.border(SELECTED_OUTLINE, MaterialTheme.colorScheme.primary, RoundedCornerShape(CELL_CORNER))
-        } else {
-            cell
-        }
+    // A day that has not happened is not a day that cost nothing, so an empty
+    // future day carries no cell colour at all rather than the colour of zero.
+    // A future day that already has spending on it — a manual entry dated ahead,
+    // which the ledger allows — is drawn like any other, because the total above
+    // has counted it and a blank cell under a total that includes it would be
+    // the grid contradicting the headline.
+    val blank = isFuture && level == 0
+    val background =
+        if (blank) Color.Transparent else MaterialTheme.colorScheme.primary.copy(alpha = HEAT_ALPHAS[level])
 
     Box(
-        outlined
+        cell
+            // The period is marked by dimming everything outside it rather than by
+            // ringing what is inside it. A ring has to contrast with the cell it
+            // sits on, and the heaviest cells are filled with the very colour a
+            // ring would be drawn in — while a pale ring at a cell's edge is
+            // indistinguishable from the gap between two cells. Dimming reads on
+            // every step of the ramp and in both themes, and says the true thing:
+            // these are the days the numbers above are about.
+            .alpha(if (isSelected) 1f else OUTSIDE_THE_PERIOD)
             .background(background)
-            .clickable(enabled = !isFuture) { onDaySelected(date) }
+            .clickable { onDaySelected(date) }
             .semantics {
                 contentDescription =
                     date.dayOfMonth.toString() + (spent?.let { ", " + Formatters.money(it, locale) } ?: "")
@@ -151,7 +156,7 @@ private fun DayCell(
             date.dayOfMonth.toString(),
             style = MaterialTheme.typography.labelSmall,
             color =
-                if (isFuture) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.onSurface,
+                if (blank) MaterialTheme.colorScheme.outlineVariant else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -164,7 +169,7 @@ private fun HeatLegend() {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        (listOf(HEAT_EMPTY) + HEAT_ALPHAS).forEach { alpha ->
+        HEAT_ALPHAS.forEach { alpha ->
             Box(
                 Modifier
                     .size(LEGEND_SWATCH)
@@ -191,13 +196,12 @@ private fun HeatLegend() {
  * Fixed dollar thresholds would be comparable and would need a number nobody can
  * pick for someone else.
  */
-private fun heatAlpha(
+private fun heatLevel(
     spent: Long,
     heaviest: Long,
-): Float {
-    if (spent <= 0L || heaviest <= 0L) return HEAT_EMPTY
-    val level = ((spent * HEAT_LEVELS + heaviest - 1) / heaviest).coerceIn(1L, HEAT_LEVELS)
-    return HEAT_ALPHAS[level.toInt() - 1]
+): Int {
+    if (spent <= 0L || heaviest <= 0L) return 0
+    return ((spent * HEAT_LEVELS + heaviest - 1) / heaviest).coerceIn(1L, HEAT_LEVELS).toInt()
 }
 
 /**
@@ -220,13 +224,13 @@ private const val DAYS_IN_WEEK = 7
 
 private const val HEAT_LEVELS = 3L
 
-private const val HEAT_EMPTY = 0.08f
+/** The empty step, then three wide enough apart to be told apart on a phone in daylight. */
+private val HEAT_ALPHAS = listOf(0.08f, 0.25f, 0.55f, 0.90f)
 
-/** Three steps, wide enough apart to be told apart on a phone in daylight. */
-private val HEAT_ALPHAS = listOf(0.25f, 0.55f, 0.90f)
+/** Faint enough to recede, strong enough that the month's shape is still readable behind the period. */
+private const val OUTSIDE_THE_PERIOD = 0.35f
 
 private val CELL_GAP = 4.dp
 private val CELL_CORNER = 6.dp
-private val SELECTED_OUTLINE = 1.5.dp
 private val LEGEND_SWATCH = 12.dp
 private val LEGEND_CORNER = 3.dp
