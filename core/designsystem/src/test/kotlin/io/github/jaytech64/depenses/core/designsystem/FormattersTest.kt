@@ -11,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Locale
 
@@ -68,6 +69,28 @@ class FormattersTest {
     @Test
     fun `minor units are never truncated to whole dollars`() {
         assertEquals("$0.07", Formatters.money(Money(7, Money.CAD), Locale.CANADA))
+    }
+
+    @Test
+    fun `a month carries its year, because stepping back is how you reach last December`() {
+        assertEquals("septembre 2026", Formatters.monthYear(YearMonth.of(2026, 9), Locale.CANADA_FRENCH))
+        assertEquals("September 2026", Formatters.monthYear(YearMonth.of(2026, 9), Locale.CANADA))
+    }
+
+    @Test
+    fun `the ends of a week are a day and a month, with no weekday and no year`() {
+        val label = Formatters.dayAndMonth(LocalDate.of(2026, 9, 14), Locale.CANADA_FRENCH)
+
+        assertEquals("14 septembre", label)
+    }
+
+    @Test
+    fun `a week label keeps both months when the week straddles two of them`() {
+        val start = Formatters.dayAndMonth(LocalDate.of(2026, 9, 28), Locale.CANADA_FRENCH)
+        val end = Formatters.dayAndMonth(LocalDate.of(2026, 10, 4), Locale.CANADA_FRENCH)
+
+        assertEquals("28 septembre", start)
+        assertEquals("4 octobre", end)
     }
 
     @Test

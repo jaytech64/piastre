@@ -9,6 +9,7 @@ import java.text.DecimalFormat
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -108,8 +109,39 @@ object Formatters {
         val yesterday: String,
     )
 
+    /**
+     * A day and its month, without the weekday — the two ends of a week's label,
+     * where naming the weekday twice would say nothing the dates do not.
+     */
+    fun dayAndMonth(
+        date: LocalDate,
+        locale: Locale = Locale.getDefault(),
+    ): String = DAY_MONTH.withLocale(locale).format(date)
+
+    /**
+     * The month a report is read over, named and dated.
+     *
+     * The year is carried here where [dayHeader] drops it, because stepping back
+     * through months is how you reach last December, and a heading that said only
+     * "décembre" would not say which one.
+     */
+    fun monthYear(
+        month: YearMonth,
+        locale: Locale = Locale.getDefault(),
+    ): String = MONTH_AND_YEAR.withLocale(locale).format(month)
+
     /** Weekday, day, month — never the year, which on a ledger is always this one. */
     private val DAY_AND_MONTH = DateTimeFormatter.ofPattern("EEEE d MMMM")
+
+    /**
+     * Day then month, as `fr-CA` writes it — the locale this app has to get right,
+     * and the same ordering [DAY_AND_MONTH] has always used for the ledger's day
+     * headings. `en` reads it as "14 September" rather than "September 14", which
+     * is the fallback locale wearing the target locale's word order.
+     */
+    private val DAY_MONTH = DateTimeFormatter.ofPattern("d MMMM")
+
+    private val MONTH_AND_YEAR = DateTimeFormatter.ofPattern("MMMM yyyy")
 
     /** The two bullets Wallet itself uses ahead of the last four digits. */
     fun cardMask(last4: String?): String? = last4?.let { "\u2022\u2022$it" }
