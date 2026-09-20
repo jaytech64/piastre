@@ -3,6 +3,11 @@
     <string name="ledger_yesterday">Yesterday</string>
     <string name="ledger_balance_month">This month\'s balance</string>
     <string name="ledger_cash">Cash</string>
+    <string name="ledger_filter">Filter by account</string>
+    <string name="ledger_filter_all">All accounts</string>
+    <string name="ledger_filter_clear">Clear the filter</string>
+    <string name="ledger_balance_month_account">%s · this month</string>
+    <string name="ledger_empty_account">Nothing on this account this month</string>
     <string name="ledger_transfer">Transfer</string>
     <string name="ledger_account">Account</string>
     <string name="ledger_manual_entry">manual entry</string>
