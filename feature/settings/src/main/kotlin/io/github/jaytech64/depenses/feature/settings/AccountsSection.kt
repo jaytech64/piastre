@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.AccountDialog
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.designsystem.accountLabel
 import io.github.jaytech64.depenses.core.designsystem.accountTypeLabel
 import io.github.jaytech64.depenses.core.designsystem.walletLabel
 import io.github.jaytech64.depenses.core.model.Account
@@ -154,7 +155,13 @@ private fun RowScope.AccountLabels(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            Text(digits, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // accountLabel rather than the digits: the cash account has none, and
+            // leading with an empty string leaves a row wearing only a balance.
+            Text(
+                accountLabel(account),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Text(
                 listOf(stringResource(R.string.settings_accounts_unnamed), transactions).joinToString(SEPARATOR),
                 style = MaterialTheme.typography.bodySmall,

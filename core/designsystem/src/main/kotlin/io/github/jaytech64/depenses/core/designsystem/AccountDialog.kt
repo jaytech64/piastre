@@ -203,12 +203,38 @@ fun accountTypeLabel(type: AccountType): Int =
         AccountType.BANK -> R.string.account_type_bank
     }
 
-/** An account as a list offers it: its name with its digits, or Wallet's own label until it has a name. */
+/**
+ * What to call an account on screen, which is never nothing.
+ *
+ * [accountMenuLabel] and [walletLabel] build a label out of what an account
+ * carries — the name you gave it, the issuer's product name, the masked digits
+ * — and the cash account every database is created with carries none of the
+ * three, so both answer with an empty string. A screen printing that shows a
+ * row with a balance and no title. Falling back to the kind of account it is
+ * says "Cash" there, which is what the ledger's own rows have always said.
+ */
+@Composable
+fun accountLabel(account: Account): String =
+    accountMenuLabel(account).ifEmpty { stringResource(accountTypeLabel(account.type)) }
+
+/**
+ * An account as a list offers it: its name with its digits, or Wallet's own
+ * label until it has a name.
+ *
+ * Empty for an account carrying neither, which [accountLabel] is for.
+ */
 fun accountMenuLabel(account: Account): String =
     account.name?.let { name -> listOfNotNull(name, Formatters.cardMask(account.last4)).joinToString(" ") }
         ?: walletLabel(account)
 
-/** How Wallet itself shows a card: the issuer's product name, then the masked digits. */
+/**
+ * How Wallet itself shows a card: the issuer's product name, then the masked
+ * digits.
+ *
+ * Deliberately empty when it has neither, because a caller distinguishing "has
+ * digits" from "has none" reads that emptiness — see the named branch of the
+ * settings account row. Use [accountLabel] where a name has to appear.
+ */
 fun walletLabel(account: Account): String =
     listOfNotNull(account.issuerLabel, Formatters.cardMask(account.last4)).joinToString(" ")
 

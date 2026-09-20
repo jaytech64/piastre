@@ -244,8 +244,8 @@ The app targets Quebec, so **`fr_CA` is the case to get right and `en` is the fa
 Strings live in the module that draws them, never in `:app`.
 A user-visible string added in one language and not the other is an incomplete change — and the French wording is the maintainer's call, not yours.
 
-`:core:designsystem` and `:core:model` have no strings of their own by design.
-`Formatters.dayHeader` takes its "today" and "yesterday" wording as a parameter for exactly that reason.
+`:core:model` has no strings of its own, and `:core:designsystem` carries only the words its own components own — the account dialog, and the names of the account kinds that `accountLabel` falls back to.
+`Formatters` has none at all, which is why `dayHeader` takes its "today" and "yesterday" wording as a parameter: a formatter is not a component, and those words belong to the screen that draws them.
 
 ---
 
