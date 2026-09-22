@@ -11,7 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -33,9 +33,25 @@ class OnboardingViewModelTest {
     private lateinit var settings: SettingsRepository
     private lateinit var viewModel: OnboardingViewModel
 
+    /**
+     * Main is unconfined rather than queueing, and that is the whole of what this
+     * test needs from it.
+     *
+     * `complete()` launches its write on `viewModelScope`, so a queueing dispatcher
+     * only hands that write to DataStore when something drains the scheduler —
+     * while the assertion below has already left for a real-time wait on another
+     * dispatcher. The write's dispatch is then on the virtual clock and the wait on
+     * the real one, and nothing relates the two: on a loaded runner the wait can
+     * expire having never let the write start. That is what CI saw twice, once for
+     * a full minute, and it reproduces exactly when Main is given a scheduler
+     * `runTest` does not drive.
+     *
+     * Unconfined issues the write inline, so by the time the wait begins the only
+     * thing left outstanding is the disk — which is what the wait is for.
+     */
     @Before
     fun setUp() {
-        Dispatchers.setMain(StandardTestDispatcher())
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         storeFile = File.createTempFile("settings", ".preferences_pb").apply { delete() }
         settings = SettingsRepository(PreferenceDataStoreFactory.create(scope = storeScope) { storeFile })
         viewModel = OnboardingViewModel(settings)
@@ -61,11 +77,7 @@ class OnboardingViewModelTest {
             assertEquals(false, awaitOnRealTime(viewModel.completed) { it != null })
         }
 
-    /**
-     * Once on CI this waited a full minute and never saw the value. The disk is
-     * checked before the view model, so if it happens again the failure says
-     * which of the two lost it.
-     */
+    /** The disk is checked before the view model, so a recurrence says which of the two lost the value. */
     @Test
     fun `completing it is remembered`() =
         runTest {
