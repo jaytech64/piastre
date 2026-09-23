@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,9 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -32,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
@@ -140,7 +148,7 @@ private fun EntryForm(
 
         AccountFields(state, accounts, viewModel, onAddFor = { slot -> onPick(slot.picking()) })
 
-        WhenRow(state = state, onPick = onPick)
+        WhenRow(state = state, onDateChange = viewModel::onDateChange, onPick = onPick)
 
         OutlinedTextField(
             value = state.note,
@@ -230,16 +238,66 @@ private fun AccountSlot.picking(): Picking =
 @Composable
 private fun WhenRow(
     state: ExpenseFormUiState,
+    onDateChange: (LocalDate) -> Unit,
     onPick: (Picking) -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { onPick(Picking.DATE) }) {
-            Text(Formatters.date(state.date, locale))
-        }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        DateStepper(
+            date = state.date,
+            onStep = onDateChange,
+            onOpen = { onPick(Picking.DATE) },
+        )
         OutlinedButton(onClick = { onPick(Picking.TIME) }) {
             Text(Formatters.time(state.time.toInstantOn(state.date), ZoneOffset.UTC, locale))
+        }
+    }
+}
+
+/**
+ * The date as an outlined pill with a chevron either side: the chevrons step a
+ * day at a time, for the purchase entered the morning after, and the date itself
+ * opens the calendar for anything further away.
+ *
+ * The outline is drawn 4 dp in from the top and bottom so the pill looks as tall
+ * as the neighbouring [OutlinedButton] while each target keeps its 48 dp touch
+ * height.
+ */
+@Composable
+private fun DateStepper(
+    date: LocalDate,
+    onStep: (LocalDate) -> Unit,
+    onOpen: () -> Unit,
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val tint = MaterialTheme.colorScheme.primary
+
+    Box(contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .padding(vertical = 4.dp)
+                .border(ButtonDefaults.outlinedButtonBorder(), ButtonDefaults.outlinedShape),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onStep(date.minusDays(1)) }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = stringResource(R.string.form_previous_day),
+                    tint = tint,
+                )
+            }
+            TextButton(onClick = onOpen) {
+                Text(Formatters.date(date, locale))
+            }
+            IconButton(onClick = { onStep(date.plusDays(1)) }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(R.string.form_next_day),
+                    tint = tint,
+                )
+            }
         }
     }
 }
