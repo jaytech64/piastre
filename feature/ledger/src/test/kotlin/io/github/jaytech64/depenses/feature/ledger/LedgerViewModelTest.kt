@@ -62,7 +62,6 @@ class LedgerViewModelTest {
     private fun transactionRepository() =
         TransactionRepository(
             transactions = database.transactionDao(),
-            reports = database.reportDao(),
             merchants = MerchantRepository(database.merchantDao()),
             zoneId = Provider { ZONE },
         )

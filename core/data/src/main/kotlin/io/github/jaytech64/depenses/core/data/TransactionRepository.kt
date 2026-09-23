@@ -3,7 +3,6 @@
 package io.github.jaytech64.depenses.core.data
 
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
-import io.github.jaytech64.depenses.core.database.ReportDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import io.github.jaytech64.depenses.core.model.Money
@@ -31,7 +30,6 @@ class TransactionRepository
     @Inject
     constructor(
         private val transactions: TransactionDao,
-        private val reports: ReportDao,
         private val merchants: MerchantRepository,
         private val zoneId: Provider<ZoneId>,
     ) {
@@ -123,26 +121,6 @@ class TransactionRepository
             /** A purchase you typed yourself is not a reading that could be wrong. */
             const val CERTAIN = 1f
         }
-
-        fun dailyTotals(
-            from: LocalDate,
-            to: LocalDate,
-            currency: String = Money.CAD,
-        ): Flow<Map<LocalDate, Money>> =
-            reports
-                .dailyTotals(from.toEpochDay().toInt(), to.toEpochDay().toInt(), currency)
-                .map { rows ->
-                    rows.associate { LocalDate.ofEpochDay(it.day.toLong()) to Money(it.totalMinor, currency) }
-                }
-
-        fun totalForRange(
-            from: LocalDate,
-            to: LocalDate,
-            currency: String = Money.CAD,
-        ): Flow<Money> =
-            reports
-                .totalForRange(from.toEpochDay().toInt(), to.toEpochDay().toInt(), currency)
-                .map { Money(it ?: 0L, currency) }
     }
 
 internal fun toDomain(row: TransactionWithMerchant): Transaction =

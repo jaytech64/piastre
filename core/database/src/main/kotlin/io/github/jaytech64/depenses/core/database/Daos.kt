@@ -555,4 +555,30 @@ interface ReportDao {
         currency: String,
         limit: Int,
     ): Flow<List<MerchantTotal>>
+
+    /**
+     * How many purchases in the range every other query on this DAO left out
+     * because they were paid in something other than [currency].
+     *
+     * Converting them is impossible here — a rate needs a network, and there is
+     * none — so a report can only decline to count them. Declining silently is
+     * the failure mode this exists to prevent: it is the same rule that puts the
+     * unreviewed count beside the ledger's balance, applied to the other reason a
+     * total can understate.
+     */
+    @Query(
+        """
+        SELECT COUNT(*)
+        FROM expense_transaction
+        WHERE status = 'CONFIRMED'
+          AND kind = 'EXPENSE'
+          AND currency != :currency
+          AND localDateEpochDay BETWEEN :fromDay AND :toDay
+        """,
+    )
+    fun otherCurrencyCount(
+        fromDay: Int,
+        toDay: Int,
+        currency: String,
+    ): Flow<Int>
 }

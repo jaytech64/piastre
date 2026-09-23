@@ -146,6 +146,40 @@ class DepensesDatabaseTest {
             assertEquals(1, dao.count().first())
         }
 
+    /**
+     * Conversion needs a rate, a rate needs a network, and there is none — so a
+     * report leaves a foreign purchase out and has to be able to say how many.
+     */
+    @Test
+    fun `a purchase in another currency is left out of every total, and counted separately`() =
+        runTest {
+            val dao = database.transactionDao()
+            dao.insertOrUpdate(transaction("here", amountMinor = 1_000, day = 20_000))
+            dao.insertOrUpdate(transaction("away", amountMinor = 4_500, day = 20_000, currency = "USD"))
+
+            val reports = database.reportDao()
+
+            assertEquals(1_000L, reports.totalForRange(19_999, 20_001, Money.CAD).first())
+            assertEquals(1, reports.otherCurrencyCount(19_999, 20_001, Money.CAD).first())
+        }
+
+    @Test
+    fun `an unreviewed foreign purchase is not counted either, since no total omitted it`() =
+        runTest {
+            val dao = database.transactionDao()
+            dao.insertOrUpdate(
+                transaction(
+                    "away",
+                    amountMinor = 4_500,
+                    day = 20_000,
+                    status = TransactionStatus.NEEDS_REVIEW,
+                    currency = "USD",
+                ),
+            )
+
+            assertEquals(0, database.reportDao().otherCurrencyCount(19_999, 20_001, Money.CAD).first())
+        }
+
     private fun transaction(
         sourceKey: String = TAG,
         amountMinor: Long,
@@ -153,10 +187,11 @@ class DepensesDatabaseTest {
         merchantId: Long? = null,
         status: TransactionStatus = TransactionStatus.CONFIRMED,
         kind: TransactionKind = TransactionKind.EXPENSE,
+        currency: String = Money.CAD,
     ) = ExpenseTransactionEntity(
         rawEventId = null,
         amountMinor = amountMinor,
-        currency = Money.CAD,
+        currency = currency,
         occurredAtUtcMillis = 1_788_740_166_564,
         zoneId = "America/Toronto",
         localDateEpochDay = day,

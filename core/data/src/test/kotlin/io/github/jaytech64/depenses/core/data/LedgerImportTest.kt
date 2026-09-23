@@ -188,7 +188,6 @@ class LedgerImportTest {
     private fun DepensesDatabase.transactions() =
         TransactionRepository(
             transactions = transactionDao(),
-            reports = reportDao(),
             merchants = MerchantRepository(merchantDao()),
             zoneId = Provider { ZONE },
         )

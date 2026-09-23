@@ -62,7 +62,6 @@ class TransactionEditorTest {
         repository =
             TransactionRepository(
                 transactions = database.transactionDao(),
-                reports = database.reportDao(),
                 merchants = merchants,
                 zoneId = Provider { ZONE },
             )
