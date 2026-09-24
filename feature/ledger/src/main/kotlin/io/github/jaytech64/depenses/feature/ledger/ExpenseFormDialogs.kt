@@ -10,11 +10,21 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDialog
+import androidx.compose.material3.TimePickerDialogDefaults
+import androidx.compose.material3.TimePickerDisplayMode
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.AccountDialog
 import java.time.Instant
 import java.time.LocalDate
@@ -115,6 +125,11 @@ private fun DatePickerSheet(
     }
 }
 
+/**
+ * Opens on typed hour and minute fields, since a time read off a receipt is
+ * quicker typed than dialled; the toggle in the corner swaps to the clock face
+ * and back. The clock is withheld on a window too short to hold it.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimePickerSheet(
@@ -123,18 +138,35 @@ private fun TimePickerSheet(
     onCancel: () -> Unit,
 ) {
     val pickerState = rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = true)
+    var displayMode by remember { mutableStateOf(TimePickerDisplayMode.Input) }
+    val clockFits = LocalConfiguration.current.screenHeightDp.dp > TimePickerDialogDefaults.MinHeightForTimePicker
+    val showsClock = displayMode == TimePickerDisplayMode.Picker && clockFits
 
-    AlertDialog(
+    TimePickerDialog(
         onDismissRequest = onCancel,
+        title = { TimePickerDialogDefaults.Title(displayMode = displayMode) },
         confirmButton = {
             TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
                 Text(stringResource(R.string.manual_save))
             }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
-        text = { TimePicker(state = pickerState) },
-    )
+        modeToggleButton = {
+            if (clockFits) {
+                TimePickerDialogDefaults.DisplayModeToggle(
+                    onDisplayModeChange = { displayMode = displayMode.toggled() },
+                    displayMode = displayMode,
+                )
+            }
+        },
+    ) {
+        if (showsClock) TimePicker(state = pickerState) else TimeInput(state = pickerState)
+    }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+private fun TimePickerDisplayMode.toggled(): TimePickerDisplayMode =
+    if (this == TimePickerDisplayMode.Picker) TimePickerDisplayMode.Input else TimePickerDisplayMode.Picker
 
 @Composable
 private fun ConfirmDeleteDialog(

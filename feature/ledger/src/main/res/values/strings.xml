@@ -42,4 +42,6 @@
     <string name="form_to">To</string>
     <string name="form_into">Into</string>
     <string name="form_add_account">Add an account…</string>
+    <string name="form_previous_day">Previous day</string>
+    <string name="form_next_day">Next day</string>
 </resources>
