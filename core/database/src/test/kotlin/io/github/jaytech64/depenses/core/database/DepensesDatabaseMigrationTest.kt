@@ -254,6 +254,29 @@ class DepensesDatabaseMigrationTest {
         assertEquals(2, migrated.singleInt("SELECT COUNT(*) FROM account WHERE openingBalanceMinor IS NULL"))
     }
 
+    @Test
+    fun `migrating to schema 10 keeps every account where it was shown`() {
+        helper.createDatabase(NAME, 9).use { database ->
+            listOf(
+                "(NULL, 'CARD', 'Mastercard', '0977', 'WALLET')",
+                "('visa Desrives', 'CARD', 'Récompenses Visa', '4821', 'WALLET')",
+                "(NULL, 'CASH', NULL, NULL, 'USER')",
+                "('Chèques', 'BANK', NULL, NULL, 'USER')",
+            ).forEach { values ->
+                database.execSQL("INSERT INTO account (name, type, issuerLabel, last4, origin) VALUES $values")
+            }
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 10, true, *DepensesDatabase.MIGRATIONS)
+
+        val shown =
+            migrated.query("SELECT COALESCE(name, issuerLabel, type) FROM account ORDER BY sortOrder").use { cursor ->
+                generateSequence { if (cursor.moveToNext()) cursor.getString(0) else null }.toList()
+            }
+        assertEquals(listOf("Chèques", "visa Desrives", "CASH", "Mastercard"), shown)
+        assertEquals(4, migrated.singleInt("SELECT COUNT(DISTINCT sortOrder) FROM account"))
+    }
+
     private fun SupportSQLiteDatabase.insertSchema7Transaction(
         sourceKey: String,
         paymentMethod: String?,
