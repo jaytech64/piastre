@@ -19,6 +19,8 @@
     <string name="health_silent_body">Aucune notification reçue depuis %1$s. L\'accès aux notifications a peut-être été révoqué par le système.</string>
     <string name="health_last_event">Dernière notification reçue %1$s</string>
     <string name="health_never">En attente de la première notification</string>
+    <string name="health_collapse">Réduire l\'alerte</string>
+    <string name="health_expand">Afficher le détail</string>
     <string name="health_reactivate">Réactiver</string>
 
     <string name="health_ago_now">à l\'instant</string>

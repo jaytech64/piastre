@@ -2,22 +2,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.navigation
 
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,15 +44,19 @@ import io.github.jaytech64.depenses.feature.settings.OnboardingScreen
 import io.github.jaytech64.depenses.feature.settings.OnboardingViewModel
 import io.github.jaytech64.depenses.feature.settings.SettingsScreen
 
+/**
+ * Review is not drawn with a warning sign: the capture banner is, and once the
+ * bar drops its labels an icon is all a tab has to say what it is.
+ */
 private enum class Destination(
     val route: String,
     val labelRes: Int,
-    val icon: ImageVector,
+    val icon: @Composable () -> Painter,
 ) {
-    LEDGER("ledger", R.string.nav_ledger, Icons.Default.ShoppingCart),
-    REPORTS("reports", R.string.nav_reports, Icons.AutoMirrored.Filled.List),
-    REVIEW("review", R.string.nav_review, Icons.Default.Warning),
-    SETTINGS("settings", R.string.nav_settings, Icons.Default.Settings),
+    LEDGER("ledger", R.string.nav_ledger, { rememberVectorPainter(Icons.Default.ShoppingCart) }),
+    REPORTS("reports", R.string.nav_reports, { painterResource(R.drawable.ic_nav_reports) }),
+    REVIEW("review", R.string.nav_review, { painterResource(R.drawable.ic_nav_review) }),
+    SETTINGS("settings", R.string.nav_settings, { rememberVectorPainter(Icons.Default.Settings) }),
 }
 
 /**
@@ -81,18 +91,7 @@ private fun MainShell() {
     }
 
     Scaffold(
-        bottomBar = {
-            NavigationBar {
-                Destination.entries.forEach { destination ->
-                    NavigationBarItem(
-                        selected = currentRoute == destination.route,
-                        onClick = { open(destination) },
-                        icon = { Icon(destination.icon, contentDescription = null) },
-                        label = { Text(stringResource(destination.labelRes)) },
-                    )
-                }
-            }
-        },
+        bottomBar = { DestinationBar(currentRoute, ::open) },
     ) { padding ->
         Column(Modifier.padding(padding)) {
             // Above the NavHost rather than on the ledger: a capture that has
@@ -125,6 +124,57 @@ private fun MainShell() {
                 composable(Destination.SETTINGS.route) { SettingsScreen() }
             }
         }
+    }
+}
+
+/**
+ * Labels under the icons while every one of them fits on a line, and icons alone
+ * as soon as one does not, rather than a label broken mid-word at a large font
+ * size.
+ */
+@Composable
+private fun DestinationBar(
+    currentRoute: String?,
+    onOpen: (Destination) -> Unit,
+) {
+    BoxWithConstraints {
+        val labels = Destination.entries.map { stringResource(it.labelRes) }
+        val labelled = rememberLabelsFit(labels, maxWidth)
+
+        NavigationBar {
+            Destination.entries.forEachIndexed { index, destination ->
+                NavigationBarItem(
+                    selected = currentRoute == destination.route,
+                    onClick = { onOpen(destination) },
+                    icon = { DestinationIcon(destination, labels[index], labelled) },
+                    label = if (labelled) ({ Text(labels[index], maxLines = 1) }) else null,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Unlabelled, the icon carries the name itself: TalkBack reads it, and a long
+ * press shows it, the way an icon button does.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DestinationIcon(
+    destination: Destination,
+    label: String,
+    labelled: Boolean,
+) {
+    if (labelled) {
+        Icon(destination.icon(), contentDescription = null)
+        return
+    }
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+        tooltip = { PlainTooltip { Text(label) } },
+        state = rememberTooltipState(),
+    ) {
+        Icon(destination.icon(), contentDescription = label)
     }
 }
 
