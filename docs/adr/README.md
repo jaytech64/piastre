@@ -17,6 +17,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0005](0005-import-merges-and-never-replaces.md) | Import merges into the ledger and never replaces it | Accepted — implemented |
 | [0006](0006-a-filtered-total-answers-for-one-account.md) | A filtered total answers for one account | Accepted — implemented |
 | [0007](0007-a-report-counts-spending-not-the-balance.md) | A report counts spending, not the balance | Accepted — implemented |
+| [0008](0008-the-ledger-header-says-what-the-balance-is-made-of.md) | The ledger header says what the balance is made of | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan in `.lavish/phase-2-capture-mvp.html`.
 Each record after them was written with the branch that made the decision.

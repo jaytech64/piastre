@@ -27,6 +27,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -92,8 +93,9 @@ fun LedgerScreen(
 }
 
 /**
- * The balance, what it is a balance of, and the two things that qualify it: the
- * account the screen is narrowed to, and the purchases no total has counted yet.
+ * The balance, what it is a balance of, what it is made of, and the two things
+ * that qualify it: the account the screen is narrowed to, and the purchases no
+ * total has counted yet.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -103,6 +105,7 @@ private fun MonthHeader(
     onReviewClick: () -> Unit,
 ) {
     val selected = state.selectedAccount
+    val locale = currentLocale()
 
     Card(
         Modifier
@@ -111,21 +114,10 @@ private fun MonthHeader(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        selected?.let { stringResource(R.string.ledger_balance_month_account, accountLabel(it)) }
-                            ?: stringResource(R.string.ledger_balance_month),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        Formatters.signedMoney(state.balanceThisMonth),
-                        style = MaterialTheme.typography.headlineMedium,
-                    )
-                }
-                AccountFilterMenu(state.accounts, selected, onAccountSelected)
-            }
+            BalanceRow(state, locale, onAccountSelected)
+
+            HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            MonthFigures(state.thisMonth, locale)
 
             // A long account name and a review count do not fit one line on a narrow
             // phone, and neither chip may be the one that gets cut.
@@ -169,6 +161,32 @@ private fun MonthHeader(
                 }
             }
         }
+    }
+}
+
+/** What the balance is of, the balance, and the menu that changes what it is of. */
+@Composable
+private fun BalanceRow(
+    state: LedgerUiState,
+    locale: Locale,
+    onAccountSelected: (Long?) -> Unit,
+) {
+    val selected = state.selectedAccount
+
+    Row(verticalAlignment = Alignment.Top) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                selected?.let { stringResource(R.string.ledger_balance_month_account, accountLabel(it)) }
+                    ?: stringResource(R.string.ledger_balance_month),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                Formatters.signedMoney(state.thisMonth.balance, locale),
+                style = MaterialTheme.typography.displaySmall,
+            )
+        }
+        AccountFilterMenu(state.accounts, selected, onAccountSelected)
     }
 }
 

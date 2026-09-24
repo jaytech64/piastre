@@ -189,6 +189,8 @@ That zero is the ledger as a whole: a transfer moves the balance of each account
 
 A report counts expenses alone where the ledger's balance counts what came in too ([ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md)), so the same month reads as two different numbers and the word *dépensé* under the headline is what separates them.
 
+The ledger header's figures always add up to the balance above them: income and expenses by kind, and a filtered account's transfers as a figure of their own, never folded into either ([ADR-0008](docs/adr/0008-the-ledger-header-says-what-the-balance-is-made-of.md), `MonthSummary`).
+
 ### A parser fix repairs history
 
 Bump `NotificationParser.version` on **any** behaviour change.

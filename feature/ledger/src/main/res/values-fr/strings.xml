@@ -2,6 +2,9 @@
     <string name="ledger_today">Aujourd\'hui</string>
     <string name="ledger_yesterday">Hier</string>
     <string name="ledger_balance_month">Solde du mois</string>
+    <string name="ledger_income">Revenus</string>
+    <string name="ledger_expenses">Dépenses</string>
+    <string name="ledger_transfers">Virements</string>
     <string name="ledger_cash">Comptant</string>
     <string name="ledger_filter">Filtrer par compte</string>
     <string name="ledger_filter_all">Tous les comptes</string>
