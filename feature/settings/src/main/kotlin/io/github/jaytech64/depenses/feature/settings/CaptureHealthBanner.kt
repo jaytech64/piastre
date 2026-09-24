@@ -2,21 +2,31 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.settings
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +47,12 @@ import java.time.Instant
  * thing it reports — nothing is being captured — makes *all* the numbers in the
  * app quietly wrong, not just the ones on one screen. It renders nothing while
  * capture is working, which is nearly always.
+ *
+ * It can be collapsed to a strip but never dismissed (ADR-0004): the strip keeps
+ * the alarm and the fix, and gives up only the explanation. The collapse lives in
+ * composition, not on disk, so every launch raises the alarm in full again, and
+ * it is keyed to the kind of failure, so a verdict that changes — silence turning
+ * into revoked access — is news and opens the banner back up.
  */
 @Composable
 fun CaptureHealthBanner(
@@ -53,31 +69,100 @@ fun CaptureHealthBanner(
     val health = state.health
     if (health == null || !health.needsAttention) return
 
+    var collapsed by rememberSaveable(health::class.simpleName) { mutableStateOf(false) }
     val context = LocalContext.current
+    val reactivate = { context.startActivity(viewModel.notificationAccessIntent()) }
+
     Card(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .animateContentSize(),
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
             ),
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.Warning, contentDescription = null)
-                Text(
-                    stringResource(R.string.health_interrupted),
-                    style = MaterialTheme.typography.titleSmall,
-                )
+        if (collapsed) {
+            CollapsedBanner(onReactivate = reactivate, onExpand = { collapsed = false })
+        } else {
+            ExpandedBanner(
+                explanation = health.explanation(state.checkedAt),
+                onReactivate = reactivate,
+                onCollapse = { collapsed = true },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExpandedBanner(
+    explanation: String,
+    onReactivate: () -> Unit,
+    onCollapse: () -> Unit,
+) {
+    Column(
+        Modifier.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = null)
+            Text(
+                stringResource(R.string.health_interrupted),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onCollapse) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.health_collapse))
             }
-            Text(health.explanation(state.checkedAt), style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = { context.startActivity(viewModel.notificationAccessIntent()) }) {
+        }
+        Column(Modifier.padding(end = 12.dp)) {
+            Text(explanation, style = MaterialTheme.typography.bodyMedium)
+            TextButton(onClick = onReactivate) {
                 Text(stringResource(R.string.health_reactivate))
+            }
+        }
+    }
+}
+
+/**
+ * The alarm and the fix on one line, tapping anywhere else on it opens it back
+ * up. When the title needs the whole width — French at a large font size — the
+ * fix moves to a line of its own rather than squeezing the title until a word
+ * breaks in half.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CollapsedBanner(
+    onReactivate: () -> Unit,
+    onExpand: () -> Unit,
+) {
+    FlowRow(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClickLabel = stringResource(R.string.health_expand), onClick = onExpand)
+            .padding(start = 16.dp, end = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier.padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Default.Warning, contentDescription = null)
+            Text(stringResource(R.string.health_interrupted), style = MaterialTheme.typography.titleSmall)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onReactivate) {
+                Text(stringResource(R.string.health_reactivate))
+            }
+            IconButton(onClick = onExpand) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.health_expand))
             }
         }
     }
