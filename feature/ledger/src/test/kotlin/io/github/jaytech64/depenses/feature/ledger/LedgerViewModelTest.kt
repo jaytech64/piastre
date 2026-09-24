@@ -100,7 +100,7 @@ class LedgerViewModelTest {
 
             assertEquals(Money(-3_417, Money.CAD), state.days.single { it.date == TODAY }.total)
             assertEquals(Money(-3_180, Money.CAD), state.days.single { it.date == ANOTHER_DAY_THIS_MONTH }.total)
-            assertEquals(Money(-6_597, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(-6_597, Money.CAD), state.thisMonth.balance)
         }
 
     @Test
@@ -109,7 +109,7 @@ class LedgerViewModelTest {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 9_900, day = LAST_MONTH)
 
-            assertEquals(Money(-1_075, Money.CAD), settled().balanceThisMonth)
+            assertEquals(Money(-1_075, Money.CAD), settled().thisMonth.balance)
         }
 
     @Test
@@ -118,7 +118,7 @@ class LedgerViewModelTest {
             insert(amountMinor = 3_180, day = LAST_MONTH)
             val state = settled()
 
-            assertEquals(Money(0, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
             assertFalse(state.isEmpty)
         }
 
@@ -129,7 +129,7 @@ class LedgerViewModelTest {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 2_000, day = TODAY.withDayOfMonth(TODAY.lengthOfMonth()))
 
-            assertEquals(Money(-3_075, Money.CAD), settled().balanceThisMonth)
+            assertEquals(Money(-3_075, Money.CAD), settled().thisMonth.balance)
         }
 
     /**
@@ -143,7 +143,7 @@ class LedgerViewModelTest {
             insert(amountMinor = 9_999, day = TODAY, status = TransactionStatus.NEEDS_REVIEW)
             val state = settled()
 
-            assertEquals(Money(-1_075, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
             assertEquals(
                 1,
                 state.days
@@ -187,7 +187,7 @@ class LedgerViewModelTest {
             )
         }
 
-    /** Income and spending meet in one signed balance, not two figures. */
+    /** Income and spending meet in one signed balance. */
     @Test
     fun `income lifts the month's balance above zero`() =
         runTest {
@@ -195,8 +195,83 @@ class LedgerViewModelTest {
             insert(amountMinor = 4_210, day = TODAY)
             val state = settled()
 
-            assertEquals(Money(10_790, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(10_790, Money.CAD), state.thisMonth.balance)
             assertEquals(Money(10_790, Money.CAD), state.days.single().total)
+        }
+
+    @Test
+    fun `income and expenses are counted apart and add up to the balance`() =
+        runTest {
+            insert(amountMinor = 245_000, day = TODAY, kind = TransactionKind.INCOME)
+            insert(amountMinor = 150_000, day = ANOTHER_DAY_THIS_MONTH)
+            insert(amountMinor = 36_237, day = TODAY)
+            insert(amountMinor = 9_900, day = LAST_MONTH)
+            val month = settled().thisMonth
+
+            assertEquals(Money(245_000, Money.CAD), month.income)
+            assertEquals(Money(186_237, Money.CAD), month.expenses)
+            assertEquals(Money(58_763, Money.CAD), month.balance)
+        }
+
+    @Test
+    fun `a purchase waiting for review is in neither figure`() =
+        runTest {
+            insert(amountMinor = 15_000, day = TODAY, kind = TransactionKind.INCOME)
+            insert(amountMinor = 9_999, day = TODAY, status = TransactionStatus.NEEDS_REVIEW)
+            val month = settled().thisMonth
+
+            assertEquals(Money(15_000, Money.CAD), month.income)
+            assertEquals(Money(0, Money.CAD), month.expenses)
+        }
+
+    @Test
+    fun `a transfer adds nothing to any figure on the whole ledger`() =
+        runTest {
+            insert(
+                amountMinor = 90_000,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = account("Desrives"),
+                toAccountId = account("Visa"),
+            )
+
+            assertEquals(MonthSummary(), settled().thisMonth)
+        }
+
+    /**
+     * Paying the card off is money reaching the card, but it is not income: the
+     * two figures by kind would no longer add up to the balance above them, so the
+     * payment is a figure of its own.
+     */
+    @Test
+    fun `a card payment shows as a transfer on the card, not as income`() =
+        runTest {
+            val desrives = account("Desrives")
+            val visa = account("Visa")
+            insert(amountMinor = 121_480, day = TODAY, accountId = visa)
+            insert(
+                amountMinor = 90_000,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = desrives,
+                toAccountId = visa,
+            )
+
+            viewModel.onAccountSelected(visa)
+            val month = settled().thisMonth
+
+            assertEquals(Money(0, Money.CAD), month.income)
+            assertEquals(Money(121_480, Money.CAD), month.expenses)
+            assertEquals(Money(90_000, Money.CAD), month.transfers)
+            assertEquals(Money(-31_480, Money.CAD), month.balance)
+
+            viewModel.onAccountSelected(desrives)
+            assertEquals(
+                Money(-90_000, Money.CAD),
+                viewModel.uiState
+                    .first { it.selectedAccount?.id == desrives }
+                    .thisMonth.transfers,
+            )
         }
 
     @Test
@@ -221,7 +296,7 @@ class LedgerViewModelTest {
             val state = settled()
 
             assertEquals("Desrives", state.selectedAccount?.name)
-            assertEquals(Money(-1_075, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
             assertEquals(
                 listOf(1_075L),
                 state.days
@@ -241,7 +316,7 @@ class LedgerViewModelTest {
 
             viewModel.onAccountSelected(desrives)
 
-            assertEquals(Money(-1_075, Money.CAD), settled().balanceThisMonth)
+            assertEquals(Money(-1_075, Money.CAD), settled().thisMonth.balance)
         }
 
     @Test
@@ -298,12 +373,14 @@ class LedgerViewModelTest {
             )
 
             viewModel.onAccountSelected(desrives)
-            assertEquals(Money(-6_575, Money.CAD), settled().balanceThisMonth)
+            assertEquals(Money(-6_575, Money.CAD), settled().thisMonth.balance)
 
             viewModel.onAccountSelected(cash)
             assertEquals(
                 Money(6_000, Money.CAD),
-                viewModel.uiState.first { it.selectedAccount?.id == cash }.balanceThisMonth,
+                viewModel.uiState
+                    .first { it.selectedAccount?.id == cash }
+                    .thisMonth.balance,
             )
         }
 
@@ -322,7 +399,7 @@ class LedgerViewModelTest {
 
             val state = settled()
 
-            assertEquals(Money(0, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
             assertEquals(Money(0, Money.CAD), state.days.single().total)
         }
 
@@ -337,7 +414,7 @@ class LedgerViewModelTest {
             val state = viewModel.uiState.first { it.selectedAccount?.id == epargne }
 
             assertTrue(state.isEmpty)
-            assertEquals(Money(0, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
         }
 
     /**
@@ -376,7 +453,7 @@ class LedgerViewModelTest {
             val state = viewModel.uiState.first { it.selectedAccount == null }
 
             assertNull(state.selectedAccount)
-            assertEquals(Money(-1_075, Money.CAD), state.balanceThisMonth)
+            assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
         }
 
     /**

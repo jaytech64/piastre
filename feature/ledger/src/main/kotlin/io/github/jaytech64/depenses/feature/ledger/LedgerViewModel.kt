@@ -28,12 +28,31 @@ data class LedgerDay(
     val transactions: List<Transaction>,
 )
 
+/**
+ * What the month's balance is made of.
+ *
+ * Income and expenses are counted by kind, the same rows a report counts, so
+ * the whole ledger's expenses and a report's *dépensé* for the month are one
+ * number. A transfer is neither: it is worth zero to the whole ledger and moves
+ * a filtered account's balance (ADR-0006), so it is a figure of its own rather
+ * than being folded into either of the other two, and the three always add up
+ * to [balance].
+ */
+data class MonthSummary(
+    val income: Money = Money(0, Money.CAD),
+    val expenses: Money = Money(0, Money.CAD),
+    /** Zero on the whole ledger; under a filter, signed by which end the account is on. */
+    val transfers: Money = Money(0, Money.CAD),
+) {
+    /** Negative on a month you only spent, which is most months. */
+    val balance: Money get() = income + -expenses + transfers
+}
+
 data class LedgerUiState(
     val days: List<LedgerDay> = emptyList(),
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
-    /** Negative on a month you only spent, which is most months. */
-    val balanceThisMonth: Money = Money(0, Money.CAD),
+    val thisMonth: MonthSummary = MonthSummary(),
     val needsReview: Int = 0,
     /** Every account, including ones nothing has ever been spent from. */
     val accounts: List<Account> = emptyList(),
@@ -84,7 +103,7 @@ class LedgerViewModel
                 LedgerUiState(
                     days = days,
                     today = today,
-                    balanceThisMonth = days.balanceIn(YearMonth.from(today)),
+                    thisMonth = days.summaryOf(YearMonth.from(today), selected),
                     needsReview = needsReview,
                     accounts = allAccounts,
                     selectedAccount = selected,
@@ -129,11 +148,28 @@ class LedgerViewModel
          * Every day of the calendar month counts, including one dated ahead of
          * today: a purchase the list shows is a purchase the headline above it has
          * counted.
+         *
+         * An empty figure is zero in the month's own currency, so a month whose
+         * rows are all in one currency never has a Canadian zero added to it.
          */
-        private fun List<LedgerDay>.balanceIn(month: YearMonth): Money =
-            filter { YearMonth.from(it.date) == month }
-                .map { it.total }
-                .reduceOrNull(Money::plus) ?: Money(0, Money.CAD)
+        private fun List<LedgerDay>.summaryOf(
+            month: YearMonth,
+            account: Account?,
+        ): MonthSummary {
+            val rows = filter { YearMonth.from(it.date) == month }.flatMap { it.transactions }
+            val zero = Money(0, rows.firstOrNull()?.amount?.currency ?: Money.CAD)
+
+            fun sumOf(
+                kind: TransactionKind,
+                amount: (Transaction) -> Money,
+            ): Money = rows.filter { it.kind == kind }.map(amount).fold(zero, Money::plus)
+
+            return MonthSummary(
+                income = sumOf(TransactionKind.INCOME) { it.amount },
+                expenses = sumOf(TransactionKind.EXPENSE) { it.amount },
+                transfers = sumOf(TransactionKind.TRANSFER) { it.balanceMovedOn(account) },
+            )
+        }
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L
