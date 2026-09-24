@@ -11,6 +11,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 
@@ -339,6 +340,30 @@ interface MerchantDao {
 
     @Query("SELECT * FROM merchant ORDER BY displayName")
     fun all(): Flow<List<MerchantEntity>>
+
+    /**
+     * Every merchant, the ones you use most for [kind] first: by how many confirmed
+     * rows named it on or after [sinceEpochDay], then by when it was last used,
+     * then by name. A merchant never used for [kind] still comes back, last.
+     *
+     * A row waiting for review does not count: its merchant may be the parser's
+     * wrong guess, and it is approving the row that makes it yours.
+     */
+    @Query(
+        """
+        SELECT m.* FROM merchant m
+        LEFT JOIN expense_transaction t
+            ON t.merchantId = m.id AND t.kind = :kind AND t.status = 'CONFIRMED'
+        GROUP BY m.id
+        ORDER BY SUM(t.localDateEpochDay >= :sinceEpochDay) DESC,
+            MAX(t.occurredAtUtcMillis) DESC,
+            m.displayName
+        """,
+    )
+    fun byUse(
+        kind: TransactionKind,
+        sinceEpochDay: Int,
+    ): Flow<List<MerchantEntity>>
 
     @Query("SELECT * FROM merchant ORDER BY id")
     suspend fun allOnce(): List<MerchantEntity>

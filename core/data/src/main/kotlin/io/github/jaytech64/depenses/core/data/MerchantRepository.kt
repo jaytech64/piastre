@@ -9,8 +9,10 @@ import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.MatchType
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.MerchantNormaliser
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -99,6 +101,21 @@ class MerchantRepository
             }
 
         /**
+         * Every merchant, the ones you have used most for [kind] lately first, so the
+         * places you go every week are the ones the form offers before you type.
+         *
+         * "Lately" is the [RECENT_DAYS] up to [today], so a store you stopped going to
+         * gives up its place within a season rather than holding it for years.
+         */
+        fun byUse(
+            kind: TransactionKind,
+            today: LocalDate,
+        ): Flow<List<Merchant>> =
+            merchants.byUse(kind, today.minusDays(RECENT_DAYS).toEpochDay().toInt()).map { rows ->
+                rows.map { Merchant(id = it.id, displayName = it.displayName, normalisedName = it.normalisedName) }
+            }
+
+        /**
          * The insert ignores a conflict rather than failing, so the re-read is what
          * returns the row — either the one just written or the one another caller
          * wrote first. Both answers are correct; there is only ever one merchant per
@@ -111,5 +128,9 @@ class MerchantRepository
             merchants.byNormalisedName(normalisedName)?.let { return it }
             merchants.insert(MerchantEntity(displayName = displayName, normalisedName = normalisedName))
             return merchants.byNormalisedName(normalisedName)
+        }
+
+        private companion object {
+            const val RECENT_DAYS = 90L
         }
     }
