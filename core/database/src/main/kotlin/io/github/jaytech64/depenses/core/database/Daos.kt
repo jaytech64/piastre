@@ -338,9 +338,6 @@ interface MerchantDao {
     @Query("SELECT m.* FROM merchant m JOIN merchant_alias a ON a.merchantId = m.id WHERE a.pattern = :raw")
     suspend fun byExactAlias(raw: String): MerchantEntity?
 
-    @Query("SELECT * FROM merchant ORDER BY displayName")
-    fun all(): Flow<List<MerchantEntity>>
-
     /**
      * Every merchant, the ones you use most for [kind] first: by how many confirmed
      * rows named it on or after [sinceEpochDay], then by when it was last used,

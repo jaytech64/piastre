@@ -10,6 +10,7 @@ import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.AccountType
+import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -132,6 +133,20 @@ class ExpenseFormViewModelTest {
             awaitDone()
 
             assertNotNull(database.merchantDao().byExactAlias("Café Olimpico"))
+        }
+
+    @Test
+    fun `switching to income offers who pays you before where you spend`() =
+        runTest {
+            repeat(2) { enter("4,00", "Tim Hortons", TransactionKind.EXPENSE) }
+            enter("1 850,00", "Cégep de Sherbrooke", TransactionKind.INCOME)
+            viewModel = newViewModel()
+
+            assertEquals("Tim Hortons", firstOffered { it.size == 2 })
+
+            viewModel.onKindChange(TransactionKind.INCOME)
+
+            assertEquals("Cégep de Sherbrooke", firstOffered { it.first().displayName != "Tim Hortons" })
         }
 
     /**
@@ -443,6 +458,26 @@ class ExpenseFormViewModelTest {
     private suspend fun awaitDone() {
         viewModel.uiState.first { it.done }
     }
+
+    /** Saves one transaction through a form of its own, the way reopening the screen would. */
+    private suspend fun enter(
+        amount: String,
+        merchant: String,
+        kind: TransactionKind,
+    ) {
+        viewModel = newViewModel()
+        viewModel.onKindChange(kind)
+        viewModel.onAmountChange(amount)
+        viewModel.onMerchantChange(merchant)
+        viewModel.save()
+        awaitDone()
+    }
+
+    private suspend fun firstOffered(settled: (List<Merchant>) -> Boolean): String =
+        viewModel.knownMerchants
+            .first { it.isNotEmpty() && settled(it) }
+            .first()
+            .displayName
 
     private companion object {
         val ZONE: ZoneId = ZoneId.of("America/Toronto")

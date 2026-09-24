@@ -95,11 +95,6 @@ class MerchantRepository
             return findOrCreate(name.displayName, name.normalisedName)?.id
         }
 
-        fun all(): Flow<List<Merchant>> =
-            merchants.all().map { rows ->
-                rows.map { Merchant(id = it.id, displayName = it.displayName, normalisedName = it.normalisedName) }
-            }
-
         /**
          * Every merchant, the ones you have used most for [kind] lately first, so the
          * places you go every week are the ones the form offers before you type.
