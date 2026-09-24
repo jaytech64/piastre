@@ -101,6 +101,8 @@ Google Wallet posts a genuine payment notification only on a real phone with a r
 
 Say plainly which surface each claim was proven on, and never let an emulator run stand in for a capture-path claim.
 
+With the phone plugged in, `./gradlew installDebug` installs on **every** connected device, so name the target with `ANDROID_SERIAL=<serial>`: an emulator run must never also put an unapproved build on the phone.
+
 **An install on the phone must never take the data with it.**
 That phone holds real spending, and it holds the only copy: `allowBackup="false"`, every domain excluded from both cloud backup and device transfer, and no network to have synced it anywhere.
 A wipe is not a setback, it is the permanent loss of the ledger this app exists to keep.
