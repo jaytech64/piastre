@@ -51,6 +51,8 @@
     <string name="settings_accounts_add">Add an account</string>
     <string name="settings_accounts_unnamed">Tap to name it</string>
     <string name="settings_accounts_added">Added by hand</string>
+    <string name="settings_accounts_move_up">Move up</string>
+    <string name="settings_accounts_move_down">Move down</string>
     <plurals name="settings_accounts_transactions">
         <item quantity="one">%d transaction</item>
         <item quantity="other">%d transactions</item>

@@ -51,6 +51,8 @@
     <string name="settings_accounts_add">Ajouter un compte</string>
     <string name="settings_accounts_unnamed">Touchez pour le nommer</string>
     <string name="settings_accounts_added">Ajouté à la main</string>
+    <string name="settings_accounts_move_up">Monter</string>
+    <string name="settings_accounts_move_down">Descendre</string>
     <plurals name="settings_accounts_transactions">
         <item quantity="one">%d transaction</item>
         <item quantity="other">%d transactions</item>
