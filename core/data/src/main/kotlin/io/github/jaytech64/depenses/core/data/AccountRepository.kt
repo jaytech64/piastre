@@ -37,7 +37,7 @@ class AccountRepository
         ): Long? {
             if (last4.isNullOrBlank()) return null
             accounts.walletAccount(issuerLabel, last4)?.let { return it.id }
-            accounts.insert(
+            accounts.insertLast(
                 AccountEntity(
                     name = null,
                     type = AccountType.CARD,
@@ -64,7 +64,7 @@ class AccountRepository
             last4: String?,
             openingBalance: Money? = null,
         ): Long =
-            accounts.insert(
+            accounts.insertLast(
                 AccountEntity(
                     name = name.cleaned(),
                     type = type,
@@ -88,6 +88,12 @@ class AccountRepository
             type: AccountType,
             last4: String?,
         ) = accounts.updateAddedAccount(id, name.cleaned(), last4.forType(type), type)
+
+        /** Puts the account at [toIndex] in every list of accounts, counting from the top. */
+        suspend fun move(
+            id: Long,
+            toIndex: Int,
+        ) = accounts.move(id, toIndex)
 
         /** False when a transaction still uses the account, either side of a transfer. */
         suspend fun remove(id: Long): Boolean = accounts.deleteIfUnused(id) == 1

@@ -156,7 +156,7 @@ class LedgerImport
                 }
 
                 is AccountTarget.New -> {
-                    accounts.insert(target.file.toEntity()).takeIf { it != RawNotificationEventDao.INSERT_IGNORED }
+                    accounts.insertLast(target.file.toEntity()).takeIf { it != RawNotificationEventDao.INSERT_IGNORED }
                         ?: refuse(
                             ImportProblem.Inconsistent("account ${target.file.id} collides with one already here"),
                         )

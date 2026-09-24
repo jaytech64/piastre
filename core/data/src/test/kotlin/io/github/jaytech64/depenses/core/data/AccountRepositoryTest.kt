@@ -274,6 +274,70 @@ class AccountRepositoryTest {
         extrasJson = "{}",
     )
 
+    @Test
+    fun `a new account joins at the end, whatever its name`() =
+        runTest {
+            accounts.add(name = "Visa Desrives", type = AccountType.CARD, last4 = "7373")
+            accounts.add(name = "Chèques", type = AccountType.BANK, last4 = null)
+            accounts.resolve("Carte d'accès Desrives", "0000")
+
+            assertEquals(listOf("Visa Desrives", "Chèques", null), accounts.all().first().map { it.name })
+        }
+
+    @Test
+    fun `an account moved to the top stays there, and the others keep their order`() =
+        runTest {
+            accounts.add(name = "Visa Desrives", type = AccountType.CARD, last4 = "7373")
+            accounts.add(name = "Argent comptant", type = AccountType.CASH, last4 = null)
+            val chequing = accounts.add(name = "Chèques", type = AccountType.BANK, last4 = null)
+
+            accounts.move(chequing, toIndex = 0)
+
+            assertEquals(
+                listOf("Chèques", "Visa Desrives", "Argent comptant"),
+                accounts.all().first().map { it.name },
+            )
+        }
+
+    @Test
+    fun `an account moved down lands where it was dropped`() =
+        runTest {
+            val visa = accounts.add(name = "Visa Desrives", type = AccountType.CARD, last4 = "7373")
+            accounts.add(name = "Argent comptant", type = AccountType.CASH, last4 = null)
+            accounts.add(name = "Chèques", type = AccountType.BANK, last4 = null)
+
+            accounts.move(visa, toIndex = 1)
+
+            assertEquals(
+                listOf("Argent comptant", "Visa Desrives", "Chèques"),
+                accounts.all().first().map { it.name },
+            )
+        }
+
+    @Test
+    fun `an account added after a removal still goes last`() =
+        runTest {
+            accounts.add(name = "Visa Desrives", type = AccountType.CARD, last4 = "7373")
+            val cash = accounts.add(name = "Argent comptant", type = AccountType.CASH, last4 = null)
+            accounts.add(name = "Chèques", type = AccountType.BANK, last4 = null)
+            accounts.remove(cash)
+            accounts.move(
+                accounts
+                    .all()
+                    .first()
+                    .last()
+                    .id,
+                toIndex = 0,
+            )
+
+            accounts.add(name = "Épargne", type = AccountType.BANK, last4 = null)
+
+            assertEquals(
+                listOf("Chèques", "Visa Desrives", "Épargne"),
+                accounts.all().first().map { it.name },
+            )
+        }
+
     private companion object {
         val ZONE: ZoneId = ZoneId.of("America/Toronto")
         const val WALLET = "com.google.android.apps.walletnfcrel"
