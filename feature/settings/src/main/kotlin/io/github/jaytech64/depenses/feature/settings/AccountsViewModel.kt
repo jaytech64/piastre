@@ -68,6 +68,14 @@ class AccountsViewModel
             }
         }
 
+        /** Puts [account] at [toIndex] in every list of accounts; one past either end is ignored. */
+        fun move(
+            account: Account,
+            toIndex: Int,
+        ) {
+            viewModelScope.launch { repository.move(account.id, toIndex) }
+        }
+
         fun remove(account: Account) {
             viewModelScope.launch { removalRefusedState.value = !repository.remove(account.id) }
         }

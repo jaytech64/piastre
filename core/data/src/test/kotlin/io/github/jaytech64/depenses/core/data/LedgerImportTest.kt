@@ -61,6 +61,35 @@ class LedgerImportTest {
         }
 
     @Test
+    fun `your accounts arrive on a new phone in the order you gave them`() =
+        runTest {
+            source.accounts().add("Visa", AccountType.CARD, last4 = "7373")
+            source.accounts().add("Débit", AccountType.BANK, last4 = null)
+            val savings = source.accounts().add("Épargne", AccountType.BANK, last4 = null)
+            source.accounts().move(savings, toIndex = 0)
+
+            target.importing(source.export())
+
+            assertEquals(listOf("Épargne", "Visa", "Débit"), target.accountNames())
+        }
+
+    @Test
+    fun `accounts an import brings in join after yours, which keep their place`() =
+        runTest {
+            target.accounts().add("Argent comptant", AccountType.CASH, last4 = null)
+            val chequing = target.accounts().add("Chèques", AccountType.BANK, last4 = null)
+            target.accounts().move(chequing, toIndex = 0)
+            source.accounts().add("Visa", AccountType.CARD, last4 = "7373")
+            val savings = source.accounts().add("Épargne", AccountType.BANK, last4 = null)
+            source.accounts().add("Chèques", AccountType.BANK, last4 = null)
+            source.accounts().move(savings, toIndex = 0)
+
+            target.importing(source.export())
+
+            assertEquals(listOf("Chèques", "Argent comptant", "Épargne", "Visa"), target.accountNames())
+        }
+
+    @Test
     fun `importing the same file twice adds nothing the second time`() =
         runTest {
             val file = document()
@@ -253,6 +282,8 @@ class LedgerImportTest {
 
     private suspend fun DepensesDatabase.balances() =
         accounts().all().first().map { listOf(it.name, it.type, it.openingBalance, it.balance) }
+
+    private suspend fun DepensesDatabase.accountNames() = accounts().all().first().map { it.name }
 
     private fun refused(problem: ImportProblem) = ImportReading.Refused(problem)
 

@@ -18,10 +18,14 @@ import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -122,10 +126,17 @@ class ExpenseFormViewModel
 
         /**
          * Every merchant already known, so the field can offer the name you used
-         * last time instead of letting you invent a second spelling of it.
+         * last time instead of letting you invent a second spelling of it — the ones
+         * you use most for the kind being entered first, so an income leads with who
+         * pays you and an expense with where you spend.
          */
+        @OptIn(ExperimentalCoroutinesApi::class)
         val knownMerchants: StateFlow<List<Merchant>> =
-            merchants.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
+            _uiState
+                .map { it.kind }
+                .distinctUntilChanged()
+                .flatMapLatest { kind -> merchants.byUse(kind, LocalDate.now(zoneId.get())) }
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
         val knownAccounts: StateFlow<List<Account>> =
             accounts.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())

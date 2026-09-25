@@ -173,6 +173,22 @@ class AccountsViewModelTest {
         }
 
     @Test
+    fun `an account moved here moves in every list of accounts`() =
+        runTest {
+            repository.add(name = "Visa Desrives", type = AccountType.CARD, last4 = "7373")
+            repository.add(name = "Chèques", type = AccountType.BANK, last4 = null)
+            val chequing = viewModel.accounts.first { it.size == 2 }.last()
+
+            viewModel.move(chequing, toIndex = 0)
+
+            assertEquals(
+                listOf("Chèques", "Visa Desrives"),
+                viewModel.accounts.first { it.first().name == "Chèques" }.map { it.name },
+            )
+            assertEquals(listOf("Chèques", "Visa Desrives"), repository.all().first().map { it.name })
+        }
+
+    @Test
     fun `an unused account goes`() =
         runTest {
             viewModel.save(

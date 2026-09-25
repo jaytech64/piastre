@@ -189,6 +189,7 @@ class LedgerExport
                                 it.last4,
                                 it.origin.name,
                                 it.openingBalanceMinor,
+                                it.sortOrder,
                             )
                         },
                     transactions = rows.map { it.toExported() },

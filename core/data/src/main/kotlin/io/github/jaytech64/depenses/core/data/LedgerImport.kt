@@ -138,7 +138,12 @@ class LedgerImport
             document: ExportDocument,
             plan: ImportPlan,
         ) {
-            val accountIds = plan.accounts.mapValues { (_, target) -> accountIdFor(target) }
+            // New accounts join after yours, in the order the file had them. An account
+            // you already have keeps the place you gave it here.
+            val accountIds =
+                plan.accounts.entries
+                    .sortedBy { (_, target) -> target.file.sortOrder ?: Int.MAX_VALUE }
+                    .associate { (fileId, target) -> fileId to accountIdFor(target) }
             val merchantIds = document.merchants.associate { it.id to merchants.named(it.displayName) }
             document.aliases.forEach { alias ->
                 merchantIds[alias.merchantId]?.let { merchantRows.insertAlias(alias.toEntity(it)) }
@@ -156,7 +161,7 @@ class LedgerImport
                 }
 
                 is AccountTarget.New -> {
-                    accounts.insert(target.file.toEntity()).takeIf { it != RawNotificationEventDao.INSERT_IGNORED }
+                    accounts.insertLast(target.file.toEntity()).takeIf { it != RawNotificationEventDao.INSERT_IGNORED }
                         ?: refuse(
                             ImportProblem.Inconsistent("account ${target.file.id} collides with one already here"),
                         )

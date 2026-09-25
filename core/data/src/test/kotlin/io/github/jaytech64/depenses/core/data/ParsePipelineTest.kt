@@ -177,7 +177,7 @@ class ParsePipelineTest {
             val resolved = transactions.mapNotNull { it.merchantId }
 
             assertEquals("every purchase needs a merchant", PURCHASES, resolved.size)
-            assertEquals(MERCHANTS, merchants.all().first().size)
+            assertEquals(MERCHANTS, database.merchantDao().allOnce().size)
         }
 
     /**
@@ -203,11 +203,11 @@ class ParsePipelineTest {
     fun `a merchant seen again is the same merchant, not a second one`() =
         runTest {
             captureAll(corpus())
-            val before = merchants.all().first().size
+            val before = database.merchantDao().allOnce().size
 
             captureAll(corpus())
 
-            assertEquals(before, merchants.all().first().size)
+            assertEquals(before, database.merchantDao().allOnce().size)
         }
 
     private suspend fun captureAll(notifications: List<RawNotification>) =

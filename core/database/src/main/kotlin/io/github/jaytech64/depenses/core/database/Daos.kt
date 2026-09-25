@@ -11,6 +11,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import kotlinx.coroutines.flow.Flow
 
@@ -337,8 +338,29 @@ interface MerchantDao {
     @Query("SELECT m.* FROM merchant m JOIN merchant_alias a ON a.merchantId = m.id WHERE a.pattern = :raw")
     suspend fun byExactAlias(raw: String): MerchantEntity?
 
-    @Query("SELECT * FROM merchant ORDER BY displayName")
-    fun all(): Flow<List<MerchantEntity>>
+    /**
+     * Every merchant, the ones you use most for [kind] first: by how many confirmed
+     * rows named it on or after [sinceEpochDay], then by when it was last used,
+     * then by name. A merchant never used for [kind] still comes back, last.
+     *
+     * A row waiting for review does not count: its merchant may be the parser's
+     * wrong guess, and it is approving the row that makes it yours.
+     */
+    @Query(
+        """
+        SELECT m.* FROM merchant m
+        LEFT JOIN expense_transaction t
+            ON t.merchantId = m.id AND t.kind = :kind AND t.status = 'CONFIRMED'
+        GROUP BY m.id
+        ORDER BY SUM(t.localDateEpochDay >= :sinceEpochDay) DESC,
+            MAX(t.occurredAtUtcMillis) DESC,
+            m.displayName
+        """,
+    )
+    fun byUse(
+        kind: TransactionKind,
+        sinceEpochDay: Int,
+    ): Flow<List<MerchantEntity>>
 
     @Query("SELECT * FROM merchant ORDER BY id")
     suspend fun allOnce(): List<MerchantEntity>
@@ -349,8 +371,45 @@ interface MerchantDao {
 
 @Dao
 interface AccountDao {
+    /** Prefer [insertLast], which gives the account its place; this one leaves [AccountEntity.sortOrder] as given. */
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(account: AccountEntity): Long
+
+    /**
+     * Adds an account after every other, so your order never changes without you:
+     * a card Wallet shows for the first time arrives last, as does one you add.
+     */
+    @Transaction
+    suspend fun insertLast(account: AccountEntity): Long = insert(account.copy(sortOrder = nextSortOrder()))
+
+    @Query("SELECT COALESCE(MAX(sortOrder) + 1, 0) FROM account")
+    suspend fun nextSortOrder(): Int
+
+    /**
+     * Moves an account to [toIndex] in the order you see, shifting the ones between.
+     *
+     * Every account is renumbered from 0, so positions stay dense whatever a removal
+     * or an import left behind, and two accounts never share a place.
+     */
+    @Transaction
+    suspend fun move(
+        id: Long,
+        toIndex: Int,
+    ) {
+        val ids = idsInOrder().toMutableList()
+        if (!ids.remove(id)) return
+        ids.add(toIndex.coerceIn(0, ids.size), id)
+        ids.forEachIndexed { position, each -> setSortOrder(each, position) }
+    }
+
+    @Query("SELECT id FROM account ORDER BY sortOrder, id")
+    suspend fun idsInOrder(): List<Long>
+
+    @Query("UPDATE account SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun setSortOrder(
+        id: Long,
+        sortOrder: Int,
+    )
 
     /**
      * The Wallet card a notification names. `IS` rather than `=` for the label, so
@@ -364,7 +423,7 @@ interface AccountDao {
     ): AccountEntity?
 
     /**
-     * Named accounts first, alphabetically; then the ones still waiting for a name.
+     * In the order you set in Settings, which every list of accounts follows.
      *
      * Both sides of a transfer count: an account money only ever leaves is still in
      * use, and the count is what decides whether it can be removed.
@@ -389,7 +448,7 @@ interface AccountDao {
                               AND t.status = 'CONFIRMED' AND t.currency = :currency), 0)
                 AS balanceMinor
         FROM account a
-        ORDER BY a.name IS NULL, a.name COLLATE NOCASE, a.issuerLabel, a.last4
+        ORDER BY a.sortOrder, a.id
         """,
     )
     fun allWithCounts(currency: String): Flow<List<AccountWithCount>>

@@ -30,7 +30,7 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
 
     companion object {
-        const val VERSION: Int = 9
+        const val VERSION: Int = 10
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -46,6 +46,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_6_7,
                 MIGRATION_7_8,
                 MIGRATION_8_9,
+                MIGRATION_9_10,
             )
 
         const val NAME: String = "depenses.db"
@@ -317,6 +318,32 @@ private val MIGRATION_8_9 =
     object : Migration(8, 9) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE account ADD COLUMN openingBalanceMinor INTEGER DEFAULT NULL")
+        }
+    }
+
+/**
+ * Schema 10 lets you put your accounts in an order of your own.
+ *
+ * Every account starts where schema 9 showed it — named ones A to Z, then the
+ * ones still waiting for a name — so an upgrade moves nothing until you do. That
+ * is the order you have already been looking at, not a guess, which is why it is
+ * written in rather than left null. The ordering is a literal copy of the one
+ * `AccountDao.allWithCounts` used at schema 9, so a later change to that query
+ * cannot reach back and change what this upgrade meant.
+ */
+private val MIGRATION_9_10 =
+    object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE account ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
+            val ids =
+                db
+                    .query("SELECT id FROM account ORDER BY name IS NULL, name COLLATE NOCASE, issuerLabel, last4, id")
+                    .use { cursor ->
+                        generateSequence { if (cursor.moveToNext()) cursor.getLong(0) else null }.toList()
+                    }
+            ids.forEachIndexed { position, id ->
+                db.execSQL("UPDATE account SET sortOrder = ? WHERE id = ?", arrayOf<Any>(position, id))
+            }
         }
     }
 

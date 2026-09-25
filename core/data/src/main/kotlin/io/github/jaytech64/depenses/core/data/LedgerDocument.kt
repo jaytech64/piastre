@@ -11,7 +11,8 @@ import kotlinx.serialization.Serializable
  * Version 2 dropped `paymentMethod`, because cash became an account, and renamed
  * the card list to accounts: a version-1 reader must refuse the file rather than
  * guess at what it no longer says. Fields added since — an account's opening
- * balance — left it at 2, and default to null for a file written before them.
+ * balance, and its place in your order — left it at 2, and default to null for a
+ * file written before them.
  */
 internal const val LEDGER_FORMAT_VERSION = 2
 
@@ -38,6 +39,9 @@ internal data class ExportDocument(
  *
  * [openingBalanceMinor] arrived within version 2 and stays null when none was given, so that a
  * reader can tell a balance nobody stated from one set to zero.
+ *
+ * [sortOrder] is where you put the account in your list, which you set, so it leaves with the
+ * rest. It arrived within version 2 too, and is null in a file written before it.
  */
 @Serializable
 internal data class ExportedAccount(
@@ -48,6 +52,7 @@ internal data class ExportedAccount(
     val last4: String?,
     val origin: String,
     val openingBalanceMinor: Long? = null,
+    val sortOrder: Int? = null,
 )
 
 @Serializable

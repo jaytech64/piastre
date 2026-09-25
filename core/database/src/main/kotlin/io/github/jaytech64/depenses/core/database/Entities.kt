@@ -151,6 +151,11 @@ data class AccountEntity(
      * never given — which an import tells apart from a balance you set to zero.
      */
     val openingBalanceMinor: Long? = null,
+    /**
+     * Where the account sits in every list of accounts, from 0. You set it by
+     * moving the account in Settings; a new one takes the next free place, at the end.
+     */
+    @ColumnInfo(defaultValue = "0") val sortOrder: Int = 0,
 )
 
 /**
