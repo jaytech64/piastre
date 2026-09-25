@@ -633,8 +633,10 @@ interface ReportDao {
     ): Flow<List<MerchantTotal>>
 
     /**
-     * How many purchases in the range every other query on this DAO left out
-     * because they were paid in something other than [currency].
+     * How many incomes and purchases in the range every other query on this DAO
+     * left out because they were in something other than [currency]. A transfer
+     * is not counted: it is worth nothing to any total here, so leaving one out
+     * understates nothing.
      *
      * Converting them is impossible here — a rate needs a network, and there is
      * none — so a report can only decline to count them. Declining silently is
@@ -647,7 +649,7 @@ interface ReportDao {
         SELECT COUNT(*)
         FROM expense_transaction
         WHERE status = 'CONFIRMED'
-          AND kind = 'EXPENSE'
+          AND kind IN ('EXPENSE', 'INCOME')
           AND currency != :currency
           AND localDateEpochDay BETWEEN :fromDay AND :toDay
         """,

@@ -175,6 +175,15 @@ class ReportRepositoryTest {
         }
 
     @Test
+    fun `a paycheque in another currency is counted as left out, and moving your own money is not`() =
+        runTest {
+            record(on = MONDAY, amountMinor = 40_000, kind = TransactionKind.INCOME, currency = "USD", key = "pay")
+            record(on = MONDAY, amountMinor = 6_000, kind = TransactionKind.TRANSFER, currency = "USD", key = "move")
+
+            assertEquals(1, reports.otherCurrencyCount(week()).first())
+        }
+
+    @Test
     fun `a month covers its own days and no neighbour's`() =
         runTest {
             spend(on = LocalDate.of(2026, 8, 31), amountMinor = 9_999)

@@ -128,7 +128,7 @@ class ReportRepository
                     }
                 }
 
-        /** Purchases in [period] that every other figure on this repository left out. */
+        /** Incomes and purchases in [period] that every other figure on this repository left out. */
         fun otherCurrencyCount(
             period: ReportPeriod,
             currency: String = Money.CAD,

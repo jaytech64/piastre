@@ -25,9 +25,9 @@
         <item quantity="many">%d d\'achats</item>
     </plurals>
     <plurals name="reports_other_currency">
-        <item quantity="one">%d achat dans une autre devise n\'est pas compté.</item>
-        <item quantity="other">%d achats dans une autre devise ne sont pas comptés.</item>
-        <item quantity="many">%d d\'achats dans une autre devise ne sont pas comptés.</item>
+        <item quantity="one">%d transaction dans une autre devise n\'est pas comptée.</item>
+        <item quantity="other">%d transactions dans une autre devise ne sont pas comptées.</item>
+        <item quantity="many">%d de transactions dans une autre devise ne sont pas comptées.</item>
     </plurals>
     <plurals name="reports_awaiting_review">
         <item quantity="one">%d achat attend d\'être révisé.</item>

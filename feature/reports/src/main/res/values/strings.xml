@@ -24,8 +24,8 @@
         <item quantity="other">%d purchases</item>
     </plurals>
     <plurals name="reports_other_currency">
-        <item quantity="one">%d purchase in another currency is not counted.</item>
-        <item quantity="other">%d purchases in another currency are not counted.</item>
+        <item quantity="one">%d transaction in another currency is not counted.</item>
+        <item quantity="other">%d transactions in another currency are not counted.</item>
     </plurals>
     <plurals name="reports_awaiting_review">
         <item quantity="one">%d purchase is waiting to be reviewed.</item>

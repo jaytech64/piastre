@@ -217,12 +217,13 @@ class ReportsViewModelTest {
         runTest {
             spend(1_000, TODAY)
             spend(4_500, TODAY, currency = "USD")
+            record(40_000, TODAY, kind = TransactionKind.INCOME, currency = "USD")
             record(8_000, TODAY, status = TransactionStatus.NEEDS_REVIEW)
 
             val state = settled()
 
             assertEquals(Money(1_000, Money.CAD), state.total)
-            assertEquals(1, state.otherCurrencyCount)
+            assertEquals(2, state.otherCurrencyCount)
             assertEquals(1, state.needsReviewCount)
         }
 

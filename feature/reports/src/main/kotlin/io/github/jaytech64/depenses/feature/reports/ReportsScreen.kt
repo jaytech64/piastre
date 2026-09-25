@@ -70,8 +70,8 @@ fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
 /**
  * What the numbers above leave out, on the same screen as the numbers.
  *
- * Two things can make a total understate: a purchase in a currency no query here
- * counts, and a purchase still waiting for a human. ADR-0002 settled that a total
+ * Two things can make a total understate: a transaction in a currency no query
+ * here counts, and a purchase still waiting for a human. ADR-0002 settled that a total
  * which omits rows has to say so beside itself, and this is that line. Neither
  * sentence is drawn when its count is zero, which is nearly always.
  */

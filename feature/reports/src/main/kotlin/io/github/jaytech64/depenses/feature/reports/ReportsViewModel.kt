@@ -63,7 +63,7 @@ data class ReportsUiState(
     val merchants: List<MerchantShare> = emptyList(),
     /** Every day of [period]'s month that money was spent on. Absent days had none. */
     val monthTotals: Map<LocalDate, Money> = emptyMap(),
-    /** Purchases in the period that no figure here counted, because they were in another currency. */
+    /** Incomes and purchases in the period that no figure here counted, because they were in another currency. */
     val otherCurrencyCount: Int = 0,
     /** The whole ledger's queue, which the totals here also leave out. */
     val needsReviewCount: Int = 0,
