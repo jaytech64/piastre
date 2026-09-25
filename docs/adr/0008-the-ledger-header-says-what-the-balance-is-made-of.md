@@ -42,5 +42,6 @@ With the capture banner showing, an account filter on and the font at 200 %, the
 ## Where this lives in the code
 
 - `MonthSummary` and `summaryOf` in `feature/ledger/src/main/kotlin/.../LedgerViewModel.kt` — the arithmetic.
-- `MonthFigures` in `feature/ledger/src/main/kotlin/.../MonthFigures.kt` — which figures show, their signs, and how they fall back at large font sizes.
+- `MonthFigures` in `feature/ledger/src/main/kotlin/.../MonthFigures.kt` — which figures show, and their signs.
+- `BalanceFigures` in `core/designsystem/src/main/kotlin/.../BalanceFigures.kt` — how they fall back at large font sizes, shared with the reports header since [ADR-0009](0009-a-report-says-what-its-balance-is-made-of.md).
 - `` `income and expenses are counted apart and add up to the balance` `` and `` `a card payment shows as a transfer on the card, not as income` `` in `LedgerViewModelTest`.

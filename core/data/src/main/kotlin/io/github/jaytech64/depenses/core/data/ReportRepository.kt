@@ -91,6 +91,19 @@ class ReportRepository
                 .map { Money(it ?: 0L, currency) }
 
         /**
+         * What came in over [period]. A report reads it beside the spending to say
+         * what the period's balance is made of; nothing else on this repository
+         * counts an income.
+         */
+        fun income(
+            period: ReportPeriod,
+            currency: String = Money.CAD,
+        ): Flow<Money> =
+            reports
+                .incomeForRange(period.start.epochDay, period.endInclusive.epochDay, currency)
+                .map { Money(it ?: 0L, currency) }
+
+        /**
          * The merchants a period went to, heaviest first.
          *
          * A purchase whose merchant never resolved is counted in [spending] and
@@ -115,7 +128,7 @@ class ReportRepository
                     }
                 }
 
-        /** Purchases in [period] that every other figure on this repository left out. */
+        /** Incomes and purchases in [period] that every other figure on this repository left out. */
         fun otherCurrencyCount(
             period: ReportPeriod,
             currency: String = Money.CAD,

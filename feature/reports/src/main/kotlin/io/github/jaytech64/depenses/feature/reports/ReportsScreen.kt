@@ -21,10 +21,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.util.Locale
 
 /**
- * One scroll: the period, what it cost, where it went, and the month it sits in.
+ * One scroll: the period, what its balance is made of, where the spending went,
+ * and the month it sits in.
  *
  * The calendar is last rather than on a screen of its own because it is a
- * breakdown of the number above it — and because it doubles as the day picker,
+ * breakdown of what the header says was spent — and because it doubles as the day picker,
  * which is why nothing here needs a date-range control.
  */
 @Composable
@@ -70,8 +71,8 @@ fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
 /**
  * What the numbers above leave out, on the same screen as the numbers.
  *
- * Two things can make a total understate: a purchase in a currency no query here
- * counts, and a purchase still waiting for a human. ADR-0002 settled that a total
+ * Two things can make a total understate: a transaction in a currency no query
+ * here counts, and a purchase still waiting for a human. ADR-0002 settled that a total
  * which omits rows has to say so beside itself, and this is that line. Neither
  * sentence is drawn when its count is zero, which is nearly always.
  */

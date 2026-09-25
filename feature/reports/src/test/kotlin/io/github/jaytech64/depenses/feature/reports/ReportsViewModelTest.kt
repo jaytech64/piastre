@@ -26,6 +26,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -110,9 +111,60 @@ class ReportsViewModelTest {
         }
 
     @Test
-    fun `a period nothing was spent in says so rather than showing a bare zero`() =
+    fun `a period where nothing happened says so rather than showing a bare zero`() =
         runTest {
             assertTrue(settled().isEmpty)
+        }
+
+    @Test
+    fun `a period's balance is what came in less what was spent`() =
+        runTest {
+            spend(2_080, TODAY)
+            record(4_300, TODAY, kind = TransactionKind.INCOME)
+
+            val state = settled()
+
+            assertEquals(Money(4_300, Money.CAD), state.income)
+            assertEquals(Money(2_220, Money.CAD), state.balance)
+        }
+
+    @Test
+    fun `a card payment moves a report's balance by nothing`() =
+        runTest {
+            spend(1_000, TODAY)
+            record(90_000, TODAY, kind = TransactionKind.TRANSFER)
+
+            assertEquals(Money(-1_000, Money.CAD), settled().balance)
+        }
+
+    @Test
+    fun `a payday with no spending is not an empty period`() =
+        runTest {
+            record(185_000, TODAY, kind = TransactionKind.INCOME)
+
+            val state = settled()
+
+            assertFalse(state.isEmpty)
+            assertEquals(0, state.purchaseCount)
+            assertEquals(Money(185_000, Money.CAD), state.balance)
+        }
+
+    @Test
+    fun `income is compared month to month and never week to week`() =
+        runTest {
+            record(150_000, TODAY, kind = TransactionKind.INCOME)
+            record(100_000, TODAY.minusWeeks(1), kind = TransactionKind.INCOME)
+
+            assertNull(settled().incomeComparison)
+
+            val march = LocalDate.of(2025, 3, 14)
+            record(200_000, march, kind = TransactionKind.INCOME)
+            record(250_000, march.minusMonths(1), kind = TransactionKind.INCOME)
+            viewModel.onDaySelected(march)
+            viewModel.onUnitSelected(PeriodUnit.MONTH)
+            val state = shownFor(ReportPeriod(PeriodUnit.MONTH, march.withDayOfMonth(1)))
+
+            assertEquals(Comparison.Change(-20), state.incomeComparison)
         }
 
     @Test
@@ -217,12 +269,13 @@ class ReportsViewModelTest {
         runTest {
             spend(1_000, TODAY)
             spend(4_500, TODAY, currency = "USD")
+            record(40_000, TODAY, kind = TransactionKind.INCOME, currency = "USD")
             record(8_000, TODAY, status = TransactionStatus.NEEDS_REVIEW)
 
             val state = settled()
 
             assertEquals(Money(1_000, Money.CAD), state.total)
-            assertEquals(1, state.otherCurrencyCount)
+            assertEquals(2, state.otherCurrencyCount)
             assertEquals(1, state.needsReviewCount)
         }
 

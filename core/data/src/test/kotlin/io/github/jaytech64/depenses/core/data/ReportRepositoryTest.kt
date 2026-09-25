@@ -25,8 +25,8 @@ import java.time.LocalDate
 
 /**
  * Through the real DAO and a real SQLite, because what these queries have to get
- * right is what a fake DAO cannot fail: the `WHERE` clauses that decide a report
- * is about spending and nothing else.
+ * right is what a fake DAO cannot fail: the `WHERE` clauses that decide which
+ * rows are spending, which are income, and which are neither.
  */
 @RunWith(RobolectricTestRunner::class)
 class ReportRepositoryTest {
@@ -68,6 +68,34 @@ class ReportRepositoryTest {
         }
 
     @Test
+    fun `a paycheque is income, and neither a purchase nor moving your own money is`() =
+        runTest {
+            spend(on = MONDAY, amountMinor = 1_000)
+            record(on = MONDAY, amountMinor = 150_000, kind = TransactionKind.INCOME, key = "pay")
+            record(on = SUNDAY, amountMinor = 2_500, kind = TransactionKind.INCOME, key = "refund")
+            record(on = MONDAY, amountMinor = 6_000, kind = TransactionKind.TRANSFER, key = "move")
+            record(on = SUNDAY.plusDays(1), amountMinor = 9_999, kind = TransactionKind.INCOME, key = "next week")
+
+            assertEquals(Money(152_500, Money.CAD), reports.income(week()).first())
+        }
+
+    @Test
+    fun `an income still waiting for review or in another currency is not counted as income`() =
+        runTest {
+            record(on = MONDAY, amountMinor = 150_000, kind = TransactionKind.INCOME, key = "pay")
+            record(
+                on = MONDAY,
+                amountMinor = 8_000,
+                kind = TransactionKind.INCOME,
+                status = TransactionStatus.NEEDS_REVIEW,
+                key = "unsure",
+            )
+            record(on = MONDAY, amountMinor = 40_000, kind = TransactionKind.INCOME, currency = "USD", key = "abroad")
+
+            assertEquals(Money(150_000, Money.CAD), reports.income(week()).first())
+        }
+
+    @Test
     fun `a purchase still waiting for review moves no total`() =
         runTest {
             spend(on = MONDAY, amountMinor = 1_000)
@@ -99,6 +127,7 @@ class ReportRepositoryTest {
             assertEquals(Money(0, Money.CAD), spending.total)
             assertEquals(0, spending.count)
             assertEquals(Money(0, Money.CAD), reports.total(week()).first())
+            assertEquals(Money(0, Money.CAD), reports.income(week()).first())
             assertTrue(reports.dailyTotals(week()).first().isEmpty())
             assertTrue(reports.topMerchants(week(), limit = 5).first().isEmpty())
         }
@@ -142,6 +171,15 @@ class ReportRepositoryTest {
             spend(on = MONDAY, amountMinor = 4_500, currency = "USD", key = "abroad")
 
             assertEquals(Money(1_000, Money.CAD), reports.spending(week()).first().total)
+            assertEquals(1, reports.otherCurrencyCount(week()).first())
+        }
+
+    @Test
+    fun `a paycheque in another currency is counted as left out, and moving your own money is not`() =
+        runTest {
+            record(on = MONDAY, amountMinor = 40_000, kind = TransactionKind.INCOME, currency = "USD", key = "pay")
+            record(on = MONDAY, amountMinor = 6_000, kind = TransactionKind.TRANSFER, currency = "USD", key = "move")
+
             assertEquals(1, reports.otherCurrencyCount(week()).first())
         }
 

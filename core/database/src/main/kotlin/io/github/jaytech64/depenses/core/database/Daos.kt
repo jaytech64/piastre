@@ -553,9 +553,10 @@ data class MerchantTotal(
  * groups on an indexed integer column, so a year of history costs the same as a
  * week.
  *
- * They are about spending, so every one keeps to expenses: a paycheque ranked
- * beside the grocer would make the ranking wrong, and a card payment counted as
- * spending would charge you twice for the purchases it settles.
+ * They are about spending, so every one but [incomeForRange] keeps to expenses:
+ * a paycheque ranked beside the grocer would make the ranking wrong, and a card
+ * payment counted as spending would charge you twice for the purchases it
+ * settles. No query counts a transfer, which moves the whole ledger by nothing.
  */
 @Dao
 interface ReportDao {
@@ -595,6 +596,22 @@ interface ReportDao {
 
     @Query(
         """
+        SELECT SUM(amountMinor)
+        FROM expense_transaction
+        WHERE status = 'CONFIRMED'
+          AND kind = 'INCOME'
+          AND currency = :currency
+          AND localDateEpochDay BETWEEN :fromDay AND :toDay
+        """,
+    )
+    fun incomeForRange(
+        fromDay: Int,
+        toDay: Int,
+        currency: String,
+    ): Flow<Long?>
+
+    @Query(
+        """
         SELECT m.id AS merchantId, m.displayName AS name,
                SUM(t.amountMinor) AS totalMinor, COUNT(*) AS count
         FROM expense_transaction t
@@ -616,8 +633,10 @@ interface ReportDao {
     ): Flow<List<MerchantTotal>>
 
     /**
-     * How many purchases in the range every other query on this DAO left out
-     * because they were paid in something other than [currency].
+     * How many incomes and purchases in the range every other query on this DAO
+     * left out because they were in something other than [currency]. A transfer
+     * is not counted: it is worth nothing to any total here, so leaving one out
+     * understates nothing.
      *
      * Converting them is impossible here — a rate needs a network, and there is
      * none — so a report can only decline to count them. Declining silently is
@@ -630,7 +649,7 @@ interface ReportDao {
         SELECT COUNT(*)
         FROM expense_transaction
         WHERE status = 'CONFIRMED'
-          AND kind = 'EXPENSE'
+          AND kind IN ('EXPENSE', 'INCOME')
           AND currency != :currency
           AND localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
