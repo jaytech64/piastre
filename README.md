@@ -11,8 +11,8 @@ Phase 3 — reports.
 Google Wallet payment notifications are captured, parsed and recorded, and the app has been run against real spending on a device.
 The ledger with editing, deletion and an account filter, the review inbox, manual entry, accounts and transfers, capture-health onboarding, export, import and erasure are in place.
 
-Reports now read the ledger back: a day, week or month you step through, what it cost against the period before it, the merchants it went to, and a calendar of the month shaded by each day's spending.
-A report counts spending alone — never income, never a transfer — which is a different number from the ledger's balance for the same month, and [ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md) says why.
+Reports now read the ledger back: a day, week or month you step through, its balance with what came in and what was spent, the spending against the period before it, the merchants it went to, and a calendar of the month shaded by each day's spending.
+The ranking and the calendar count spending alone — never income, never a transfer — as [ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md) and [ADR-0009](docs/adr/0009-a-report-says-what-its-balance-is-made-of.md) explain.
 
 The Wallet parser is tested against a corpus captured over two weeks on a real device, and the raw notification log lets a parser fix repair history rather than only improve the future.
 
