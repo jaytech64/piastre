@@ -553,9 +553,10 @@ data class MerchantTotal(
  * groups on an indexed integer column, so a year of history costs the same as a
  * week.
  *
- * They are about spending, so every one keeps to expenses: a paycheque ranked
- * beside the grocer would make the ranking wrong, and a card payment counted as
- * spending would charge you twice for the purchases it settles.
+ * They are about spending, so every one but [incomeForRange] keeps to expenses:
+ * a paycheque ranked beside the grocer would make the ranking wrong, and a card
+ * payment counted as spending would charge you twice for the purchases it
+ * settles. No query counts a transfer, which moves the whole ledger by nothing.
  */
 @Dao
 interface ReportDao {
@@ -588,6 +589,22 @@ interface ReportDao {
         """,
     )
     fun totalForRange(
+        fromDay: Int,
+        toDay: Int,
+        currency: String,
+    ): Flow<Long?>
+
+    @Query(
+        """
+        SELECT SUM(amountMinor)
+        FROM expense_transaction
+        WHERE status = 'CONFIRMED'
+          AND kind = 'INCOME'
+          AND currency = :currency
+          AND localDateEpochDay BETWEEN :fromDay AND :toDay
+        """,
+    )
+    fun incomeForRange(
         fromDay: Int,
         toDay: Int,
         currency: String,
