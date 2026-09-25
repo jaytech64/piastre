@@ -7,7 +7,10 @@
     <string name="reports_week_range">%1$s – %2$s</string>
     <string name="reports_today">Today</string>
     <string name="reports_yesterday">Yesterday</string>
-    <string name="reports_spent">spent</string>
+    <string name="reports_balance">Balance</string>
+    <string name="reports_income">Income</string>
+    <string name="reports_expenses">Expenses</string>
+    <string name="reports_nothing_spent">Nothing spent</string>
     <string name="reports_vs_day">vs. the day before</string>
     <string name="reports_vs_week">vs. last week</string>
     <string name="reports_vs_month">vs. last month</string>
@@ -18,7 +21,7 @@
     <string name="reports_top_merchants">Top merchants</string>
     <string name="reports_heat_less">less</string>
     <string name="reports_heat_more">more</string>
-    <string name="reports_empty">Nothing spent in this period</string>
+    <string name="reports_nothing">Nothing in this period</string>
     <plurals name="reports_purchases">
         <item quantity="one">%d purchase</item>
         <item quantity="other">%d purchases</item>

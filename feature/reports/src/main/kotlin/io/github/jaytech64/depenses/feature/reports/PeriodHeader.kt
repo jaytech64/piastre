@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,13 +27,15 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.github.jaytech64.depenses.core.designsystem.BalanceFigure
+import io.github.jaytech64.depenses.core.designsystem.BalanceFigures
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.PeriodUnit
 import io.github.jaytech64.depenses.core.model.ReportPeriod
 import java.time.LocalDate
 import java.util.Locale
 
-/** The period picker, the period you are on, and what it cost. */
+/** The period picker, the period you are on, and what its balance is made of. */
 @Composable
 internal fun PeriodHeader(
     state: ReportsUiState,
@@ -44,7 +47,7 @@ internal fun PeriodHeader(
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         UnitPicker(state.period.unit, onUnitSelected)
         PeriodStepper(state, locale, onStepBack, onStepForward)
-        SpendingCard(state)
+        BalanceCard(state, locale)
     }
 }
 
@@ -95,45 +98,90 @@ private fun PeriodStepper(
     }
 }
 
+/**
+ * The ledger's header, for the period: the balance, then what came in and what
+ * was spent. The count and the comparison sit under what was spent, which is the
+ * figure the ranking and the calendar below break down (ADR-0009).
+ */
 @Composable
-private fun SpendingCard(state: ReportsUiState) {
+private fun BalanceCard(
+    state: ReportsUiState,
+    locale: Locale,
+) {
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(Formatters.money(state.total), style = MaterialTheme.typography.headlineMedium)
+            Text(
+                stringResource(R.string.reports_balance),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(Formatters.signedMoney(state.balance, locale), style = MaterialTheme.typography.displaySmall)
 
             if (state.isEmpty) {
                 Text(
-                    stringResource(R.string.reports_empty),
+                    stringResource(R.string.reports_nothing),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 return@Column
             }
 
-            // "dépensé" is load-bearing: the ledger's balance for the same month
-            // counts income too, and the two numbers differ by every paycheque.
-            Text(
-                stringResource(R.string.reports_spent) + " · " +
-                    pluralStringResource(R.plurals.reports_purchases, state.purchaseCount, state.purchaseCount),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            BalanceFigures(
+                listOf(
+                    BalanceFigure(
+                        label = stringResource(R.string.reports_income),
+                        amount = Formatters.money(state.income, locale),
+                        supporting =
+                            listOfNotNull(
+                                state.incomeComparison?.let { comparison ->
+                                    { ComparisonLine(comparison, state.period.unit, judged = false) }
+                                },
+                            ),
+                    ),
+                    BalanceFigure(
+                        label = stringResource(R.string.reports_expenses),
+                        amount = Formatters.money(state.total, locale),
+                        supporting =
+                            listOf(
+                                { PurchaseCount(state.purchaseCount) },
+                                { ComparisonLine(state.comparison, state.period.unit, judged = true) },
+                            ),
+                    ),
+                ),
             )
-            ComparisonLine(state.comparison, state.period.unit)
         }
     }
 }
 
+@Composable
+private fun PurchaseCount(count: Int) {
+    Text(
+        if (count == 0) {
+            stringResource(R.string.reports_nothing_spent)
+        } else {
+            pluralStringResource(R.plurals.reports_purchases, count, count)
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
 /**
- * Spending less than last time is the good direction, so it takes the colour the
- * theme reserves for good news and an upward swing takes the warning one.
+ * When [judged], spending less than last time is the good direction, so it takes
+ * the colour the theme reserves for good news and an upward swing takes the
+ * warning one. Income is not judged: a month with a third paycheque reads ▲ 50 %
+ * with no raise behind it, and a colour for good news beside one for bad would
+ * make the same arrow mean two things on one card.
  */
 @Composable
 private fun ComparisonLine(
     comparison: Comparison,
     unit: PeriodUnit,
+    judged: Boolean,
 ) {
     when (comparison) {
         Comparison.NothingEither -> {
@@ -158,10 +206,10 @@ private fun ComparisonLine(
                     ),
                 style = MaterialTheme.typography.bodySmall,
                 color =
-                    if (comparison.percent >= 0) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.tertiary
+                    when {
+                        !judged -> MaterialTheme.colorScheme.onSurfaceVariant
+                        comparison.percent >= 0 -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.tertiary
                     },
             )
         }

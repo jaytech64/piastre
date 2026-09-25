@@ -7,7 +7,10 @@
     <string name="reports_week_range">%1$s – %2$s</string>
     <string name="reports_today">Aujourd\'hui</string>
     <string name="reports_yesterday">Hier</string>
-    <string name="reports_spent">dépensé</string>
+    <string name="reports_balance">Solde</string>
+    <string name="reports_income">Revenus</string>
+    <string name="reports_expenses">Dépenses</string>
+    <string name="reports_nothing_spent">Rien de dépensé</string>
     <string name="reports_vs_day">vs la veille</string>
     <string name="reports_vs_week">vs la semaine dernière</string>
     <string name="reports_vs_month">vs le mois dernier</string>
@@ -18,7 +21,7 @@
     <string name="reports_top_merchants">Principaux marchands</string>
     <string name="reports_heat_less">moins</string>
     <string name="reports_heat_more">plus</string>
-    <string name="reports_empty">Rien de dépensé dans cette période</string>
+    <string name="reports_nothing">Rien dans cette période</string>
     <plurals name="reports_purchases">
         <item quantity="one">%d achat</item>
         <item quantity="other">%d achats</item>

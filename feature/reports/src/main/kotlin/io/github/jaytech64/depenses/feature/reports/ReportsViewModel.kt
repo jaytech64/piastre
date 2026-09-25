@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import javax.inject.Inject
@@ -34,19 +35,19 @@ data class MerchantShare(
 )
 
 /**
- * How a period compares with the one before it.
+ * How a figure for a period compares with the same figure the period before.
  *
  * Three states rather than a number, because two of the three cases have no
  * percentage to report and printing one anyway would be a fabrication.
  */
 sealed interface Comparison {
-    /** Nothing was spent in either period; there is nothing to compare. */
+    /** The figure was zero in both periods; there is nothing to compare. */
     data object NothingEither : Comparison
 
-    /** Nothing was spent last time, so the change is not a percentage of anything. */
+    /** The figure was zero last time, so the change is not a percentage of anything. */
     data object NothingBefore : Comparison
 
-    /** Negative is less spent than last time, which is the good direction. */
+    /** Negative is less than last time, which for spending is the good direction. */
     data class Change(
         val percent: Int,
     ) : Comparison
@@ -57,9 +58,17 @@ data class ReportsUiState(
     val period: ReportPeriod = ReportPeriod(PeriodUnit.WEEK, LocalDate.ofEpochDay(0)),
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
+    /** What was spent: the figure the ranking and the calendar below break down. */
     val total: Money = Money(0, Money.CAD),
     val purchaseCount: Int = 0,
     val comparison: Comparison = Comparison.NothingEither,
+    val income: Money = Money(0, Money.CAD),
+    /**
+     * Null for a day or a week. Pay arrives every week or two, so a shorter period
+     * mostly compares a payday with a week without one, and the percentage says
+     * nothing about the money.
+     */
+    val incomeComparison: Comparison? = null,
     val merchants: List<MerchantShare> = emptyList(),
     /** Every day of [period]'s month that money was spent on. Absent days had none. */
     val monthTotals: Map<LocalDate, Money> = emptyMap(),
@@ -75,7 +84,14 @@ data class ReportsUiState(
      */
     val canStepForward: Boolean get() = today != null && period.endInclusive < today
 
-    val isEmpty: Boolean get() = purchaseCount == 0 && !loading
+    /**
+     * What came in less what was spent. A transfer is in neither figure, so it
+     * moves this by nothing, as it moves the ledger's unfiltered balance.
+     */
+    val balance: Money get() = income + -total
+
+    /** Nothing came in and nothing was spent. A payday with no spending is not empty. */
+    val isEmpty: Boolean get() = purchaseCount == 0 && income.minor == 0L && !loading
 }
 
 @HiltViewModel
@@ -118,19 +134,23 @@ class ReportsViewModel
             needsReview: Flow<Int>,
         ): Flow<ReportsUiState> {
             val month = ReportPeriod.containing(PeriodUnit.MONTH, period.start)
+            val previousIncome: Flow<Money?> =
+                if (period.unit == PeriodUnit.MONTH) reports.income(period.previous()) else flowOf(null)
             return combine(
-                reports.spending(period),
-                reports.total(period.previous()),
+                combine(reports.spending(period), reports.total(period.previous()), ::Pair),
+                combine(reports.income(period), previousIncome, ::Pair),
                 reports.topMerchants(period, TOP_MERCHANTS),
                 reports.dailyTotals(month),
                 combine(reports.otherCurrencyCount(period), needsReview, ::Pair),
-            ) { spending, before, merchants, monthTotals, (otherCurrency, review) ->
+            ) { (spending, before), (income, incomeBefore), merchants, monthTotals, (otherCurrency, review) ->
                 ReportsUiState(
                     period = period,
                     today = today,
                     total = spending.total,
                     purchaseCount = spending.count,
                     comparison = compare(spending.total, before),
+                    income = income,
+                    incomeComparison = incomeBefore?.let { compare(income, it) },
                     merchants = merchants.shareOf(spending.total),
                     monthTotals = monthTotals,
                     otherCurrencyCount = otherCurrency,

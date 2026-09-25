@@ -21,10 +21,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.util.Locale
 
 /**
- * One scroll: the period, what it cost, where it went, and the month it sits in.
+ * One scroll: the period, what its balance is made of, where the spending went,
+ * and the month it sits in.
  *
  * The calendar is last rather than on a screen of its own because it is a
- * breakdown of the number above it — and because it doubles as the day picker,
+ * breakdown of what the header says was spent — and because it doubles as the day picker,
  * which is why nothing here needs a date-range control.
  */
 @Composable
