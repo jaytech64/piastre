@@ -147,5 +147,7 @@ internal fun toDomain(row: TransactionWithMerchant): Transaction =
             toAccountName = row.toAccountName,
             toAccountLast4 = row.toAccountLast4,
             toAccountType = row.toAccountType,
+            categoryId = categoryId,
+            categoryName = row.categoryName,
         )
     }

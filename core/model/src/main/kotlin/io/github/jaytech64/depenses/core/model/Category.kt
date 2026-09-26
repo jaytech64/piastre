@@ -10,6 +10,17 @@ data class Category(
     val name: String,
 )
 
+/**
+ * A category with what uses it: its confirmed transactions, and the merchants and
+ * accounts that give it automatically.
+ */
+data class CategoryUsage(
+    val category: Category,
+    val transactionCount: Int,
+    val merchantCount: Int,
+    val accountCount: Int,
+)
+
 /** A category name as typed, and the form two spellings of it agree on. */
 data class CategoryName(
     val displayName: String,

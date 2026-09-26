@@ -121,4 +121,6 @@ data class Merchant(
     val id: Long,
     val displayName: String,
     val normalisedName: String,
+    /** The category every transaction recorded here is given, or null. */
+    val categoryId: Long? = null,
 )

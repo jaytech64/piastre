@@ -85,6 +85,9 @@ class MerchantRepository
             return merchant.id
         }
 
+        /** The category a transaction recorded at [merchantId] is given, or null. */
+        suspend fun categoryOf(merchantId: Long?): Long? = merchantId?.let { merchants.byId(it)?.categoryId }
+
         /**
          * The merchant a name belongs to, created when there is none yet. One already
          * here keeps the name it has: bringing a file in must not rename a merchant
@@ -107,7 +110,14 @@ class MerchantRepository
             today: LocalDate,
         ): Flow<List<Merchant>> =
             merchants.byUse(kind, today.minusDays(RECENT_DAYS).toEpochDay().toInt()).map { rows ->
-                rows.map { Merchant(id = it.id, displayName = it.displayName, normalisedName = it.normalisedName) }
+                rows.map {
+                    Merchant(
+                        id = it.id,
+                        displayName = it.displayName,
+                        normalisedName = it.normalisedName,
+                        categoryId = it.categoryId,
+                    )
+                }
             }
 
         /**
