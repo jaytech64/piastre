@@ -176,23 +176,17 @@ private fun AccountFields(
 }
 
 /** Cash, a card, a bank account: enough to say where money sits without keeping a chart of accounts. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AccountTypePicker(
     type: AccountType,
     onChange: (AccountType) -> Unit,
 ) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        AccountType.entries.forEachIndexed { index, option ->
-            SegmentedButton(
-                selected = type == option,
-                onClick = { onChange(option) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = AccountType.entries.size),
-            ) {
-                Text(stringResource(accountTypeLabel(option)))
-            }
-        }
-    }
+    ChoiceRow(
+        options = AccountType.entries,
+        selected = type,
+        onSelect = onChange,
+        label = { stringResource(accountTypeLabel(it)) },
+    )
 }
 
 /** The words for a kind of account, resolved here because the strings live in this module. */
