@@ -19,11 +19,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jaytech64.depenses.core.designsystem.rememberLongestWord
 import io.github.jaytech64.depenses.core.model.CaptureHealth
 import java.time.Instant
 
@@ -134,6 +136,12 @@ internal fun SectionHeader(label: String) {
     )
 }
 
+/**
+ * A setting's title and explanation, with its control beside them — or under
+ * them, when beside them would leave a word no room to stay whole. At a large
+ * font size « Choisir un fichier… » otherwise squeezes « Importer » into
+ * « Import/er » and its explanation into one word per line.
+ */
 @Composable
 internal fun SettingRow(
     title: String,
@@ -141,21 +149,62 @@ internal fun SettingRow(
     titleColor: Color = Color.Unspecified,
     trailing: @Composable (() -> Unit)? = null,
 ) {
-    Row(
+    val longestWord =
+        maxOf(
+            rememberLongestWord(title, MaterialTheme.typography.bodyLarge),
+            rememberLongestWord(body, MaterialTheme.typography.bodySmall),
+        )
+    val texts = @Composable { SettingTexts(title, body, titleColor) }
+    SubcomposeLayout(
         Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
-            Text(
-                body,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+    ) { constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val control = trailing?.let { subcompose(Slot.CONTROL, it).map { m -> m.measure(loose) } }.orEmpty()
+        val controlWidth = control.maxOfOrNull { it.width } ?: 0
+        val gap = CONTROL_GAP.roundToPx()
+        val beside = control.isEmpty() || constraints.maxWidth - controlWidth - gap >= longestWord
+        val textWidth =
+            if (beside &&
+                control.isNotEmpty()
+            ) {
+                constraints.maxWidth - controlWidth - gap
+            } else {
+                constraints.maxWidth
+            }
+        val text = subcompose(Slot.TEXT, texts).map { it.measure(loose.copy(maxWidth = textWidth)) }
+        val textHeight = text.sumOf { it.height }
+        val controlHeight = control.sumOf { it.height }
+        val height = if (beside) maxOf(textHeight, controlHeight) else textHeight + gap + controlHeight
+        layout(constraints.maxWidth, height) {
+            if (beside) {
+                text.forEach { it.placeRelative(0, (height - textHeight) / 2) }
+                control.forEach { it.placeRelative(constraints.maxWidth - it.width, (height - it.height) / 2) }
+            } else {
+                text.forEach { it.placeRelative(0, 0) }
+                control.forEach { it.placeRelative(0, textHeight + gap) }
+            }
         }
-        trailing?.invoke()
     }
 }
+
+@Composable
+private fun SettingTexts(
+    title: String,
+    body: String,
+    titleColor: Color,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
+        Text(
+            body,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+private enum class Slot { TEXT, CONTROL }
+
+private val CONTROL_GAP = 16.dp

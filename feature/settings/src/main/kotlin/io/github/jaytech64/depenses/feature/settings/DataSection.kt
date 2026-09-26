@@ -33,6 +33,7 @@ import io.github.jaytech64.depenses.core.data.CsvLabels
 import io.github.jaytech64.depenses.core.data.ExportFormat
 import io.github.jaytech64.depenses.core.data.ImportProblem
 import io.github.jaytech64.depenses.core.data.ImportSummary
+import io.github.jaytech64.depenses.core.designsystem.ButtonsRow
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 
 /**
@@ -114,10 +115,7 @@ private fun PortabilityRows(
         title = stringResource(R.string.settings_export),
         body = stringResource(R.string.settings_export_body),
     )
-    Row(
-        Modifier.padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    ButtonsRow(Modifier.padding(horizontal = 16.dp)) {
         ExportButton(ExportFormat.CSV, stringResource(R.string.settings_export_csv), labels, viewModel)
         ExportButton(ExportFormat.JSON, stringResource(R.string.settings_export_json), labels, viewModel)
     }
