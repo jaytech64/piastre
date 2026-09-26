@@ -191,6 +191,11 @@ A report's ranking, calendar and spending comparison count expenses alone ([ADR-
 
 The ledger header's figures always add up to the balance above them: income and expenses by kind, and a filtered account's transfers as a figure of their own, never folded into either ([ADR-0008](docs/adr/0008-the-ledger-header-says-what-the-balance-is-made-of.md), `MonthSummary`).
 
+### A category is written onto the row, never read through
+
+A merchant's category — or, for a transfer, the category of the account it goes into — is copied into each transaction as it is recorded; never `COALESCE` it in at read time, or changing a merchant silently rewrites history ([ADR-0010](docs/adr/0010-a-merchants-category-is-written-onto-each-purchase.md)).
+Categorising rows in bulk must not stamp `reviewedAtUtcMillis`, which would lock a parser fix out of them (`CategoryDao.categoriseAtMerchant`).
+
 ### A parser fix repairs history
 
 Bump `NotificationParser.version` on **any** behaviour change.
