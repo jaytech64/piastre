@@ -75,6 +75,9 @@ data class Transaction(
     val toAccountName: String? = null,
     val toAccountLast4: String? = null,
     val toAccountType: AccountType? = null,
+    /** Null until you give it one. */
+    val categoryId: Long? = null,
+    val categoryName: String? = null,
 ) {
     /**
      * What to put on screen. The canonical merchant if the raw string resolved to
@@ -118,4 +121,6 @@ data class Merchant(
     val id: Long,
     val displayName: String,
     val normalisedName: String,
+    /** The category every transaction recorded here is given, or null. */
+    val categoryId: Long? = null,
 )

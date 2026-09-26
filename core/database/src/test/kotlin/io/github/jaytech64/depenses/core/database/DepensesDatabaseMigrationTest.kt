@@ -277,6 +277,29 @@ class DepensesDatabaseMigrationTest {
         assertEquals(4, migrated.singleInt("SELECT COUNT(DISTINCT sortOrder) FROM account"))
     }
 
+    @Test
+    fun `migrating to schema 11 keeps the ledger and gives nothing a category`() {
+        helper.createDatabase(NAME, 10).use { database ->
+            database.insertTransaction()
+            database.execSQL(
+                "INSERT INTO merchant (displayName, normalisedName) VALUES ('Marché St-Joseph', 'MARCHE ST JOSEPH')",
+            )
+            database.execSQL(
+                "INSERT INTO account (name, type, issuerLabel, last4, origin, sortOrder) " +
+                    "VALUES ('Débit', 'BANK', NULL, NULL, 'USER', 0)",
+            )
+            database.execSQL("UPDATE expense_transaction SET categoryId = 42")
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 11, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(1, migrated.count("expense_transaction"))
+        assertEquals(0, migrated.count("category"))
+        assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE categoryId IS NOT NULL"))
+        assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM merchant WHERE categoryId IS NOT NULL"))
+        assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM account WHERE categoryId IS NOT NULL"))
+    }
+
     private fun SupportSQLiteDatabase.insertSchema7Transaction(
         sourceKey: String,
         paymentMethod: String?,

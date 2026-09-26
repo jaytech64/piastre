@@ -115,4 +115,5 @@ private fun AccountWithCount.toDomain(): Account =
         transactionCount = transactionCount,
         openingBalance = account.openingBalanceMinor?.let { Money(it, Money.CAD) },
         balance = Money(balanceMinor, Money.CAD),
+        categoryId = account.categoryId,
     )

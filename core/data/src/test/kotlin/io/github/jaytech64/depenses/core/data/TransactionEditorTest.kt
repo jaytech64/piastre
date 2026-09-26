@@ -61,12 +61,29 @@ class TransactionEditorTest {
             )
         repository =
             TransactionRepository(
+                database = database,
                 transactions = database.transactionDao(),
                 merchants = merchants,
+                categories =
+                    CategoryRepository(
+                        database.categoryDao(),
+                        database.merchantDao(),
+                        database.accountDao(),
+                    ),
                 zoneId = Provider { ZONE },
             )
         editor =
-            TransactionEditor(database.transactionDao(), merchants, Clock.fixed(Instant.ofEpochMilli(EDITED_AT), ZONE))
+            TransactionEditor(
+                database,
+                database.transactionDao(),
+                merchants,
+                CategoryRepository(
+                    database.categoryDao(),
+                    database.merchantDao(),
+                    database.accountDao(),
+                ),
+                Clock.fixed(Instant.ofEpochMilli(EDITED_AT), ZONE),
+            )
     }
 
     @After
@@ -87,6 +104,8 @@ class TransactionEditorTest {
                 note = "Avec un croissant",
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
             captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
 
@@ -112,6 +131,8 @@ class TransactionEditorTest {
                 note = null,
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
 
             val stored = repository.byId(id)
@@ -139,6 +160,8 @@ class TransactionEditorTest {
                 note = null,
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
 
             assertEquals("McDonald's", repository.byId(id)?.displayMerchant)
@@ -165,6 +188,8 @@ class TransactionEditorTest {
                 note = "Réunion",
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
 
             val alias = database.merchantDao().allAliases().single { it.pattern == MERCHANT_RAW }
@@ -187,6 +212,8 @@ class TransactionEditorTest {
                 note = null,
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
 
             assertEquals(before, repository.byId(id)?.merchantId)
@@ -206,6 +233,8 @@ class TransactionEditorTest {
                 note = null,
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
 
             assertNull(repository.byId(id)?.displayMerchant)
@@ -237,6 +266,8 @@ class TransactionEditorTest {
                 note = null,
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
 
             val stored = repository.byId(id)
@@ -288,6 +319,8 @@ class TransactionEditorTest {
                 note = "Remboursé",
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
             captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
 
@@ -326,6 +359,8 @@ class TransactionEditorTest {
                 note = null,
                 accountId = accountId,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
             assertEquals(accountId, repository.byId(id)?.accountId)
             assertEquals("Amex papier", repository.byId(id)?.accountName)
@@ -339,6 +374,8 @@ class TransactionEditorTest {
                 note = null,
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
             assertNull(repository.byId(id)?.accountId)
         }
@@ -360,6 +397,8 @@ class TransactionEditorTest {
                 note = null,
                 accountId = null,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
 
             assertNotNull(named)
@@ -395,6 +434,8 @@ class TransactionEditorTest {
             kind = TransactionKind.EXPENSE,
             accountId = null,
             toAccountId = null,
+            categoryId = null,
+            reach = null,
         )
 
     private fun occurredAt(): Instant = Instant.ofEpochMilli(POSTED_AT)

@@ -4,6 +4,7 @@ package io.github.jaytech64.depenses.core.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import io.github.jaytech64.depenses.core.database.AccountEntity
+import io.github.jaytech64.depenses.core.database.CategoryEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
@@ -78,6 +79,7 @@ class DataErasureTest {
             assertEquals(0, database.transactionDao().count().first())
             assertTrue(database.merchantDao().allOnce().isEmpty())
             assertTrue("the names you gave your accounts are data about you", database.accountDao().allOnce().isEmpty())
+            assertTrue("so are the categories you named", database.categoryDao().allOnce().isEmpty())
         }
 
     @Test
@@ -120,6 +122,7 @@ class DataErasureTest {
                 parsedByVersion = 1,
             ),
         )
+        database.categoryDao().insert(CategoryEntity(name = "Épicerie", normalisedName = "EPICERIE"))
         database.accountDao().insert(
             AccountEntity(
                 name = "Débit Desrives",

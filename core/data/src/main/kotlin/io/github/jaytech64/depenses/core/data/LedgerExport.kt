@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.core.data
 
 import io.github.jaytech64.depenses.core.database.AccountDao
+import io.github.jaytech64.depenses.core.database.CategoryDao
 import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
@@ -46,10 +47,11 @@ data class CsvLabels(
     val type: String,
     val account: String,
     val toAccount: String,
+    val category: String,
 ) {
-    /** The columns added with income and accounts come last, so every earlier column keeps its position. */
+    /** Columns added since the first export come last, so every earlier column keeps its position. */
     internal fun headerRow(): List<String> =
-        listOf(date, time, merchant, amount, currency, source, status, card, note, type, account, toAccount)
+        listOf(date, time, merchant, amount, currency, source, status, card, note, type, account, toAccount, category)
 }
 
 /**
@@ -67,6 +69,7 @@ class LedgerExport
         private val transactions: TransactionDao,
         private val merchants: MerchantDao,
         private val accounts: AccountDao,
+        private val categories: CategoryDao,
         private val clock: Clock,
     ) {
         /** Returns how many transactions were written. */
@@ -122,6 +125,7 @@ class LedgerExport
                 transaction.kind.name,
                 accountLabel(),
                 toAccountName.orEmpty(),
+                categoryName.orEmpty(),
             )
         }
 
@@ -173,7 +177,7 @@ class LedgerExport
                     exportedAtUtc = DateTimeFormatter.ISO_INSTANT.format(clock.instant()),
                     merchants =
                         merchants.allOnce().map {
-                            ExportedMerchant(it.id, it.displayName, it.normalisedName)
+                            ExportedMerchant(it.id, it.displayName, it.normalisedName, it.categoryId)
                         },
                     aliases =
                         merchants.allAliases().map {
@@ -190,9 +194,11 @@ class LedgerExport
                                 it.origin.name,
                                 it.openingBalanceMinor,
                                 it.sortOrder,
+                                it.categoryId,
                             )
                         },
                     transactions = rows.map { it.toExported() },
+                    categories = categories.allOnce().map { ExportedCategory(it.id, it.name) },
                 )
             out.bufferedWriter(Charsets.UTF_8).apply {
                 write(JSON.encodeToString(document))
@@ -225,6 +231,8 @@ class LedgerExport
                 accountName = accountName,
                 toAccountId = transaction.toAccountId,
                 toAccountName = toAccountName,
+                categoryId = transaction.categoryId,
+                categoryName = categoryName,
             )
 
         private companion object {

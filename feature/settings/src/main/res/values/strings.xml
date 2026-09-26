@@ -60,6 +60,34 @@
     <string name="settings_accounts_empty">Only cash so far. A card appears here after its first Wallet payment, and you can add an account yourself.</string>
     <string name="settings_accounts_still_used">This account is still used by a transaction, so it stays.</string>
 
+    <string name="settings_categories_section">Categories</string>
+    <string name="settings_categories_add">Add a category</string>
+    <string name="settings_categories_automatic">automatic for %s</string>
+    <plurals name="settings_categories_merchants">
+        <item quantity="one">%d merchant</item>
+        <item quantity="other">%d merchants</item>
+    </plurals>
+    <plurals name="settings_categories_accounts">
+        <item quantity="one">%d account</item>
+        <item quantity="other">%d accounts</item>
+    </plurals>
+    <string name="settings_categories_and">%1$s and %2$s</string>
+    <string name="settings_categories_name_taken">Another category already has this name.</string>
+    <string name="settings_categories_delete_title">Delete %s?</string>
+    <plurals name="settings_categories_delete_transactions">
+        <item quantity="one">Its transaction will have no category</item>
+        <item quantity="other">Its %d transactions will have no category</item>
+    </plurals>
+    <plurals name="settings_categories_delete_automatic">
+        <item quantity="one">%s will stop getting it automatically</item>
+        <item quantity="other">%s will stop getting it automatically</item>
+    </plurals>
+    <string name="settings_categories_delete_both">%1$s, and %2$s.</string>
+    <string name="settings_categories_delete_one">%s.</string>
+    <string name="settings_categories_delete_no_money">No amount or total changes.</string>
+    <string name="settings_categories_delete">Delete</string>
+    <string name="settings_categories_cancel">Cancel</string>
+
     <string name="settings_data_section">Your data</string>
     <string name="settings_export">Export</string>
     <string name="settings_export_body">CSV and JSON, into a file you choose.</string>
@@ -125,5 +153,6 @@
     <string name="export_column_note">note</string>
     <string name="export_column_type">type</string>
     <string name="export_column_account">account</string>
+    <string name="export_column_category">category</string>
     <string name="export_column_to_account">to account</string>
 </resources>

@@ -59,8 +59,15 @@ class AccountRepositoryTest {
             )
         transactions =
             TransactionRepository(
+                database = database,
                 transactions = database.transactionDao(),
                 merchants = merchants,
+                categories =
+                    CategoryRepository(
+                        database.categoryDao(),
+                        database.merchantDao(),
+                        database.accountDao(),
+                    ),
                 zoneId = Provider { ZONE },
             )
     }
@@ -175,6 +182,8 @@ class AccountRepositoryTest {
                 kind = TransactionKind.EXPENSE,
                 accountId = id,
                 toAccountId = null,
+                categoryId = null,
+                reach = null,
             )
             val manual = transactions.confirmed().first().single()
 
@@ -257,6 +266,8 @@ class AccountRepositoryTest {
             kind = kind,
             accountId = accountId,
             toAccountId = toAccountId,
+            categoryId = null,
+            reach = null,
         )
 
     private suspend fun captureCoffee(

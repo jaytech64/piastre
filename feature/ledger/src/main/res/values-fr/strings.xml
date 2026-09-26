@@ -44,4 +44,23 @@
     <string name="form_add_account">Ajouter un compte…</string>
     <string name="form_previous_day">Jour précédent</string>
     <string name="form_next_day">Jour suivant</string>
+    <string name="form_category">Catégorie</string>
+    <string name="form_category_none">Aucune</string>
+    <string name="form_add_category">Nouvelle catégorie…</string>
+    <plurals name="category_offer_others_expense">
+        <item quantity="one">Aussi l\'autre achat chez %2$s sans catégorie</item>
+        <item quantity="other">Aussi les %1$d autres achats chez %2$s sans catégorie</item>
+    </plurals>
+    <plurals name="category_offer_others_income">
+        <item quantity="one">Aussi l\'autre revenu de %2$s sans catégorie</item>
+        <item quantity="other">Aussi les %1$d autres revenus de %2$s sans catégorie</item>
+    </plurals>
+    <plurals name="category_offer_others_transfer">
+        <item quantity="one">Aussi l\'autre virement vers %2$s sans catégorie</item>
+        <item quantity="other">Aussi les %1$d autres virements vers %2$s sans catégorie</item>
+    </plurals>
+    <string name="category_offer_from_now_on_expense">Tous les prochains achats chez %s</string>
+    <string name="category_offer_from_now_on_income">Tous les prochains revenus de %s</string>
+    <string name="category_offer_from_now_on_transfer">Tous les prochains virements vers %s</string>
+    <string name="category_offer_instead_of">%1$s (au lieu de %2$s)</string>
 </resources>

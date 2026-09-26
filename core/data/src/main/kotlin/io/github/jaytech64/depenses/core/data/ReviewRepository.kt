@@ -61,6 +61,10 @@ class ReviewRepository
          * A blank [merchantName] leaves the merchant unresolved rather than storing
          * an empty one: a purchase you could not name is still a purchase, and the
          * amount is the part the ledger cannot do without.
+         *
+         * A corrected merchant brings its own category, or none. The inbox never
+         * asks for one, so the category it replaces came from the merchant the
+         * parser misread, never from you.
          */
         suspend fun correct(
             id: Long,
@@ -75,11 +79,13 @@ class ReviewRepository
                         it,
                     )
                 }
+            val merchantChanged = merchantId != null && merchantId != existing.merchantId
             transactions.update(
                 existing.copy(
                     amountMinor = amount.minor,
                     currency = amount.currency,
                     merchantId = merchantId ?: existing.merchantId,
+                    categoryId = if (merchantChanged) merchants.categoryOf(merchantId) else existing.categoryId,
                     status = TransactionStatus.CONFIRMED,
                     reviewReason = null,
                     reviewedAtUtcMillis = clock.millis(),

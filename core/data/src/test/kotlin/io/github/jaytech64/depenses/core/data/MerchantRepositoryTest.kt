@@ -33,8 +33,15 @@ class MerchantRepositoryTest {
         merchants = MerchantRepository(database.merchantDao())
         transactions =
             TransactionRepository(
+                database = database,
                 transactions = database.transactionDao(),
                 merchants = merchants,
+                categories =
+                    CategoryRepository(
+                        database.categoryDao(),
+                        database.merchantDao(),
+                        database.accountDao(),
+                    ),
                 zoneId = Provider { ZONE },
             )
     }
@@ -131,6 +138,8 @@ class MerchantRepositoryTest {
             kind = kind,
             accountId = null,
             toAccountId = null,
+            categoryId = null,
+            reach = null,
         )
     }
 

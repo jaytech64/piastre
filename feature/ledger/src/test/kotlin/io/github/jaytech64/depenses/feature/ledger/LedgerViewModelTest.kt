@@ -4,6 +4,7 @@ package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionRepository
@@ -61,8 +62,15 @@ class LedgerViewModelTest {
 
     private fun transactionRepository() =
         TransactionRepository(
+            database = database,
             transactions = database.transactionDao(),
             merchants = MerchantRepository(database.merchantDao()),
+            categories =
+                CategoryRepository(
+                    database.categoryDao(),
+                    database.merchantDao(),
+                    database.accountDao(),
+                ),
             zoneId = Provider { ZONE },
         )
 

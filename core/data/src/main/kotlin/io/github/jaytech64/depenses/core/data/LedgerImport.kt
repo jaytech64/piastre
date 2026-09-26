@@ -35,6 +35,7 @@ class LedgerImport
         private val merchants: MerchantRepository,
         private val merchantRows: MerchantDao,
         private val accounts: AccountDao,
+        private val categories: CategoryRepository,
     ) {
         /** Reads and checks [input], and says what importing it would do, without writing anything. */
         suspend fun read(input: InputStream): ImportReading {
@@ -148,7 +149,32 @@ class LedgerImport
             document.aliases.forEach { alias ->
                 merchantIds[alias.merchantId]?.let { merchantRows.insertAlias(alias.toEntity(it)) }
             }
-            plan.newTransactions.forEach { transactions.insert(it.toEntity(accountIds, merchantIds)) }
+            val categoryIds = document.categories.associate { it.id to categories.named(it.name) }
+            giveDefaults(document, accountIds, merchantIds, categoryIds)
+            plan.newTransactions.forEach { transactions.insert(it.toEntity(accountIds, merchantIds, categoryIds)) }
+        }
+
+        /**
+         * The category a merchant or account in the file gives what arrives there,
+         * given to yours only when yours gives none: merging adds what is missing
+         * and never replaces what you chose (ADR-0005).
+         */
+        private suspend fun giveDefaults(
+            document: ExportDocument,
+            accountIds: Map<Long, Long>,
+            merchantIds: Map<Long, Long?>,
+            categoryIds: Map<Long, Long?>,
+        ) {
+            document.merchants.forEach { file ->
+                val merchant = merchantIds[file.id]?.let { merchantRows.byId(it) } ?: return@forEach
+                val category = file.categoryId?.let { categoryIds[it] } ?: return@forEach
+                if (merchant.categoryId == null) merchantRows.setCategory(merchant.id, category)
+            }
+            document.accounts.forEach { file ->
+                val account = accountIds[file.id] ?: return@forEach
+                val category = file.categoryId?.let { categoryIds[it] } ?: return@forEach
+                if (accounts.categoryOf(account) == null) accounts.setCategory(account, category)
+            }
         }
 
         private suspend fun accountIdFor(target: AccountTarget): Long =

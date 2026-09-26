@@ -148,6 +148,9 @@ private fun EntryForm(
 
         AccountFields(state, accounts, viewModel, onAddFor = { slot -> onPick(slot.picking()) })
 
+        // After the accounts, because a transfer's category is about where it goes.
+        CategorySection(state.categoryId, viewModel.category, onAddCategory = { onPick(Picking.ADD_CATEGORY) })
+
         WhenRow(state = state, onDateChange = viewModel::onDateChange, onPick = onPick)
 
         OutlinedTextField(

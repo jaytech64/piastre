@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
@@ -62,6 +63,20 @@ data class ExpenseFormUiState(
     val accountId: Long? = null,
     /** Where a transfer lands. Null on anything else. */
     val toAccountId: Long? = null,
+    val categoryId: Long? = null,
+    /**
+     * True once the category is yours: picked from the list, or the one the
+     * transaction being edited already had. Until then, naming a merchant fills
+     * the category in with the one that merchant gives.
+     */
+    val categoryChosen: Boolean = false,
+    /** Whether the offer's first box is ticked: the place's other transactions with no category. */
+    val reachOthers: Boolean = false,
+    /**
+     * Whether the offer's second box is ticked, or null while you have not touched
+     * it — it then shows whether the place already gives the chosen category.
+     */
+    val fromNowOnChoice: Boolean? = null,
     /** A transaction a notification recorded: its account is the bank's to say, so it is shown, not offered. */
     val isCaptured: Boolean = false,
     val capturedAccountLabel: String? = null,
@@ -104,6 +119,7 @@ class ExpenseFormViewModel
         private val editor: TransactionEditor,
         merchants: MerchantRepository,
         private val accounts: AccountRepository,
+        private val categories: CategoryRepository,
         private val zoneId: Provider<ZoneId>,
     ) : ViewModel() {
         private val editingId: Long? = savedStateHandle.get<Long>(EXPENSE_ID_ARG)
@@ -141,6 +157,19 @@ class ExpenseFormViewModel
         val knownAccounts: StateFlow<List<Account>> =
             accounts.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
+        /** The category, the list it is picked from, and the offer beside it. */
+        val category =
+            CategoryPicker(
+                form = _uiState,
+                merchants = knownMerchants,
+                accounts = knownAccounts,
+                categories = categories,
+                editingId = editingId,
+                today = { LocalDate.now(zoneId.get()) },
+                scope = viewModelScope,
+                sharing = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            )
+
         // A transaction that is no longer there has nothing to edit, so the screen
         // simply closes rather than offering to save into a row that is gone.
         init {
@@ -157,7 +186,7 @@ class ExpenseFormViewModel
 
         fun onAmountChange(text: String) = _uiState.update { it.copy(amountText = text) }
 
-        fun onMerchantChange(text: String) = _uiState.update { it.copy(merchantText = text) }
+        fun onMerchantChange(text: String) = _uiState.update { category.following(it.copy(merchantText = text)) }
 
         fun onNoteChange(text: String) = _uiState.update { it.copy(note = text) }
 
@@ -165,16 +194,14 @@ class ExpenseFormViewModel
 
         fun onTimeChange(time: LocalTime) = _uiState.update { it.copy(time = time) }
 
-        fun onKindChange(kind: TransactionKind) = _uiState.update { it.copy(kind = kind) }
+        fun onKindChange(kind: TransactionKind) = _uiState.update { category.following(it.copy(kind = kind)) }
 
         fun onAccountChange(
             slot: AccountSlot,
             id: Long?,
-        ) = _uiState.update {
-            when (slot) {
-                AccountSlot.SOURCE -> it.copy(accountId = id)
-                AccountSlot.DESTINATION -> it.copy(toAccountId = id)
-            }
+        ) = when (slot) {
+            AccountSlot.SOURCE -> _uiState.update { it.copy(accountId = id) }
+            AccountSlot.DESTINATION -> _uiState.update { category.following(it.copy(toAccountId = id)) }
         }
 
         /** Adds the account missing from the list and picks it, so adding one never means leaving the form. */
@@ -200,6 +227,7 @@ class ExpenseFormViewModel
             val state = _uiState.value
             val amount = state.amount ?: return
             val editing = original
+            val reach = category.offer.value?.reach
             _uiState.update { it.copy(saving = true) }
             viewModelScope.launch {
                 if (editing == null) {
@@ -211,6 +239,8 @@ class ExpenseFormViewModel
                         kind = state.kind,
                         accountId = state.accountId,
                         toAccountId = state.destinationToSave,
+                        categoryId = state.categoryId,
+                        reach = reach,
                     )
                 } else {
                     editor.edit(
@@ -222,6 +252,8 @@ class ExpenseFormViewModel
                         note = state.note,
                         accountId = state.accountId,
                         toAccountId = state.destinationToSave,
+                        categoryId = state.categoryId,
+                        reach = reach,
                     )
                 }
                 _uiState.update { it.copy(saving = false, done = true) }
@@ -258,6 +290,8 @@ private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseForm
         kind = transaction.kind,
         accountId = transaction.accountId,
         toAccountId = transaction.toAccountId,
+        categoryId = transaction.categoryId,
+        categoryChosen = transaction.categoryId != null,
         isCaptured = transaction.source == TransactionSource.NOTIFICATION,
         capturedAccountLabel = Formatters.accountName(transaction.accountName, transaction.cardLast4),
         loading = false,

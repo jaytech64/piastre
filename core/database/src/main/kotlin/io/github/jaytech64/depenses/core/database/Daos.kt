@@ -134,7 +134,9 @@ interface TransactionDao {
      * the re-post is silently dropped instead of applied.
      *
      * Fields the user owns — their note, their category, whether it was income —
-     * survive a re-parse.
+     * survive a re-parse. A row with no category yet takes the one the new reading
+     * carries, which is its merchant's, so a category given to a merchant since
+     * the first reading reaches a purchase Wallet re-posts.
      * Everything the parser owns is overwritten, which is what makes fixing a
      * parser repair history.
      *
@@ -154,7 +156,7 @@ interface TransactionDao {
             transaction.copy(
                 id = existing.id,
                 note = existing.note,
-                categoryId = existing.categoryId,
+                categoryId = existing.categoryId ?: transaction.categoryId,
                 kind = existing.kind,
             ),
         )
@@ -221,11 +223,13 @@ interface TransactionDao {
         """
         SELECT t.*, m.displayName AS merchantName,
                a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
-               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType,
+               c.name AS categoryName
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
         LEFT JOIN account a ON a.id = t.accountId
         LEFT JOIN account d ON d.id = t.toAccountId
+        LEFT JOIN category c ON c.id = t.categoryId
         WHERE t.status = :status
         ORDER BY t.occurredAtUtcMillis DESC
         """,
@@ -261,11 +265,13 @@ interface TransactionDao {
         """
         SELECT t.*, m.displayName AS merchantName,
                a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
-               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType,
+               c.name AS categoryName
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
         LEFT JOIN account a ON a.id = t.accountId
         LEFT JOIN account d ON d.id = t.toAccountId
+        LEFT JOIN category c ON c.id = t.categoryId
         WHERE t.id = :id
         """,
     )
@@ -286,11 +292,13 @@ interface TransactionDao {
         """
         SELECT t.*, m.displayName AS merchantName,
                a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
-               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType,
+               c.name AS categoryName
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
         LEFT JOIN account a ON a.id = t.accountId
         LEFT JOIN account d ON d.id = t.toAccountId
+        LEFT JOIN category c ON c.id = t.categoryId
         ORDER BY t.occurredAtUtcMillis
         """,
     )
@@ -364,6 +372,16 @@ interface MerchantDao {
 
     @Query("SELECT * FROM merchant ORDER BY id")
     suspend fun allOnce(): List<MerchantEntity>
+
+    @Query("SELECT * FROM merchant WHERE id = :id")
+    suspend fun byId(id: Long): MerchantEntity?
+
+    /** Null stops it: purchases there arrive with no category again. */
+    @Query("UPDATE merchant SET categoryId = :categoryId WHERE id = :id")
+    suspend fun setCategory(
+        id: Long,
+        categoryId: Long?,
+    )
 
     @Query("SELECT * FROM merchant_alias ORDER BY id")
     suspend fun allAliases(): List<MerchantAliasEntity>
@@ -466,6 +484,16 @@ interface AccountDao {
         name: String?,
     )
 
+    @Query("SELECT categoryId FROM account WHERE id = :id")
+    suspend fun categoryOf(id: Long): Long?
+
+    /** Null stops it: transfers into the account arrive with no category again. */
+    @Query("UPDATE account SET categoryId = :categoryId WHERE id = :id")
+    suspend fun setCategory(
+        id: Long,
+        categoryId: Long?,
+    )
+
     /** Null clears it, and the account goes back to having no stated starting point. */
     @Query("UPDATE account SET openingBalanceMinor = :openingBalanceMinor WHERE id = :id")
     suspend fun setOpeningBalance(
@@ -496,6 +524,174 @@ interface AccountDao {
     suspend fun deleteIfUnused(id: Long): Int
 }
 
+@Dao
+interface CategoryDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(category: CategoryEntity): Long
+
+    @Query("SELECT * FROM category WHERE normalisedName = :normalisedName")
+    suspend fun byNormalisedName(normalisedName: String): CategoryEntity?
+
+    @Query("SELECT * FROM category ORDER BY id")
+    suspend fun allOnce(): List<CategoryEntity>
+
+    /**
+     * Returns 0 and changes nothing when another category already answers to the
+     * new name, so a rename can never fold two categories into one behind your back.
+     */
+    @Query("UPDATE OR IGNORE category SET name = :name, normalisedName = :normalisedName WHERE id = :id")
+    suspend fun rename(
+        id: Long,
+        name: String,
+        normalisedName: String,
+    ): Int
+
+    /**
+     * Every category, the ones you use most for [kind] first: by how many confirmed
+     * rows carried it on or after [sinceEpochDay], then by when it was last used,
+     * then by name — the order [MerchantDao.byUse] gives merchants.
+     *
+     * The name breaks ties on its folded form, so an unused Épicerie sits among
+     * the E's rather than after Z where SQLite's byte order would put it.
+     */
+    @Query(
+        """
+        SELECT c.* FROM category c
+        LEFT JOIN expense_transaction t
+            ON t.categoryId = c.id AND t.kind = :kind AND t.status = 'CONFIRMED'
+        GROUP BY c.id
+        ORDER BY SUM(t.localDateEpochDay >= :sinceEpochDay) DESC,
+            MAX(t.occurredAtUtcMillis) DESC,
+            c.normalisedName
+        """,
+    )
+    fun byUse(
+        kind: TransactionKind,
+        sinceEpochDay: Int,
+    ): Flow<List<CategoryEntity>>
+
+    /**
+     * Confirmed transactions only, as an account counts them, and the merchants
+     * and accounts that give it automatically.
+     */
+    @Query(
+        """
+        SELECT c.*,
+            (SELECT COUNT(*) FROM expense_transaction t
+             WHERE t.categoryId = c.id AND t.status = 'CONFIRMED') AS transactionCount,
+            (SELECT COUNT(*) FROM merchant m WHERE m.categoryId = c.id) AS merchantCount,
+            (SELECT COUNT(*) FROM account a WHERE a.categoryId = c.id) AS accountCount
+        FROM category c
+        ORDER BY c.normalisedName
+        """,
+    )
+    fun allWithCounts(): Flow<List<CategoryWithCounts>>
+
+    /**
+     * Gives [categoryId] to a merchant's other [kind] rows that have no category
+     * yet, and returns how many that was. [exceptId] is the row the category was
+     * chosen on, or null when it is not saved yet.
+     *
+     * A row that already has a category keeps it: it may be the one purchase
+     * there you filed elsewhere on purpose. A dismissed row is left out, since it
+     * is in no list and no total.
+     *
+     * The review time is deliberately not stamped. It is what locks the parser out
+     * of a row, and labelling forty purchases must not stop a parser fix from
+     * repairing them; [TransactionDao.insertOrUpdate] already keeps the category through a
+     * re-read.
+     */
+    @Query(
+        """
+        UPDATE expense_transaction SET categoryId = :categoryId
+        WHERE merchantId = :merchantId AND kind = :kind AND categoryId IS NULL
+          AND status != 'DISMISSED' AND id IS NOT :exceptId
+        """,
+    )
+    suspend fun categoriseAtMerchant(
+        merchantId: Long,
+        kind: TransactionKind,
+        categoryId: Long,
+        exceptId: Long?,
+    ): Int
+
+    /** How many rows [categoriseAtMerchant] would change, kept current as the ledger changes. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM expense_transaction
+        WHERE merchantId = :merchantId AND kind = :kind AND categoryId IS NULL
+          AND status != 'DISMISSED' AND id IS NOT :exceptId
+        """,
+    )
+    fun uncategorisedAtMerchant(
+        merchantId: Long,
+        kind: TransactionKind,
+        exceptId: Long?,
+    ): Flow<Int>
+
+    /**
+     * [categoriseAtMerchant] for transfers, which have no merchant: the account
+     * they went into says what they were for.
+     */
+    @Query(
+        """
+        UPDATE expense_transaction SET categoryId = :categoryId
+        WHERE toAccountId = :accountId AND kind = 'TRANSFER' AND categoryId IS NULL
+          AND status != 'DISMISSED' AND id IS NOT :exceptId
+        """,
+    )
+    suspend fun categoriseTransfersInto(
+        accountId: Long,
+        categoryId: Long,
+        exceptId: Long?,
+    ): Int
+
+    @Query(
+        """
+        SELECT COUNT(*) FROM expense_transaction
+        WHERE toAccountId = :accountId AND kind = 'TRANSFER' AND categoryId IS NULL
+          AND status != 'DISMISSED' AND id IS NOT :exceptId
+        """,
+    )
+    fun uncategorisedTransfersInto(
+        accountId: Long,
+        exceptId: Long?,
+    ): Flow<Int>
+
+    /**
+     * Removes a category and every trace of it: the transactions that carried it
+     * are left with none, and merchants and accounts stop giving it. A category
+     * moves no balance, so this loses a label and never an amount.
+     */
+    @Transaction
+    suspend fun delete(id: Long) {
+        clearFromTransactions(id)
+        clearFromMerchants(id)
+        clearFromAccounts(id)
+        deleteRow(id)
+    }
+
+    @Query("UPDATE expense_transaction SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromTransactions(id: Long)
+
+    @Query("UPDATE merchant SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromMerchants(id: Long)
+
+    @Query("UPDATE account SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromAccounts(id: Long)
+
+    @Query("DELETE FROM category WHERE id = :id")
+    suspend fun deleteRow(id: Long)
+}
+
+/** A category with what uses it. */
+data class CategoryWithCounts(
+    @Embedded val category: CategoryEntity,
+    val transactionCount: Int,
+    val merchantCount: Int,
+    val accountCount: Int,
+)
+
 /**
  * A transaction with the display name of the merchant it resolved to, the account
  * it came from, and — on a transfer — the one it went to.
@@ -514,6 +710,7 @@ data class TransactionWithMerchant(
     val toAccountName: String? = null,
     val toAccountLast4: String? = null,
     val toAccountType: AccountType? = null,
+    val categoryName: String? = null,
 )
 
 /** An account with how many confirmed transactions it carries, transfers included, and what it holds now. */

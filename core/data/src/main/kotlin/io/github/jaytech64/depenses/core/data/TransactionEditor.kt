@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
+import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.TransactionDao
+import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -28,8 +30,10 @@ import javax.inject.Singleton
 class TransactionEditor
     @Inject
     constructor(
+        private val database: DepensesDatabase,
         private val transactions: TransactionDao,
         private val merchants: MerchantRepository,
+        private val categories: CategoryRepository,
         private val clock: Clock,
     ) {
         /**
@@ -41,6 +45,10 @@ class TransactionEditor
          * The merchant is only touched when the name actually changed, so saving an
          * edit to the note does not quietly turn the normaliser's guess into a
          * user-made alias. See [withMerchant] for what a changed name does.
+         *
+         * [reach] is what the form offered beside the category, or null when it
+         * offered nothing; the purchase and everything the category reaches are
+         * written together or not at all.
          */
         suspend fun edit(
             id: Long,
@@ -51,13 +59,15 @@ class TransactionEditor
             note: String?,
             accountId: Long?,
             toAccountId: Long?,
-        ) {
-            val row = transactions.withMerchantById(id) ?: return
+            categoryId: Long?,
+            reach: CategoryReach?,
+        ) = database.inTransaction {
+            val row = transactions.withMerchantById(id) ?: return@inTransaction
             val existing = row.transaction
             val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
             val renamed = merchant != (row.merchantName ?: existing.merchantRaw)
             val occurredAtMillis = occurredAt.toEpochMilli()
-            transactions.update(
+            val edited =
                 (
                     if (renamed) {
                         existing.withMerchant(
@@ -73,9 +83,11 @@ class TransactionEditor
                     occurredAtUtcMillis = occurredAtMillis,
                     localDateEpochDay = localDateEpochDay(occurredAtMillis, ZoneId.of(existing.zoneId)),
                     note = note?.takeIf { it.isNotBlank() }?.trim(),
+                    categoryId = categoryId,
                     reviewedAtUtcMillis = clock.millis(),
-                ),
-            )
+                )
+            transactions.update(edited)
+            categories.spreadFrom(edited, reach)
         }
 
         /**

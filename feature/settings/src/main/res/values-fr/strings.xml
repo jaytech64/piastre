@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="settings_title">Réglages</string>
 
     <string name="settings_capture_section">Capture</string>
@@ -59,6 +59,35 @@
     </plurals>
     <string name="settings_accounts_empty">Rien que le comptant pour l\'instant. Une carte apparaît ici après son premier paiement Wallet, et vous pouvez ajouter un compte vous-même.</string>
     <string name="settings_accounts_still_used">Ce compte est encore utilisé par une transaction, il reste donc.</string>
+
+    <string name="settings_categories_section">Catégories</string>
+    <string name="settings_categories_add">Ajouter une catégorie</string>
+    <string name="settings_categories_automatic">automatique pour %s</string>
+    <plurals name="settings_categories_merchants">
+        <item quantity="one">%d marchand</item>
+        <item quantity="other">%d marchands</item>
+    </plurals>
+    <plurals name="settings_categories_accounts">
+        <item quantity="one">%d compte</item>
+        <item quantity="other">%d comptes</item>
+    </plurals>
+    <string name="settings_categories_and">%1$s et %2$s</string>
+    <string name="settings_categories_name_taken">Une autre catégorie porte déjà ce nom.</string>
+    <string name="settings_categories_delete_title">Supprimer %s ?</string>
+    <!-- "one" also matches 0 in French; the dialog only says this when there is at least one. -->
+    <plurals name="settings_categories_delete_transactions" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Sa transaction n\'aura plus de catégorie</item>
+        <item quantity="other">Ses %d transactions n\'auront plus de catégorie</item>
+    </plurals>
+    <plurals name="settings_categories_delete_automatic">
+        <item quantity="one">%s cessera de la recevoir automatiquement</item>
+        <item quantity="other">%s cesseront de la recevoir automatiquement</item>
+    </plurals>
+    <string name="settings_categories_delete_both">%1$s, et %2$s.</string>
+    <string name="settings_categories_delete_one">%s.</string>
+    <string name="settings_categories_delete_no_money">Aucun montant ni total ne change.</string>
+    <string name="settings_categories_delete">Supprimer</string>
+    <string name="settings_categories_cancel">Annuler</string>
 
     <string name="settings_data_section">Vos données</string>
     <string name="settings_export">Exporter</string>
@@ -125,5 +154,6 @@
     <string name="export_column_note">note</string>
     <string name="export_column_type">type</string>
     <string name="export_column_account">compte</string>
+    <string name="export_column_category">catégorie</string>
     <string name="export_column_to_account">compte de destination</string>
 </resources>

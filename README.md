@@ -16,7 +16,10 @@ The ranking and the calendar count spending alone — never income, never a tran
 
 The Wallet parser is tested against a corpus captured over two weeks on a real device, and the raw notification log lets a parser fix repair history rather than only improve the future.
 
-Categories, budgets and any payment source other than Wallet are out of scope so far.
+Transactions take a category, and giving one to a purchase can also give it to the merchant's others and to everything bought there from now on — or, for a transfer, to everything moved into the same account ([ADR-0010](docs/adr/0010-a-merchants-category-is-written-onto-each-purchase.md)).
+Reports do not break spending down by category yet.
+
+Budgets and any payment source other than Wallet are out of scope so far.
 
 ## Requirements
 

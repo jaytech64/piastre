@@ -29,4 +29,6 @@ data class Account(
     val openingBalance: Money?,
     /** The opening balance moved by every confirmed transaction on it, in the home currency. */
     val balance: Money,
+    /** The category every transfer into it is given, or null. */
+    val categoryId: Long? = null,
 )

@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.AccountDialog
+import io.github.jaytech64.depenses.core.designsystem.CategoryDialog
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -87,6 +88,17 @@ internal fun FormDialog(
             )
         }
 
+        Picking.ADD_CATEGORY -> {
+            CategoryDialog(
+                name = null,
+                onSave = { name ->
+                    viewModel.category.add(name)
+                    onClose()
+                },
+                onDismiss = onClose,
+            )
+        }
+
         Picking.NOTHING -> {
             Unit
         }
@@ -94,7 +106,7 @@ internal fun FormDialog(
 }
 
 /** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
-internal enum class Picking { NOTHING, DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION }
+internal enum class Picking { NOTHING, DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION, ADD_CATEGORY }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

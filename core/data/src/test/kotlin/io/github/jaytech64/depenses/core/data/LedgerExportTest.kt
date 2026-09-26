@@ -49,6 +49,7 @@ class LedgerExportTest {
                 transactions = database.transactionDao(),
                 merchants = database.merchantDao(),
                 accounts = database.accountDao(),
+                categories = database.categoryDao(),
                 clock = Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
             )
     }
@@ -65,7 +66,8 @@ class LedgerExportTest {
 
             assertTrue("missing UTF-8 BOM", csv.startsWith(BOM))
             assertEquals(
-                "date;heure;marchand;montant;devise;source;statut;carte;note;type;compte;compte de destination",
+                "date;heure;marchand;montant;devise;source;statut;carte;note;type;compte;" +
+                    "compte de destination;catégorie",
                 csv.lines()[0].removePrefix(BOM),
             )
             assertTrue(csv, "MARCHE ST DAVID;16,09;CAD" in csv)
@@ -94,9 +96,9 @@ class LedgerExportTest {
 
             val rows = write(ExportFormat.CSV).lines()
 
-            assertTrue(rows.toString(), rows.any { it.endsWith(";EXPENSE;Débit Desrives;") })
-            assertTrue(rows.toString(), rows.any { it.endsWith(";INCOME;;") })
-            assertTrue(rows.toString(), rows.any { it.endsWith(";TRANSFER;CASH;Débit Desrives") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";EXPENSE;Débit Desrives;;") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";INCOME;;;") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";TRANSFER;CASH;Débit Desrives;") })
         }
 
     /** The names you give your accounts are data about you, so they leave with the rest. */
@@ -329,6 +331,7 @@ class LedgerExportTest {
                 type = "type",
                 account = "compte",
                 toAccount = "compte de destination",
+                category = "catégorie",
             )
     }
 }

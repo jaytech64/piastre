@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
+import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
+import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
@@ -29,8 +31,10 @@ import javax.inject.Singleton
 class TransactionRepository
     @Inject
     constructor(
+        private val database: DepensesDatabase,
         private val transactions: TransactionDao,
         private val merchants: MerchantRepository,
+        private val categories: CategoryRepository,
         private val zoneId: Provider<ZoneId>,
     ) {
         /**
@@ -69,7 +73,8 @@ class TransactionRepository
          * was that trip, not the day it was back home.
          *
          * [accountId] is the account it came from, null when nothing was said, and
-         * [toAccountId] where a transfer landed.
+         * [toAccountId] where a transfer landed. [reach] is what the form offered
+         * beside [categoryId], as [TransactionEditor.edit] takes it.
          */
         suspend fun addManual(
             amount: Money,
@@ -79,40 +84,58 @@ class TransactionRepository
             kind: TransactionKind,
             accountId: Long?,
             toAccountId: Long?,
-        ): Long {
-            val zone = zoneId.get()
-            val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
-            return transactions.insert(
-                ExpenseTransactionEntity(
-                    rawEventId = null,
-                    amountMinor = amount.minor,
-                    currency = amount.currency,
-                    occurredAtUtcMillis = occurredAt.toEpochMilli(),
-                    zoneId = zone.id,
-                    localDateEpochDay = localDateEpochDay(occurredAt.toEpochMilli(), zone),
-                    merchantId = merchant?.let { merchants.assign(raw = it, displayName = it) },
-                    merchantRaw = merchant,
-                    categoryId = null,
-                    source = TransactionSource.MANUAL,
-                    status = TransactionStatus.CONFIRMED,
-                    reviewReason = null,
-                    reviewedAtUtcMillis = null,
-                    confidence = CERTAIN,
-                    parserId = null,
-                    parserVersion = null,
-                    sourcePackage = MANUAL_SOURCE,
-                    sourceKey = UUID.randomUUID().toString(),
-                    cardLabel = null,
-                    cardLast4 = null,
-                    note = note?.takeIf { it.isNotBlank() }?.trim(),
-                    kind = kind,
-                    accountId = accountId,
-                    toAccountId = toAccountId,
-                ),
-            )
-        }
+            categoryId: Long?,
+            reach: CategoryReach?,
+        ): Long =
+            database.inTransaction {
+                val entry =
+                    manualEntry(amount, merchantName, occurredAt, note, kind, accountId, toAccountId, categoryId)
+                val id = transactions.insert(entry)
+                categories.spreadFrom(entry.copy(id = id), reach)
+                id
+            }
 
         suspend fun byId(id: Long): Transaction? = transactions.withMerchantById(id)?.let(::toDomain)
+
+        private suspend fun manualEntry(
+            amount: Money,
+            merchantName: String?,
+            occurredAt: Instant,
+            note: String?,
+            kind: TransactionKind,
+            accountId: Long?,
+            toAccountId: Long?,
+            categoryId: Long?,
+        ): ExpenseTransactionEntity {
+            val zone = zoneId.get()
+            val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
+            return ExpenseTransactionEntity(
+                rawEventId = null,
+                amountMinor = amount.minor,
+                currency = amount.currency,
+                occurredAtUtcMillis = occurredAt.toEpochMilli(),
+                zoneId = zone.id,
+                localDateEpochDay = localDateEpochDay(occurredAt.toEpochMilli(), zone),
+                merchantId = merchant?.let { merchants.assign(raw = it, displayName = it) },
+                merchantRaw = merchant,
+                categoryId = categoryId,
+                source = TransactionSource.MANUAL,
+                status = TransactionStatus.CONFIRMED,
+                reviewReason = null,
+                reviewedAtUtcMillis = null,
+                confidence = CERTAIN,
+                parserId = null,
+                parserVersion = null,
+                sourcePackage = MANUAL_SOURCE,
+                sourceKey = UUID.randomUUID().toString(),
+                cardLabel = null,
+                cardLast4 = null,
+                note = note?.takeIf { it.isNotBlank() }?.trim(),
+                kind = kind,
+                accountId = accountId,
+                toAccountId = toAccountId,
+            )
+        }
 
         private companion object {
             /** Not a package name, and deliberately not one: no parser can claim it. */
@@ -147,5 +170,7 @@ internal fun toDomain(row: TransactionWithMerchant): Transaction =
             toAccountName = row.toAccountName,
             toAccountLast4 = row.toAccountLast4,
             toAccountType = row.toAccountType,
+            categoryId = categoryId,
+            categoryName = row.categoryName,
         )
     }
