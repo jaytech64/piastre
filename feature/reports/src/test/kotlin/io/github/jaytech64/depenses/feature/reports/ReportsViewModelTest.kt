@@ -196,7 +196,19 @@ class ReportsViewModelTest {
     @Test
     fun `two empty periods have nothing to compare`() =
         runTest {
-            assertEquals(Comparison.NothingEither, settled().comparison)
+            assertNull(settled().comparison)
+        }
+
+    @Test
+    fun `a period with nothing spent is not compared with one that had spending`() =
+        runTest {
+            record(50_000, TODAY, kind = TransactionKind.INCOME)
+            spend(11_500, TODAY.minusWeeks(1))
+
+            val state = settled()
+
+            assertEquals(0, state.purchaseCount)
+            assertNull(state.comparison)
         }
 
     @Test

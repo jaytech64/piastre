@@ -146,9 +146,11 @@ private fun BalanceCard(
                         label = stringResource(R.string.reports_expenses),
                         amount = Formatters.money(state.total, locale),
                         supporting =
-                            listOf(
+                            listOfNotNull(
                                 { PurchaseCount(state.purchaseCount) },
-                                { ComparisonLine(state.comparison, state.period.unit, judged = true) },
+                                state.comparison?.let { comparison ->
+                                    { ComparisonLine(comparison, state.period.unit, judged = true) }
+                                },
                             ),
                     ),
                 ),

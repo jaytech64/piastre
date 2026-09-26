@@ -61,7 +61,11 @@ data class ReportsUiState(
     /** What was spent: the figure the ranking and the calendar below break down. */
     val total: Money = Money(0, Money.CAD),
     val purchaseCount: Int = 0,
-    val comparison: Comparison = Comparison.NothingEither,
+    /**
+     * Null when nothing was spent. "Rien de dépensé" already says so, and a
+     * ▼ 100 % under it after a day with spending would say it a second time.
+     */
+    val comparison: Comparison? = null,
     val income: Money = Money(0, Money.CAD),
     /**
      * Null for a day or a week. Pay arrives every week or two, so a shorter period
@@ -148,7 +152,7 @@ class ReportsViewModel
                     today = today,
                     total = spending.total,
                     purchaseCount = spending.count,
-                    comparison = compare(spending.total, before),
+                    comparison = if (spending.count == 0) null else compare(spending.total, before),
                     income = income,
                     incomeComparison = incomeBefore?.let { compare(income, it) },
                     merchants = merchants.shareOf(spending.total),
