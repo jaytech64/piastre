@@ -47,7 +47,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jaytech64.depenses.core.designsystem.ButtonsRow
+import io.github.jaytech64.depenses.core.designsystem.ChoiceRow
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.designsystem.LastButton
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.TransactionKind
@@ -177,13 +180,12 @@ private fun FormActions(
     onCancel: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    ButtonsRow(Modifier.fillMaxWidth(), last = if (state.isEditing) LastButton.FAR_END else LastButton.IN_LINE) {
         Button(onClick = onSave, enabled = state.canSave) {
             Text(stringResource(R.string.manual_save))
         }
         TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
         if (state.isEditing) {
-            Spacer(Modifier.weight(1f))
             TextButton(
                 onClick = onDelete,
                 enabled = !state.saving,
@@ -196,32 +198,28 @@ private fun FormActions(
 }
 
 /**
- * Expense or income, first on the form because it changes what the rest of it
- * asks: income comes from a source, not a merchant.
+ * Expense, income or transfer, first on the form because it changes what the rest
+ * of it asks: income comes from a source, not a merchant.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun KindToggle(
     kind: TransactionKind,
     onChange: (TransactionKind) -> Unit,
 ) {
-    val options =
-        listOf(
-            TransactionKind.EXPENSE to R.string.form_kind_expense,
-            TransactionKind.INCOME to R.string.form_kind_income,
-            TransactionKind.TRANSFER to R.string.form_kind_transfer,
-        )
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        options.forEachIndexed { index, (option, label) ->
-            SegmentedButton(
-                selected = kind == option,
-                onClick = { onChange(option) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-            ) {
-                Text(stringResource(label))
-            }
-        }
-    }
+    ChoiceRow(
+        options = TransactionKind.entries,
+        selected = kind,
+        onSelect = onChange,
+        label = { option ->
+            stringResource(
+                when (option) {
+                    TransactionKind.EXPENSE -> R.string.form_kind_expense
+                    TransactionKind.INCOME -> R.string.form_kind_income
+                    TransactionKind.TRANSFER -> R.string.form_kind_transfer
+                },
+            )
+        },
+    )
 }
 
 private fun merchantLabel(kind: TransactionKind): Int =
@@ -246,7 +244,8 @@ private fun WhenRow(
 ) {
     val locale = LocalConfiguration.current.locales[0]
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    // The time goes under the date, whole, when the two no longer fit side by side.
+    ButtonsRow(Modifier.fillMaxWidth()) {
         DateStepper(
             date = state.date,
             onStep = onDateChange,
