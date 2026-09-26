@@ -11,8 +11,8 @@ import kotlinx.serialization.Serializable
  * Version 2 dropped `paymentMethod`, because cash became an account, and renamed
  * the card list to accounts: a version-1 reader must refuse the file rather than
  * guess at what it no longer says. Fields added since — an account's opening
- * balance, and its place in your order — left it at 2, and default to null for a
- * file written before them.
+ * balance, its place in your order, and categories — left it at 2, and default to
+ * null or empty for a file written before them.
  */
 internal const val LEDGER_FORMAT_VERSION = 2
 
@@ -32,6 +32,14 @@ internal data class ExportDocument(
     val aliases: List<ExportedAlias>,
     val accounts: List<ExportedAccount>,
     val transactions: List<ExportedTransaction>,
+    val categories: List<ExportedCategory> = emptyList(),
+)
+
+/** A category you named. It arrived within version 2, so a file written before it has none. */
+@Serializable
+internal data class ExportedCategory(
+    val id: Long,
+    val name: String,
 )
 
 /**
@@ -42,6 +50,8 @@ internal data class ExportDocument(
  *
  * [sortOrder] is where you put the account in your list, which you set, so it leaves with the
  * rest. It arrived within version 2 too, and is null in a file written before it.
+ *
+ * [categoryId] is the category every transfer into the account is given, when you set one.
  */
 @Serializable
 internal data class ExportedAccount(
@@ -53,13 +63,16 @@ internal data class ExportedAccount(
     val origin: String,
     val openingBalanceMinor: Long? = null,
     val sortOrder: Int? = null,
+    val categoryId: Long? = null,
 )
 
+/** [categoryId] is the category every purchase there is given, when you set one. */
 @Serializable
 internal data class ExportedMerchant(
     val id: Long,
     val displayName: String,
     val normalisedName: String,
+    val categoryId: Long? = null,
 )
 
 @Serializable
@@ -96,4 +109,6 @@ internal data class ExportedTransaction(
     val accountName: String?,
     val toAccountId: Long?,
     val toAccountName: String?,
+    val categoryId: Long? = null,
+    val categoryName: String? = null,
 )

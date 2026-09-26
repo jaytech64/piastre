@@ -51,9 +51,12 @@ internal fun decodeExport(text: String): ExportDocument {
 internal fun ExportDocument.check() {
     val accountIds = accounts.map { it.id }.toSet()
     val merchantIds = merchants.map { it.id }.toSet()
+    val categoryIds = categories.map { it.id }.toSet()
     if (accountIds.size != accounts.size) inconsistent("two accounts share an id")
     if (merchantIds.size != merchants.size) inconsistent("two merchants share an id")
+    if (categoryIds.size != categories.size) inconsistent("two categories share an id")
     accounts.forEach { it.checkCodes() }
+    checkCategoryReferences(categoryIds)
     aliases.forEach { it.checkCodes(merchantIds) }
     val identities = HashSet<Pair<String, String>>()
     transactions.forEach { transaction ->
@@ -62,6 +65,17 @@ internal fun ExportDocument.check() {
         if (!identities.add(transaction.sourcePackage to transaction.sourceKey)) {
             inconsistent("transaction ${transaction.sourceKey} appears twice")
         }
+    }
+}
+
+/** Every category a transaction, merchant or account names is one the file lists. */
+private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
+    val named =
+        transactions.map { it.categoryId to "transaction ${it.sourceKey}" } +
+            merchants.map { it.categoryId to "merchant ${it.id}" } +
+            accounts.map { it.categoryId to "account ${it.id}" }
+    named.forEach { (id, owner) ->
+        if (id != null && id !in categoryIds) inconsistent("$owner has a category not in the file")
     }
 }
 

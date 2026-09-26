@@ -154,5 +154,6 @@
     <string name="export_column_note">note</string>
     <string name="export_column_type">type</string>
     <string name="export_column_account">compte</string>
+    <string name="export_column_category">catégorie</string>
     <string name="export_column_to_account">compte de destination</string>
 </resources>

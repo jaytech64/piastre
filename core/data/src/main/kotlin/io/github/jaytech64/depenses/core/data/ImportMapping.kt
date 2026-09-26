@@ -68,6 +68,7 @@ internal fun ExportedAlias.toEntity(merchantId: Long) =
 internal fun ExportedTransaction.toEntity(
     accountIds: Map<Long, Long>,
     merchantIds: Map<Long, Long?>,
+    categoryIds: Map<Long, Long?>,
 ) = ExpenseTransactionEntity(
     rawEventId = null,
     amountMinor = amountMinor,
@@ -77,7 +78,7 @@ internal fun ExportedTransaction.toEntity(
     localDateEpochDay = localDateEpochDay(occurredAtUtcMillis, ZoneId.of(zoneId)),
     merchantId = merchantId?.let { merchantIds[it] },
     merchantRaw = merchantRaw,
-    categoryId = null,
+    categoryId = categoryId?.let { categoryIds[it] },
     source = TransactionSource.valueOf(source),
     status = TransactionStatus.valueOf(status),
     reviewReason = null,

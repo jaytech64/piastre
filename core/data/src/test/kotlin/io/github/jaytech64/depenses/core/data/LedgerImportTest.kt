@@ -212,6 +212,95 @@ class LedgerImportTest {
             assertEquals(listOf("Metro"), target.merchantDao().allOnce().map { it.displayName })
         }
 
+    @Test
+    fun `categories come back with an import, and so does what gives them automatically`() =
+        runTest {
+            val loan = source.accounts().add("Prêt hypothécaire", AccountType.BANK, last4 = null)
+            val debit = source.accounts().add("Débit", AccountType.BANK, last4 = null)
+            val groceries = source.categoryRepository().named("Épicerie")!!
+            val mortgage = source.categoryRepository().named("Hypothèque")!!
+            source.enter(
+                40_00,
+                TransactionKind.EXPENSE,
+                merchant = "Metro Plus",
+                categoryId = groceries,
+                fromNowOn = true,
+            )
+            source.enter(
+                1_104_37,
+                TransactionKind.TRANSFER,
+                accountId = debit,
+                toAccountId = loan,
+                categoryId = mortgage,
+                fromNowOn = true,
+            )
+            source.enter(5_00, TransactionKind.EXPENSE, merchant = "Zoo Cafe")
+
+            target.importing(source.export())
+
+            assertEquals(source.categorised(), target.categorised())
+            assertEquals(listOf("Metro Plus" to "Épicerie"), target.merchantDefaults())
+            assertEquals(listOf("Prêt hypothécaire" to "Hypothèque"), target.accountDefaults())
+        }
+
+    @Test
+    fun `a category already here is joined, whatever its accents, and the same file twice adds none`() =
+        runTest {
+            val groceries = source.categoryRepository().named("Épicerie")!!
+            source.enter(40_00, TransactionKind.EXPENSE, merchant = "Metro Plus", categoryId = groceries)
+            target.categoryRepository().named("epicerie")
+
+            target.importing(source.export())
+            target.importing(source.export())
+
+            assertEquals(listOf("epicerie"), target.categoryDao().allOnce().map { it.name })
+            assertEquals(listOf("Metro Plus" to "epicerie"), target.categorised())
+        }
+
+    @Test
+    fun `a merchant that already gives a category of yours keeps giving it`() =
+        runTest {
+            val groceries = source.categoryRepository().named("Épicerie")!!
+            source.enter(
+                40_00,
+                TransactionKind.EXPENSE,
+                merchant = "Metro Plus",
+                categoryId = groceries,
+                fromNowOn = true,
+            )
+            val home = target.categoryRepository().named("Maison")!!
+            target.enter(12_00, TransactionKind.EXPENSE, merchant = "Metro Plus", categoryId = home, fromNowOn = true)
+
+            target.importing(source.export())
+
+            assertEquals(listOf("Metro Plus" to "Maison"), target.merchantDefaults())
+        }
+
+    @Test
+    fun `a file naming a category it does not list is refused before anything is written`() =
+        runTest {
+            source.enter(40_00, TransactionKind.EXPENSE, merchant = "Metro Plus")
+            val broken = source.export().replace("\"categoryId\": null", "\"categoryId\": 99")
+
+            val reading = target.reading(broken)
+
+            assertTrue(reading.toString(), reading is ImportReading.Refused)
+            assertEquals(0, target.transactionDao().count().first())
+        }
+
+    private suspend fun DepensesDatabase.categorised(): List<Pair<String?, String?>> =
+        transactionDao().allWithMerchant().filter { it.categoryName != null }.map { it.merchantName to it.categoryName }
+
+    private suspend fun DepensesDatabase.merchantDefaults(): List<Pair<String, String?>> {
+        val names = categoryDao().allOnce().associate { it.id to it.name }
+        return merchantDao().allOnce().filter { it.categoryId != null }.map { it.displayName to names[it.categoryId] }
+    }
+
+    private suspend fun DepensesDatabase.accountDefaults(): List<Pair<String?, String?>> {
+        val names = categoryDao().allOnce().associate { it.id to it.name }
+        return accountDao().allOnce().filter { it.categoryId != null }.map { it.name to names[it.categoryId] }
+    }
+
     private fun DepensesDatabase.accounts() = AccountRepository(accountDao())
 
     private fun DepensesDatabase.transactions() =
@@ -230,6 +319,7 @@ class LedgerImportTest {
             merchants = MerchantRepository(merchantDao()),
             merchantRows = merchantDao(),
             accounts = accountDao(),
+            categories = categoryRepository(),
         )
 
     private suspend fun DepensesDatabase.reading(file: String): ImportReading = importer().read(file.byteInputStream())
@@ -242,8 +332,13 @@ class LedgerImportTest {
 
     private suspend fun DepensesDatabase.export(): String {
         val bytes = ByteArrayOutputStream()
-        LedgerExport(transactionDao(), merchantDao(), accountDao(), Clock.fixed(EXPORTED_AT, ZoneOffset.UTC))
-            .write(bytes, ExportFormat.JSON, LABELS)
+        LedgerExport(
+            transactionDao(),
+            merchantDao(),
+            accountDao(),
+            categoryDao(),
+            Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
+        ).write(bytes, ExportFormat.JSON, LABELS)
         return bytes.toString(Charsets.UTF_8.name())
     }
 
@@ -254,6 +349,8 @@ class LedgerImportTest {
         toAccountId: Long? = null,
         merchant: String? = null,
         note: String? = null,
+        categoryId: Long? = null,
+        fromNowOn: Boolean = false,
     ) = transactions().addManual(
         amount = cad(minor),
         merchantName = merchant,
@@ -262,8 +359,8 @@ class LedgerImportTest {
         kind = kind,
         accountId = accountId,
         toAccountId = toAccountId,
-        categoryId = null,
-        reach = null,
+        categoryId = categoryId,
+        reach = CategoryReach(others = false, fromNowOn = fromNowOn).takeIf { fromNowOn },
     )
 
     /** Everything a person sees of a transaction; ids differ between two databases and are left out. */
@@ -339,6 +436,7 @@ class LedgerImportTest {
                 type = "type",
                 account = "compte",
                 toAccount = "compte de destination",
+                category = "catégorie",
             )
     }
 }
