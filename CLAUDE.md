@@ -255,6 +255,9 @@ The app targets Quebec, so **`fr_CA` is the case to get right and `en` is the fa
 Strings live in the module that draws them, never in `:app`.
 A user-visible string added in one language and not the other is an incomplete change — and the French wording is the maintainer's call, not yours.
 
+At 200 % a French word squeezed into too little width breaks mid-word, so a row of buttons goes through `ButtonsRow` and a choice among a few through `ChoiceRow`, never a bare `Row` or `SingleChoiceSegmentedButtonRow` (`:core:designsystem`).
+A new screen is checked at `fr-CA` 200 % on the emulator before it is done.
+
 `:core:model` has no strings of its own, and `:core:designsystem` carries only the words its own components own — the account dialog, and the names of the account kinds that `accountLabel` falls back to.
 `Formatters` has none at all, which is why `dayHeader` takes its "today" and "yesterday" wording as a parameter: a formatter is not a component, and those words belong to the screen that draws them.
 
