@@ -124,10 +124,13 @@ private fun accountLabel(
         ?: stringResource(if (type == AccountType.CASH) R.string.ledger_cash else R.string.ledger_account)
 
 /**
- * The time, then what the row is: a transfer, the account the money came from or
- * went into, or failing both that it was typed by hand. Income is not named
- * here: its plus sign and colour already say so. Enough to tell two purchases at
- * one merchant apart without a detail screen.
+ * The time, the category when there is one, then what the row is: a transfer,
+ * the account the money came from or went into, or failing both that it was
+ * typed by hand. Income is not named here: its plus sign and colour already say
+ * so. Enough to tell two purchases at one merchant apart without a detail screen.
+ *
+ * The category comes before the account so that at a large font size, where the
+ * line runs out of room, it is the account that is cut short.
  */
 @Composable
 private fun Transaction.subtitle(locale: Locale): String {
@@ -138,7 +141,7 @@ private fun Transaction.subtitle(locale: Locale): String {
             source == TransactionSource.MANUAL -> stringResource(R.string.ledger_manual_entry)
             else -> Formatters.cardMask(cardLast4)
         }
-    return listOfNotNull(Formatters.time(occurredAt, zoneId, locale), what).joinToString(SEPARATOR)
+    return listOfNotNull(Formatters.time(occurredAt, zoneId, locale), categoryName, what).joinToString(SEPARATOR)
 }
 
 @Composable
