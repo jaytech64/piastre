@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.model
 
-import java.text.Normalizer
 import java.util.Locale
 
 /** A raw merchant string reduced to something two sightings can agree on. */
@@ -62,14 +61,9 @@ object MerchantNormaliser {
      * Accents fold for matching only, never for display: `MARCHE` and `MARCHÉ` are
      * one merchant, and the name you see is still the one that was captured.
      */
-    private fun foldForMatching(name: String): String =
-        Normalizer
-            .normalize(name, Normalizer.Form.NFD)
-            .replace(COMBINING_MARKS, "")
-            .uppercase(Locale.ROOT)
+    private fun foldForMatching(name: String): String = name.foldedForMatching().uppercase(Locale.ROOT)
 
     private val WHITESPACE_RUN = Regex("\\s+")
-    private val COMBINING_MARKS = Regex("\\p{Mn}+")
 
     /** `#10593`, `# 17`, `- 1187`, and a double space before digits. */
     private val STORE_NUMBER = Regex("(?:\\s*#\\s*\\d+|\\s+-\\s*\\d+|\\s{2,}\\d{2,})\\s*$")
