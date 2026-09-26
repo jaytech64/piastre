@@ -83,6 +83,7 @@ data class RawNotificationEventEntity(
         Index("status"),
         Index("accountId"),
         Index("toAccountId"),
+        Index("categoryId"),
     ],
 )
 data class ExpenseTransactionEntity(
@@ -95,6 +96,11 @@ data class ExpenseTransactionEntity(
     val localDateEpochDay: Int,
     val merchantId: Long?,
     val merchantRaw: String?,
+    /**
+     * Yours to set, so a re-parse keeps it. A merchant's category is copied in
+     * when the row is recorded rather than read through at display time: see
+     * [MerchantEntity.categoryId].
+     */
     val categoryId: Long?,
     val source: TransactionSource,
     val status: TransactionStatus,
@@ -156,6 +162,12 @@ data class AccountEntity(
      * moving the account in Settings; a new one takes the next free place, at the end.
      */
     @ColumnInfo(defaultValue = "0") val sortOrder: Int = 0,
+    /**
+     * The category every transfer into this account is given as it is recorded,
+     * or null. What an account receives says what a transfer was for — a card
+     * payment, the mortgage, savings — the way a merchant says it for a purchase.
+     */
+    val categoryId: Long? = null,
 )
 
 /**
@@ -173,6 +185,32 @@ data class AccountEntity(
 data class MerchantEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val displayName: String,
+    val normalisedName: String,
+    /**
+     * The category every purchase here is given as it is recorded, or null.
+     *
+     * Copied into each transaction rather than read through at display time, so
+     * changing it changes the purchases to come and never the ones already in the
+     * ledger — past and future are separate choices, and a purchase you
+     * categorised differently by hand stays the way you left it.
+     */
+    val categoryId: Long? = null,
+)
+
+/**
+ * A kind of spending or income you named.
+ *
+ * [normalisedName] is unique for the same reason a merchant's is: two spellings
+ * of one name — `Épicerie`, `epicerie` — must find one category rather than make
+ * a second, which would quietly split every total that groups by it.
+ */
+@Entity(
+    tableName = "category",
+    indices = [Index(value = ["normalisedName"], unique = true)],
+)
+data class CategoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
     val normalisedName: String,
 )
 

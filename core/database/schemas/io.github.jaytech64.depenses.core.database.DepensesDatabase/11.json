@@ -1,0 +1,582 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 11,
+    "identityHash": "5610fb139862e89bcd1c69fb638d93d0",
+    "entities": [
+      {
+        "tableName": "raw_notification_event",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourcePackage` TEXT NOT NULL, `notificationKey` TEXT NOT NULL, `postedAtUtcMillis` INTEGER NOT NULL, `deviceLocale` TEXT NOT NULL, `title` TEXT, `text` TEXT, `bigText` TEXT, `subText` TEXT, `isGroupSummary` INTEGER NOT NULL, `extrasJson` TEXT NOT NULL, `parseState` TEXT NOT NULL, `parsedByVersion` INTEGER, `redactedAtUtcMillis` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourcePackage",
+            "columnName": "sourcePackage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notificationKey",
+            "columnName": "notificationKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "postedAtUtcMillis",
+            "columnName": "postedAtUtcMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceLocale",
+            "columnName": "deviceLocale",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bigText",
+            "columnName": "bigText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "subText",
+            "columnName": "subText",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isGroupSummary",
+            "columnName": "isGroupSummary",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "extrasJson",
+            "columnName": "extrasJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parseState",
+            "columnName": "parseState",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parsedByVersion",
+            "columnName": "parsedByVersion",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "redactedAtUtcMillis",
+            "columnName": "redactedAtUtcMillis",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_raw_notification_event_sourcePackage_notificationKey_postedAtUtcMillis",
+            "unique": true,
+            "columnNames": [
+              "sourcePackage",
+              "notificationKey",
+              "postedAtUtcMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_raw_notification_event_sourcePackage_notificationKey_postedAtUtcMillis` ON `${TABLE_NAME}` (`sourcePackage`, `notificationKey`, `postedAtUtcMillis`)"
+          },
+          {
+            "name": "index_raw_notification_event_notificationKey",
+            "unique": false,
+            "columnNames": [
+              "notificationKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_raw_notification_event_notificationKey` ON `${TABLE_NAME}` (`notificationKey`)"
+          },
+          {
+            "name": "index_raw_notification_event_postedAtUtcMillis",
+            "unique": false,
+            "columnNames": [
+              "postedAtUtcMillis"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_raw_notification_event_postedAtUtcMillis` ON `${TABLE_NAME}` (`postedAtUtcMillis`)"
+          },
+          {
+            "name": "index_raw_notification_event_parseState",
+            "unique": false,
+            "columnNames": [
+              "parseState"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_raw_notification_event_parseState` ON `${TABLE_NAME}` (`parseState`)"
+          }
+        ]
+      },
+      {
+        "tableName": "expense_transaction",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `rawEventId` INTEGER, `amountMinor` INTEGER NOT NULL, `currency` TEXT NOT NULL, `occurredAtUtcMillis` INTEGER NOT NULL, `zoneId` TEXT NOT NULL, `localDateEpochDay` INTEGER NOT NULL, `merchantId` INTEGER, `merchantRaw` TEXT, `categoryId` INTEGER, `source` TEXT NOT NULL, `status` TEXT NOT NULL, `reviewReason` TEXT, `reviewedAtUtcMillis` INTEGER, `confidence` REAL NOT NULL, `parserId` TEXT, `parserVersion` INTEGER, `sourcePackage` TEXT NOT NULL, `sourceKey` TEXT NOT NULL, `cardLabel` TEXT, `cardLast4` TEXT, `note` TEXT, `kind` TEXT NOT NULL DEFAULT 'EXPENSE', `accountId` INTEGER, `toAccountId` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rawEventId",
+            "columnName": "rawEventId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "amountMinor",
+            "columnName": "amountMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "occurredAtUtcMillis",
+            "columnName": "occurredAtUtcMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "zoneId",
+            "columnName": "zoneId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localDateEpochDay",
+            "columnName": "localDateEpochDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "merchantId",
+            "columnName": "merchantId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "merchantRaw",
+            "columnName": "merchantRaw",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "source",
+            "columnName": "source",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "reviewReason",
+            "columnName": "reviewReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reviewedAtUtcMillis",
+            "columnName": "reviewedAtUtcMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "confidence",
+            "columnName": "confidence",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parserId",
+            "columnName": "parserId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "parserVersion",
+            "columnName": "parserVersion",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sourcePackage",
+            "columnName": "sourcePackage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceKey",
+            "columnName": "sourceKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cardLabel",
+            "columnName": "cardLabel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "cardLast4",
+            "columnName": "cardLast4",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'EXPENSE'"
+          },
+          {
+            "fieldPath": "accountId",
+            "columnName": "accountId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "toAccountId",
+            "columnName": "toAccountId",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_expense_transaction_sourcePackage_sourceKey",
+            "unique": true,
+            "columnNames": [
+              "sourcePackage",
+              "sourceKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_expense_transaction_sourcePackage_sourceKey` ON `${TABLE_NAME}` (`sourcePackage`, `sourceKey`)"
+          },
+          {
+            "name": "index_expense_transaction_localDateEpochDay",
+            "unique": false,
+            "columnNames": [
+              "localDateEpochDay"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expense_transaction_localDateEpochDay` ON `${TABLE_NAME}` (`localDateEpochDay`)"
+          },
+          {
+            "name": "index_expense_transaction_merchantId",
+            "unique": false,
+            "columnNames": [
+              "merchantId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expense_transaction_merchantId` ON `${TABLE_NAME}` (`merchantId`)"
+          },
+          {
+            "name": "index_expense_transaction_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expense_transaction_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_expense_transaction_accountId",
+            "unique": false,
+            "columnNames": [
+              "accountId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expense_transaction_accountId` ON `${TABLE_NAME}` (`accountId`)"
+          },
+          {
+            "name": "index_expense_transaction_toAccountId",
+            "unique": false,
+            "columnNames": [
+              "toAccountId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expense_transaction_toAccountId` ON `${TABLE_NAME}` (`toAccountId`)"
+          },
+          {
+            "name": "index_expense_transaction_categoryId",
+            "unique": false,
+            "columnNames": [
+              "categoryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_expense_transaction_categoryId` ON `${TABLE_NAME}` (`categoryId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "merchant",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `displayName` TEXT NOT NULL, `normalisedName` TEXT NOT NULL, `categoryId` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalisedName",
+            "columnName": "normalisedName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_merchant_normalisedName",
+            "unique": true,
+            "columnNames": [
+              "normalisedName"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_merchant_normalisedName` ON `${TABLE_NAME}` (`normalisedName`)"
+          }
+        ]
+      },
+      {
+        "tableName": "merchant_alias",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `merchantId` INTEGER NOT NULL, `pattern` TEXT NOT NULL, `matchType` TEXT NOT NULL, `createdBy` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "merchantId",
+            "columnName": "merchantId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pattern",
+            "columnName": "pattern",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "matchType",
+            "columnName": "matchType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdBy",
+            "columnName": "createdBy",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_merchant_alias_pattern",
+            "unique": true,
+            "columnNames": [
+              "pattern"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_merchant_alias_pattern` ON `${TABLE_NAME}` (`pattern`)"
+          },
+          {
+            "name": "index_merchant_alias_merchantId",
+            "unique": false,
+            "columnNames": [
+              "merchantId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_merchant_alias_merchantId` ON `${TABLE_NAME}` (`merchantId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "account",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT, `type` TEXT NOT NULL, `issuerLabel` TEXT, `last4` TEXT, `origin` TEXT NOT NULL, `openingBalanceMinor` INTEGER, `sortOrder` INTEGER NOT NULL DEFAULT 0, `categoryId` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "issuerLabel",
+            "columnName": "issuerLabel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "last4",
+            "columnName": "last4",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "origin",
+            "columnName": "origin",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "openingBalanceMinor",
+            "columnName": "openingBalanceMinor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_account_issuerLabel_last4",
+            "unique": true,
+            "columnNames": [
+              "issuerLabel",
+              "last4"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_account_issuerLabel_last4` ON `${TABLE_NAME}` (`issuerLabel`, `last4`)"
+          }
+        ]
+      },
+      {
+        "tableName": "category",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `normalisedName` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalisedName",
+            "columnName": "normalisedName",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_category_normalisedName",
+            "unique": true,
+            "columnNames": [
+              "normalisedName"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_category_normalisedName` ON `${TABLE_NAME}` (`normalisedName`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5610fb139862e89bcd1c69fb638d93d0')"
+    ]
+  }
+}

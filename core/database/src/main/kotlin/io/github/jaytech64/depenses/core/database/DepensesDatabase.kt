@@ -14,6 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MerchantEntity::class,
         MerchantAliasEntity::class,
         AccountEntity::class,
+        CategoryEntity::class,
     ],
     version = DepensesDatabase.VERSION,
     exportSchema = true,
@@ -29,8 +30,10 @@ abstract class DepensesDatabase : RoomDatabase() {
 
     abstract fun accountDao(): AccountDao
 
+    abstract fun categoryDao(): CategoryDao
+
     companion object {
-        const val VERSION: Int = 10
+        const val VERSION: Int = 11
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -47,6 +50,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
+                MIGRATION_10_11,
             )
 
         const val NAME: String = "depenses.db"
@@ -344,6 +348,35 @@ private val MIGRATION_9_10 =
             ids.forEachIndexed { position, id ->
                 db.execSQL("UPDATE account SET sortOrder = ? WHERE id = ?", arrayOf<Any>(position, id))
             }
+        }
+    }
+
+/**
+ * Schema 11 adds categories, and lets a merchant or an account give one to what
+ * arrives there.
+ *
+ * `expense_transaction.categoryId` has existed, nullable, since schema 1, and
+ * nothing has ever written anything but null to it. It is cleared anyway: a
+ * migration assumes nothing about the data, and any stray value would point at a
+ * category that does not exist.
+ */
+private val MIGRATION_10_11 =
+    object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `category` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`name` TEXT NOT NULL, `normalisedName` TEXT NOT NULL)",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_category_normalisedName` ON `category` (`normalisedName`)",
+            )
+            db.execSQL("ALTER TABLE merchant ADD COLUMN categoryId INTEGER DEFAULT NULL")
+            db.execSQL("ALTER TABLE account ADD COLUMN categoryId INTEGER DEFAULT NULL")
+            db.execSQL("UPDATE expense_transaction SET categoryId = NULL WHERE categoryId IS NOT NULL")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_expense_transaction_categoryId` " +
+                    "ON `expense_transaction` (`categoryId`)",
+            )
         }
     }
 

@@ -53,4 +53,7 @@ object DatabaseModule {
 
     @Provides
     fun accountDao(database: DepensesDatabase): AccountDao = database.accountDao()
+
+    @Provides
+    fun categoryDao(database: DepensesDatabase): CategoryDao = database.categoryDao()
 }
