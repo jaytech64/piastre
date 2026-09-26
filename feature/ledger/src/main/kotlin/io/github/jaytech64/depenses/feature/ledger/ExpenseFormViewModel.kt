@@ -211,6 +211,8 @@ class ExpenseFormViewModel
                         kind = state.kind,
                         accountId = state.accountId,
                         toAccountId = state.destinationToSave,
+                        categoryId = null,
+                        reach = null,
                     )
                 } else {
                     editor.edit(
@@ -222,6 +224,8 @@ class ExpenseFormViewModel
                         note = state.note,
                         accountId = state.accountId,
                         toAccountId = state.destinationToSave,
+                        categoryId = editing.categoryId,
+                        reach = null,
                     )
                 }
                 _uiState.update { it.copy(saving = false, done = true) }

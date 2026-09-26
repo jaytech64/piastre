@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.feature.reports
 
 import androidx.lifecycle.SavedStateHandle
+import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.ReportRepository
@@ -296,8 +297,15 @@ class ReportsViewModelTest {
             reports = ReportRepository(database.reportDao()),
             transactions =
                 TransactionRepository(
+                    database = database,
                     transactions = database.transactionDao(),
                     merchants = MerchantRepository(database.merchantDao()),
+                    categories =
+                        CategoryRepository(
+                            database.categoryDao(),
+                            database.merchantDao(),
+                            database.accountDao(),
+                        ),
                     zoneId = Provider { ZONE },
                 ),
             ticker = LocalDateTicker(Provider { ZONE }),

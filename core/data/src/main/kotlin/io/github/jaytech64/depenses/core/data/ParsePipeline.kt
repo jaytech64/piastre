@@ -127,6 +127,7 @@ class ParsePipeline
             confidence: Float,
             reviewReason: ReviewReason? = null,
         ): Long {
+            val merchantId = merchants.resolve(draft.merchantRaw)
             val id =
                 transactions.insertOrUpdate(
                     event.toTransaction(
@@ -135,8 +136,9 @@ class ParsePipeline
                         status,
                         confidence,
                         reviewReason,
-                        merchants.resolve(draft.merchantRaw),
+                        merchantId,
                         accounts.resolve(draft.cardLabel, draft.cardLast4),
+                        merchants.categoryOf(merchantId),
                     ),
                 )
             events.markParsed(event.id, ParseState.PARSED, parser?.version)
@@ -147,6 +149,9 @@ class ParsePipeline
          * The local day is resolved here rather than at read time, in the zone the
          * phone is in at the moment of the purchase. Reading it later would let a
          * flight re-bucket last month's coffee.
+         *
+         * [categoryId] is the merchant's, given to a row waiting for review too, so
+         * approving it leaves nothing to redo.
          */
         private fun RawNotificationEventEntity.toTransaction(
             parser: NotificationParser?,
@@ -156,6 +161,7 @@ class ParsePipeline
             reviewReason: ReviewReason?,
             merchantId: Long?,
             accountId: Long?,
+            categoryId: Long?,
         ): ExpenseTransactionEntity {
             val zone = zoneId.get()
             return ExpenseTransactionEntity(
@@ -167,7 +173,7 @@ class ParsePipeline
                 localDateEpochDay = localDateEpochDay(draft.occurredAtUtcMillis, zone),
                 merchantId = merchantId,
                 merchantRaw = draft.merchantRaw,
-                categoryId = null,
+                categoryId = categoryId,
                 source = TransactionSource.NOTIFICATION,
                 status = status,
                 reviewReason = reviewReason,

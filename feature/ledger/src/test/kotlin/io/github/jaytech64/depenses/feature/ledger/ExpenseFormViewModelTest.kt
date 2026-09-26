@@ -4,6 +4,7 @@ package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
@@ -61,8 +62,15 @@ class ExpenseFormViewModelTest {
         accounts = AccountRepository(database.accountDao())
         repository =
             TransactionRepository(
+                database = database,
                 transactions = database.transactionDao(),
                 merchants = merchants,
+                categories =
+                    CategoryRepository(
+                        database.categoryDao(),
+                        database.merchantDao(),
+                        database.accountDao(),
+                    ),
                 zoneId = Provider { ZONE },
             )
         viewModel = newViewModel()
@@ -72,7 +80,18 @@ class ExpenseFormViewModelTest {
         ExpenseFormViewModel(
             savedStateHandle = SavedStateHandle(editing?.let { mapOf(EXPENSE_ID_ARG to it) } ?: emptyMap()),
             transactions = repository,
-            editor = TransactionEditor(database.transactionDao(), merchants, Clock.systemUTC()),
+            editor =
+                TransactionEditor(
+                    database,
+                    database.transactionDao(),
+                    merchants,
+                    CategoryRepository(
+                        database.categoryDao(),
+                        database.merchantDao(),
+                        database.accountDao(),
+                    ),
+                    Clock.systemUTC(),
+                ),
             merchants = merchants,
             accounts = accounts,
             zoneId = Provider { ZONE },
@@ -342,6 +361,8 @@ class ExpenseFormViewModelTest {
                     kind = TransactionKind.INCOME,
                     accountId = bank,
                     toAccountId = null,
+                    categoryId = null,
+                    reach = null,
                 )
             viewModel = newViewModel(editing = id)
             assertEquals(bank, viewModel.uiState.first { !it.loading }.accountId)
@@ -440,6 +461,8 @@ class ExpenseFormViewModelTest {
             kind = TransactionKind.EXPENSE,
             accountId = cashAccount(),
             toAccountId = null,
+            categoryId = null,
+            reach = null,
         )
 
     /** The cash account every real database is created with, made on demand here. */

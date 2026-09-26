@@ -216,8 +216,10 @@ class LedgerImportTest {
 
     private fun DepensesDatabase.transactions() =
         TransactionRepository(
+            database = this,
             transactions = transactionDao(),
             merchants = MerchantRepository(merchantDao()),
+            categories = CategoryRepository(categoryDao(), merchantDao(), accountDao()),
             zoneId = Provider { ZONE },
         )
 
@@ -260,6 +262,8 @@ class LedgerImportTest {
         kind = kind,
         accountId = accountId,
         toAccountId = toAccountId,
+        categoryId = null,
+        reach = null,
     )
 
     /** Everything a person sees of a transaction; ids differ between two databases and are left out. */
