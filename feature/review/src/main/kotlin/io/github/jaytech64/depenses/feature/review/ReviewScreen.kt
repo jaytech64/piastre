@@ -36,7 +36,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jaytech64.depenses.core.designsystem.ButtonsRow
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.designsystem.LastButton
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.ReviewItem
 import io.github.jaytech64.depenses.core.model.ReviewReason
@@ -136,7 +138,7 @@ private fun ReviewCard(
                 color = MaterialTheme.colorScheme.tertiary,
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ButtonsRow(Modifier.fillMaxWidth(), last = LastButton.FAR_END_WHEN_ALONE) {
                 FilledTonalButton(onClick = onConfirm) { Text(stringResource(R.string.review_confirm)) }
                 TextButton(onClick = onEdit) { Text(stringResource(R.string.review_edit)) }
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.review_dismiss)) }
