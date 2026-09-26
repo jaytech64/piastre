@@ -44,4 +44,23 @@
     <string name="form_add_account">Add an account…</string>
     <string name="form_previous_day">Previous day</string>
     <string name="form_next_day">Next day</string>
+    <string name="form_category">Category</string>
+    <string name="form_category_none">None</string>
+    <string name="form_add_category">New category…</string>
+    <plurals name="category_offer_others_expense">
+        <item quantity="one">Also the other %2$s purchase with no category</item>
+        <item quantity="other">Also the %1$d other %2$s purchases with no category</item>
+    </plurals>
+    <plurals name="category_offer_others_income">
+        <item quantity="one">Also the other payment from %2$s with no category</item>
+        <item quantity="other">Also the %1$d other payments from %2$s with no category</item>
+    </plurals>
+    <plurals name="category_offer_others_transfer">
+        <item quantity="one">Also the other transfer to %2$s with no category</item>
+        <item quantity="other">Also the %1$d other transfers to %2$s with no category</item>
+    </plurals>
+    <string name="category_offer_from_now_on_expense">Every future purchase at %s</string>
+    <string name="category_offer_from_now_on_income">Every future payment from %s</string>
+    <string name="category_offer_from_now_on_transfer">Every future transfer to %s</string>
+    <string name="category_offer_instead_of">%1$s (instead of %2$s)</string>
 </resources>

@@ -94,6 +94,12 @@ class ExpenseFormViewModelTest {
                 ),
             merchants = merchants,
             accounts = accounts,
+            categories =
+                CategoryRepository(
+                    database.categoryDao(),
+                    database.merchantDao(),
+                    database.accountDao(),
+                ),
             zoneId = Provider { ZONE },
         )
 

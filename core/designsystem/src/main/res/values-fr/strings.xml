@@ -13,4 +13,11 @@
     <string name="account_type_cash">Comptant</string>
     <string name="account_type_card">Carte</string>
     <string name="account_type_bank">Banque</string>
+    <string name="category_dialog_add_title">Nouvelle catégorie</string>
+    <string name="category_dialog_rename_title">Renommer</string>
+    <string name="category_dialog_name">Nom</string>
+    <string name="category_dialog_add">Ajouter</string>
+    <string name="category_dialog_save">Enregistrer</string>
+    <string name="category_dialog_delete">Supprimer</string>
+    <string name="category_dialog_cancel">Annuler</string>
 </resources>
