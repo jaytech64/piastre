@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.BalanceFigure
 import io.github.jaytech64.depenses.core.designsystem.BalanceFigures
+import io.github.jaytech64.depenses.core.designsystem.ChoiceRow
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.PeriodUnit
 import io.github.jaytech64.depenses.core.model.ReportPeriod
@@ -56,17 +57,12 @@ private fun UnitPicker(
     selected: PeriodUnit,
     onUnitSelected: (PeriodUnit) -> Unit,
 ) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        PeriodUnit.entries.forEachIndexed { index, unit ->
-            SegmentedButton(
-                selected = unit == selected,
-                onClick = { onUnitSelected(unit) },
-                shape = SegmentedButtonDefaults.itemShape(index, PeriodUnit.entries.size),
-            ) {
-                Text(stringResource(unit.labelRes))
-            }
-        }
-    }
+    ChoiceRow(
+        options = PeriodUnit.entries,
+        selected = selected,
+        onSelect = onUnitSelected,
+        label = { stringResource(it.labelRes) },
+    )
 }
 
 @Composable
