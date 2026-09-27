@@ -19,6 +19,9 @@ The Wallet parser is tested against a corpus captured over two weeks on a real d
 Transactions take a category, and giving one to a purchase can also give it to the merchant's others and to everything bought there from now on — or, for a transfer, to everything moved into the same account ([ADR-0010](docs/adr/0010-a-merchants-category-is-written-onto-each-purchase.md)).
 Reports do not break spending down by category yet.
 
+A transaction typed by hand can repeat — every week, every two weeks, every month or every year — and each time it falls due it is written into the ledger, dated on its own day, as an ordinary row ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md)).
+Nothing wakes the app to do it: due days are caught up whenever the app or its listener runs.
+
 Budgets and any payment source other than Wallet are out of scope so far.
 
 ## Requirements
