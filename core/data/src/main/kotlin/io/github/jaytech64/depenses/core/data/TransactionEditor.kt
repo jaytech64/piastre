@@ -167,4 +167,13 @@ class TransactionEditor
         ) {
             transactions.categorise(ids, categoryId)
         }
+
+        /**
+         * [remove] for every one of [ids], in one database transaction: a selection
+         * leaves the ledger whole, or not at all.
+         */
+        suspend fun removeAll(ids: Set<Long>) =
+            database.inTransaction {
+                ids.forEach { remove(it) }
+            }
     }
