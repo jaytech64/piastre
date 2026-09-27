@@ -9,11 +9,13 @@ import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.AccountEntity
+import io.github.jaytech64.depenses.core.database.CategoryEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
+import io.github.jaytech64.depenses.core.model.Category
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -39,47 +41,7 @@ import java.time.ZoneId
 import javax.inject.Provider
 
 @RunWith(RobolectricTestRunner::class)
-class LedgerViewModelTest {
-    private lateinit var database: DepensesDatabase
-    private lateinit var savedState: SavedStateHandle
-    private lateinit var viewModel: LedgerViewModel
-
-    @Before
-    fun setUp() {
-        Dispatchers.setMain(StandardTestDispatcher())
-        database = inMemoryDatabase()
-        savedState = SavedStateHandle()
-        viewModel = ledgerViewModel(savedState)
-    }
-
-    private fun ledgerViewModel(state: SavedStateHandle) =
-        LedgerViewModel(
-            repository = transactionRepository(),
-            accounts = AccountRepository(database.accountDao()),
-            ticker = LocalDateTicker(Provider { ZONE }),
-            savedState = state,
-        )
-
-    private fun transactionRepository() =
-        TransactionRepository(
-            database = database,
-            transactions = database.transactionDao(),
-            merchants = MerchantRepository(database.merchantDao()),
-            categories =
-                CategoryRepository(
-                    database.categoryDao(),
-                    database.merchantDao(),
-                    database.accountDao(),
-                ),
-            zoneId = Provider { ZONE },
-        )
-
-    @After
-    fun tearDown() {
-        database.close()
-        Dispatchers.resetMain()
-    }
-
+class LedgerViewModelTest : LedgerTest() {
     @Test
     fun `an untouched ledger says so instead of showing a blank list`() =
         runTest {
@@ -277,7 +239,7 @@ class LedgerViewModelTest {
             assertEquals(
                 Money(-90_000, Money.CAD),
                 viewModel.uiState
-                    .first { it.selectedAccount?.id == desrives }
+                    .first { it.filter.account?.id == desrives }
                     .thisMonth.transfers,
             )
         }
@@ -303,7 +265,7 @@ class LedgerViewModelTest {
             viewModel.onAccountSelected(desrives)
             val state = settled()
 
-            assertEquals("Desrives", state.selectedAccount?.name)
+            assertEquals("Desrives", state.filter.account?.name)
             assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
             assertEquals(
                 listOf(1_075L),
@@ -353,7 +315,7 @@ class LedgerViewModelTest {
             assertEquals(
                 1,
                 viewModel.uiState
-                    .first { it.selectedAccount?.id == cash }
+                    .first { it.filter.account?.id == cash }
                     .days
                     .single()
                     .transactions.size,
@@ -387,7 +349,7 @@ class LedgerViewModelTest {
             assertEquals(
                 Money(6_000, Money.CAD),
                 viewModel.uiState
-                    .first { it.selectedAccount?.id == cash }
+                    .first { it.filter.account?.id == cash }
                     .thisMonth.balance,
             )
         }
@@ -419,7 +381,7 @@ class LedgerViewModelTest {
             insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
 
             viewModel.onAccountSelected(epargne)
-            val state = viewModel.uiState.first { it.selectedAccount?.id == epargne }
+            val state = viewModel.uiState.first { it.filter.account?.id == epargne }
 
             assertTrue(state.isEmpty)
             assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
@@ -443,7 +405,7 @@ class LedgerViewModelTest {
                 "Desrives",
                 rebuilt.uiState
                     .first { !it.loading }
-                    .selectedAccount
+                    .filter.account
                     ?.name,
             )
         }
@@ -455,88 +417,12 @@ class LedgerViewModelTest {
             val desrives = account("Desrives")
             insert(amountMinor = 1_075, day = TODAY, accountId = null)
             viewModel.onAccountSelected(desrives)
-            assertEquals("Desrives", settled().selectedAccount?.name)
+            assertEquals("Desrives", settled().filter.account?.name)
 
             database.accountDao().deleteIfUnused(desrives)
-            val state = viewModel.uiState.first { it.selectedAccount == null }
+            val state = viewModel.uiState.first { it.filter.account == null }
 
-            assertNull(state.selectedAccount)
+            assertNull(state.filter.account)
             assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
         }
-
-    /**
-     * The state once the database has answered, awaited rather than polled.
-     *
-     * Turbine's timeouts run on the test scheduler's virtual clock, which jumps the
-     * moment nothing is queued — so a wait that starts before the flow has been
-     * subscribed times out instantly rather than waiting at all.
-     */
-    private suspend fun settled(): LedgerUiState = viewModel.uiState.first { !it.loading }
-
-    private suspend fun insert(
-        amountMinor: Long,
-        day: LocalDate,
-        status: TransactionStatus = TransactionStatus.CONFIRMED,
-        merchantId: Long? = null,
-        kind: TransactionKind = TransactionKind.EXPENSE,
-        accountId: Long? = null,
-        toAccountId: Long? = null,
-    ) = database.transactionDao().insertOrUpdate(
-        ExpenseTransactionEntity(
-            rawEventId = null,
-            amountMinor = amountMinor,
-            currency = Money.CAD,
-            occurredAtUtcMillis =
-                day
-                    .atTime(NOON, 0)
-                    .atZone(ZONE)
-                    .toInstant()
-                    .toEpochMilli(),
-            zoneId = ZONE.id,
-            localDateEpochDay = day.toEpochDay().toInt(),
-            merchantId = merchantId,
-            merchantRaw = "MARCHE ST JOSEPH  1234",
-            categoryId = null,
-            source = TransactionSource.NOTIFICATION,
-            status = status,
-            reviewReason = null,
-            reviewedAtUtcMillis = null,
-            confidence = 1f,
-            parserId = "google-wallet",
-            parserVersion = 1,
-            sourcePackage = "com.google.android.apps.walletnfcrel",
-            sourceKey = "tag-$amountMinor-${day.toEpochDay()}-$status-$accountId-$toAccountId",
-            cardLabel = "Récompenses Visa",
-            cardLast4 = "0000",
-            note = null,
-            kind = kind,
-            accountId = accountId,
-            toAccountId = toAccountId,
-        ),
-    )
-
-    private suspend fun account(name: String) =
-        database.accountDao().insert(
-            AccountEntity(
-                name = name,
-                type = AccountType.BANK,
-                issuerLabel = null,
-                last4 = null,
-                origin = AccountOrigin.USER,
-            ),
-        )
-
-    private companion object {
-        val ZONE: ZoneId = ZoneId.of("America/Toronto")
-        val TODAY: LocalDate = LocalDate.now(ZONE)
-        val YESTERDAY: LocalDate = TODAY.minusDays(1)
-        val LAST_MONTH: LocalDate = TODAY.minusMonths(1)
-
-        /**
-         * A second day inside the current month whichever day the suite runs on:
-         * yesterday belongs to the month before it on the first of every month.
-         */
-        val ANOTHER_DAY_THIS_MONTH: LocalDate = if (TODAY.dayOfMonth == 1) TODAY.plusDays(1) else YESTERDAY
-        const val NOON = 12
-    }
 }
