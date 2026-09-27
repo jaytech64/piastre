@@ -9,9 +9,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
+import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Category
+import io.github.jaytech64.depenses.core.model.CategoryUsage
+import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
@@ -74,10 +77,15 @@ data class FilterOption<out T>(
 data class LedgerFilter(
     val account: Account? = null,
     val category: CategoryChoice? = null,
+    /** Matched by id, so every spelling Wallet has used for one merchant matches it. */
+    val merchant: Merchant? = null,
 ) {
-    val isActive: Boolean get() = account != null || category != null
+    val isActive: Boolean get() = account != null || category != null || merchant != null
 
-    fun admits(transaction: Transaction): Boolean = transaction.isOn(account) && transaction.isIn(category)
+    fun admits(transaction: Transaction): Boolean =
+        transaction.isOn(account) &&
+            transaction.isIn(category) &&
+            (merchant == null || transaction.merchantId == merchant.id)
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
@@ -105,6 +113,8 @@ data class LedgerUiState(
     val accounts: List<Account> = emptyList(),
     /** Only what some confirmed row carries, so no choice leads to an empty screen. */
     val categories: List<FilterOption<CategoryChoice>> = emptyList(),
+    /** Likewise only merchants some confirmed row names. */
+    val merchants: List<FilterOption<Merchant>> = emptyList(),
     val filter: LedgerFilter = LedgerFilter(),
     val loading: Boolean = true,
 ) {
@@ -118,6 +128,7 @@ class LedgerViewModel
         repository: TransactionRepository,
         accounts: AccountRepository,
         categories: CategoryRepository,
+        merchants: MerchantRepository,
         ticker: LocalDateTicker,
         private val savedState: SavedStateHandle,
     ) : ViewModel() {
@@ -134,28 +145,11 @@ class LedgerViewModel
                 savedState.getStateFlow<Long?>(SELECTED_ACCOUNT_ID, null),
                 savedState.getStateFlow<Long?>(SELECTED_CATEGORY_ID, null),
                 savedState.getStateFlow(UNCATEGORISED_ONLY, false),
+                savedState.getStateFlow<Long?>(SELECTED_MERCHANT_ID, null),
                 ::Selection,
             )
 
-        /**
-         * The filter resolved against what exists. Something removed in Settings
-         * leaves a filter nothing answers for, and the screen goes back to showing
-         * everything rather than an empty list under the name of something gone.
-         */
-        private val filter: Flow<LedgerFilter> =
-            combine(accounts.all(), categories.all(), selection) { allAccounts, allCategories, selected ->
-                LedgerFilter(
-                    account = allAccounts.firstOrNull { it.id == selected.accountId },
-                    category =
-                        if (selected.uncategorisedOnly) {
-                            CategoryChoice.Uncategorised
-                        } else {
-                            allCategories
-                                .firstOrNull { it.category.id == selected.categoryId }
-                                ?.let { CategoryChoice.Named(it.category) }
-                        },
-                )
-            }
+        private val known: Flow<Known> = combine(accounts.all(), categories.all(), merchants.all(), ::Known)
 
         /**
          * The current day is a source of truth in its own right, not a value read
@@ -167,17 +161,19 @@ class LedgerViewModel
                 repository.confirmed(),
                 repository.needsReviewCount(),
                 ticker.dates(),
-                accounts.all(),
-                filter,
-            ) { transactions, needsReview, today, allAccounts, filter ->
+                known,
+                selection,
+            ) { transactions, needsReview, today, known, selection ->
+                val filter = known.resolve(selection)
                 val days = transactions.filter(filter::admits).groupByLocalDay(filter)
                 LedgerUiState(
                     days = days,
                     today = today,
                     thisMonth = days.summaryOf(YearMonth.from(today), filter),
                     needsReview = needsReview,
-                    accounts = allAccounts,
+                    accounts = known.accounts,
                     categories = transactions.categoryOptions(today),
+                    merchants = transactions.merchantOptions(today, known.merchants),
                     filter = filter,
                     loading = false,
                 )
@@ -198,10 +194,16 @@ class LedgerViewModel
             savedState[SELECTED_CATEGORY_ID] = (choice as? CategoryChoice.Named)?.category?.id
         }
 
+        /** Null shows every merchant again. */
+        fun onMerchantSelected(id: Long?) {
+            savedState[SELECTED_MERCHANT_ID] = id
+        }
+
         /** Every filter off at once. */
         fun onFiltersCleared() {
             onAccountSelected(null)
             onCategorySelected(null)
+            onMerchantSelected(null)
         }
 
         /**
@@ -217,6 +219,15 @@ class LedgerViewModel
             return listOfNotNull(
                 FilterOption<CategoryChoice>(CategoryChoice.Uncategorised, uncategorised).takeIf { uncategorised > 0 },
             ) + named
+        }
+
+        /** Named as the merchant is called now, which a row read before a rename may not be. */
+        private fun List<Transaction>.merchantOptions(
+            today: LocalDate,
+            known: List<Merchant>,
+        ): List<FilterOption<Merchant>> {
+            val byId = known.associateBy { it.id }
+            return optionsBy(today, name = { it.displayName }) { row -> row.merchantId?.let(byId::get) }
         }
 
         /**
@@ -267,13 +278,42 @@ class LedgerViewModel
             val accountId: Long?,
             val categoryId: Long?,
             val uncategorisedOnly: Boolean,
+            val merchantId: Long?,
         )
+
+        /** What exists to be filtered to. */
+        private data class Known(
+            val accounts: List<Account>,
+            val categories: List<CategoryUsage>,
+            val merchants: List<Merchant>,
+        ) {
+            /**
+             * The filter resolved against what exists. Something removed in Settings
+             * leaves a filter nothing answers for, and the screen goes back to
+             * showing everything rather than an empty list under the name of
+             * something gone.
+             */
+            fun resolve(selection: Selection) =
+                LedgerFilter(
+                    account = accounts.firstOrNull { it.id == selection.accountId },
+                    category =
+                        if (selection.uncategorisedOnly) {
+                            CategoryChoice.Uncategorised
+                        } else {
+                            categories
+                                .firstOrNull { it.category.id == selection.categoryId }
+                                ?.let { CategoryChoice.Named(it.category) }
+                        },
+                    merchant = merchants.firstOrNull { it.id == selection.merchantId },
+                )
+        }
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L
             const val SELECTED_ACCOUNT_ID = "selectedAccountId"
             const val SELECTED_CATEGORY_ID = "selectedCategoryId"
             const val UNCATEGORISED_ONLY = "uncategorisedOnly"
+            const val SELECTED_MERCHANT_ID = "selectedMerchantId"
         }
     }
 
