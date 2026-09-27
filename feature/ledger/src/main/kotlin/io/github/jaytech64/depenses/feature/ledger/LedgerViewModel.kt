@@ -7,12 +7,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.model.Account
+import io.github.jaytech64.depenses.core.model.Category
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -41,12 +44,28 @@ data class LedgerDay(
 data class MonthSummary(
     val income: Money = Money(0, Money.CAD),
     val expenses: Money = Money(0, Money.CAD),
-    /** Zero on the whole ledger; under a filter, signed by which end the account is on. */
+    /** Zero on the whole ledger; under a filter, what [balanceMovedOn] says it moved. */
     val transfers: Money = Money(0, Money.CAD),
 ) {
     /** Negative on a month you only spent, which is most months. */
     val balance: Money get() = income + -expenses + transfers
 }
+
+/** A category the ledger can be narrowed to. */
+sealed interface CategoryChoice {
+    /** The rows nobody has given a category yet. */
+    data object Uncategorised : CategoryChoice
+
+    data class Named(
+        val category: Category,
+    ) : CategoryChoice
+}
+
+/** Something the filter sheet offers, with how many confirmed rows choosing it would show. */
+data class FilterOption<out T>(
+    val value: T,
+    val count: Int,
+)
 
 /**
  * What the ledger is narrowed to. An empty slot does not narrow it, and a row
@@ -54,16 +73,26 @@ data class MonthSummary(
  */
 data class LedgerFilter(
     val account: Account? = null,
+    val category: CategoryChoice? = null,
 ) {
-    val isActive: Boolean get() = account != null
+    val isActive: Boolean get() = account != null || category != null
+
+    fun admits(transaction: Transaction): Boolean = transaction.isOn(account) && transaction.isIn(category)
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
      * money on that account, and a screen that showed only the leaving end would
      * lose half of every transfer.
      */
-    fun admits(transaction: Transaction): Boolean =
-        account == null || transaction.accountId == account.id || transaction.toAccountId == account.id
+    private fun Transaction.isOn(account: Account?): Boolean =
+        account == null || accountId == account.id || toAccountId == account.id
+
+    private fun Transaction.isIn(category: CategoryChoice?): Boolean =
+        when (category) {
+            null -> true
+            CategoryChoice.Uncategorised -> categoryId == null
+            is CategoryChoice.Named -> categoryId == category.category.id
+        }
 }
 
 data class LedgerUiState(
@@ -74,6 +103,8 @@ data class LedgerUiState(
     val needsReview: Int = 0,
     /** Every account, including ones nothing has ever been spent from. */
     val accounts: List<Account> = emptyList(),
+    /** Only what some confirmed row carries, so no choice leads to an empty screen. */
+    val categories: List<FilterOption<CategoryChoice>> = emptyList(),
     val filter: LedgerFilter = LedgerFilter(),
     val loading: Boolean = true,
 ) {
@@ -86,6 +117,7 @@ class LedgerViewModel
     constructor(
         repository: TransactionRepository,
         accounts: AccountRepository,
+        categories: CategoryRepository,
         ticker: LocalDateTicker,
         private val savedState: SavedStateHandle,
     ) : ViewModel() {
@@ -97,7 +129,33 @@ class LedgerViewModel
          * while a cold launch starts without one — which is the lifetime the filter
          * was asked for.
          */
-        private val selectedAccountId: StateFlow<Long?> = savedState.getStateFlow(SELECTED_ACCOUNT_ID, null)
+        private val selection: Flow<Selection> =
+            combine(
+                savedState.getStateFlow<Long?>(SELECTED_ACCOUNT_ID, null),
+                savedState.getStateFlow<Long?>(SELECTED_CATEGORY_ID, null),
+                savedState.getStateFlow(UNCATEGORISED_ONLY, false),
+                ::Selection,
+            )
+
+        /**
+         * The filter resolved against what exists. Something removed in Settings
+         * leaves a filter nothing answers for, and the screen goes back to showing
+         * everything rather than an empty list under the name of something gone.
+         */
+        private val filter: Flow<LedgerFilter> =
+            combine(accounts.all(), categories.all(), selection) { allAccounts, allCategories, selected ->
+                LedgerFilter(
+                    account = allAccounts.firstOrNull { it.id == selected.accountId },
+                    category =
+                        if (selected.uncategorisedOnly) {
+                            CategoryChoice.Uncategorised
+                        } else {
+                            allCategories
+                                .firstOrNull { it.category.id == selected.categoryId }
+                                ?.let { CategoryChoice.Named(it.category) }
+                        },
+                )
+            }
 
         /**
          * The current day is a source of truth in its own right, not a value read
@@ -110,12 +168,8 @@ class LedgerViewModel
                 repository.needsReviewCount(),
                 ticker.dates(),
                 accounts.all(),
-                selectedAccountId,
-            ) { transactions, needsReview, today, allAccounts, selectedId ->
-                // An account removed in Settings leaves a filter nothing answers for.
-                // The screen goes back to showing everything, rather than an empty
-                // list under the name of an account that is gone.
-                val filter = LedgerFilter(account = allAccounts.firstOrNull { it.id == selectedId })
+                filter,
+            ) { transactions, needsReview, today, allAccounts, filter ->
                 val days = transactions.filter(filter::admits).groupByLocalDay(filter)
                 LedgerUiState(
                     days = days,
@@ -123,6 +177,7 @@ class LedgerViewModel
                     thisMonth = days.summaryOf(YearMonth.from(today), filter),
                     needsReview = needsReview,
                     accounts = allAccounts,
+                    categories = transactions.categoryOptions(today),
                     filter = filter,
                     loading = false,
                 )
@@ -135,6 +190,33 @@ class LedgerViewModel
         /** Null shows every account again. */
         fun onAccountSelected(id: Long?) {
             savedState[SELECTED_ACCOUNT_ID] = id
+        }
+
+        /** Null shows every category again. */
+        fun onCategorySelected(choice: CategoryChoice?) {
+            savedState[UNCATEGORISED_ONLY] = choice == CategoryChoice.Uncategorised
+            savedState[SELECTED_CATEGORY_ID] = (choice as? CategoryChoice.Named)?.category?.id
+        }
+
+        /** Every filter off at once. */
+        fun onFiltersCleared() {
+            onAccountSelected(null)
+            onCategorySelected(null)
+        }
+
+        /**
+         * Rows with no category first, since finding them is most of why the choice
+         * is there; then the categories, in the order [optionsBy] gives.
+         */
+        private fun List<Transaction>.categoryOptions(today: LocalDate): List<FilterOption<CategoryChoice>> {
+            val uncategorised = count { it.categoryId == null }
+            val named =
+                optionsBy(today, name = { it.category.name }) { row ->
+                    row.categoryId?.let { CategoryChoice.Named(Category(it, row.categoryName.orEmpty())) }
+                }
+            return listOfNotNull(
+                FilterOption<CategoryChoice>(CategoryChoice.Uncategorised, uncategorised).takeIf { uncategorised > 0 },
+            ) + named
         }
 
         /**
@@ -180,29 +262,72 @@ class LedgerViewModel
             )
         }
 
+        /** The saved-state keys, read together. */
+        private data class Selection(
+            val accountId: Long?,
+            val categoryId: Long?,
+            val uncategorisedOnly: Boolean,
+        )
+
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L
             const val SELECTED_ACCOUNT_ID = "selectedAccountId"
+            const val SELECTED_CATEGORY_ID = "selectedCategoryId"
+            const val UNCATEGORISED_ONLY = "uncategorisedOnly"
         }
     }
 
 /**
+ * Each value [key] gives a row, with how many rows gave it: the ones used most
+ * in the last [RECENT_DAYS] first, then the one used last, then by name — the
+ * order the form's merchant and category suggestions already follow, so a place
+ * you go every week is near the top wherever it is offered.
+ */
+private fun <T : Any> List<Transaction>.optionsBy(
+    today: LocalDate,
+    name: (T) -> String,
+    key: (Transaction) -> T?,
+): List<FilterOption<T>> {
+    val since = today.minusDays(RECENT_DAYS)
+    return mapNotNull { row -> key(row)?.let { it to row } }
+        .groupBy({ it.first }, { it.second })
+        .entries
+        .sortedWith(
+            compareByDescending<Map.Entry<T, List<Transaction>>> { (_, rows) -> rows.count { it.localDate >= since } }
+                .thenByDescending { (_, rows) -> rows.maxOf { it.occurredAt } }
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { name(it.key) },
+        ).map { (value, rows) -> FilterOption(value, rows.size) }
+}
+
+private const val RECENT_DAYS = 90L
+
+/**
  * What the transaction moves, read from where [filter] stands.
  *
- * With no account filter it is [Transaction.signedAmount], where a transfer is worth
- * zero: it moves your own money between your own accounts, so the ledger as a
- * whole is unchanged. One account is not the whole ledger, though — money that
- * left for another account of yours has still left this one — so under a filter
- * a transfer is signed by which end the account is on. That is the arithmetic
- * the account's own balance is already built from in `AccountDao.allWithCounts`,
- * and that balance is what the filter menu offered to pick from; the two would
- * otherwise disagree about the same transfer, one tap apart.
+ * Unfiltered it is [Transaction.signedAmount], where a transfer is worth zero:
+ * it moves your own money between your own accounts, so the ledger as a whole
+ * is unchanged.
+ *
+ * One account is not the whole ledger, though — money that left for another
+ * account of yours has still left this one — so under an account filter a
+ * transfer is signed by which end the account is on (ADR-0006). That is the
+ * arithmetic the account's own balance is already built from in
+ * `AccountDao.allWithCounts`, and that balance is what the filter menu offered
+ * to pick from; the two would otherwise disagree about the same transfer, one
+ * tap apart.
+ *
+ * Under a category, with no account, a transfer is money that left for what the
+ * category names (ADR-0011): the mortgage payment is what *Hypothèque* cost you
+ * this month. *No category* is not a place money goes, so an uncategorised
+ * transfer — a card payment, most often — keeps the whole ledger's zero rather
+ * than charging you a second time for the purchases it settles.
  */
 private fun Transaction.balanceMovedOn(filter: LedgerFilter): Money {
     val account = filter.account
     return when {
-        account == null || kind != TransactionKind.TRANSFER -> signedAmount
-        accountId == account.id -> -amount
-        else -> amount
+        kind != TransactionKind.TRANSFER -> signedAmount
+        account != null -> if (accountId == account.id) -amount else amount
+        filter.category is CategoryChoice.Named -> -amount
+        else -> signedAmount
     }
 }
