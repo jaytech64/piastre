@@ -74,4 +74,23 @@
     <string name="category_offer_from_now_on_income">Tous les prochains revenus de %s</string>
     <string name="category_offer_from_now_on_transfer">Tous les prochains virements vers %s</string>
     <string name="category_offer_instead_of">%1$s (au lieu de %2$s)</string>
+    <plurals name="ledger_selected">
+        <item quantity="one">%d sélectionnée</item>
+        <item quantity="other">%d sélectionnées</item>
+    </plurals>
+    <string name="ledger_select">Sélectionner</string>
+    <string name="ledger_selection_end">Terminer la sélection</string>
+    <string name="ledger_selection_categorise">Catégoriser</string>
+    <string name="ledger_selection_category_title_single">Catégorie de cette transaction</string>
+    <plurals name="ledger_selection_category_title_several">
+        <item quantity="one">Catégorie des %d transactions</item>
+        <item quantity="other">Catégorie des %d transactions</item>
+    </plurals>
+    <string name="ledger_selection_delete_title_single">Supprimer cette transaction ?</string>
+    <plurals name="ledger_selection_delete_title_several">
+        <item quantity="one">Supprimer ces %d transactions ?</item>
+        <item quantity="other">Supprimer ces %d transactions ?</item>
+    </plurals>
+    <string name="ledger_selection_delete_body_single">Elle n\'apparaîtra plus dans vos dépenses ni dans aucun total.</string>
+    <string name="ledger_selection_delete_body_several">Elles n\'apparaîtront plus dans vos dépenses ni dans aucun total.</string>
 </resources>

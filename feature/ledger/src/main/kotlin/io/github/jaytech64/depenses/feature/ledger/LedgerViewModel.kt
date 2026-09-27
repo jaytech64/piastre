@@ -10,6 +10,7 @@ import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
+import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Category
@@ -103,6 +104,13 @@ data class LedgerFilter(
         }
 }
 
+/** A category the selection can be given, with how many selected rows already carry it. */
+data class SelectionCategory(
+    /** Null is *No category*. */
+    val category: Category?,
+    val selectedCount: Int,
+)
+
 data class LedgerUiState(
     val days: List<LedgerDay> = emptyList(),
     /** Null until the clock has been read once; never a sentinel date. */
@@ -116,9 +124,15 @@ data class LedgerUiState(
     /** Likewise only merchants some confirmed row names. */
     val merchants: List<FilterOption<Merchant>> = emptyList(),
     val filter: LedgerFilter = LedgerFilter(),
+    /** The rows picked by a long press, and only those still on screen. */
+    val selected: Set<Long> = emptySet(),
+    /** What the selection can be given, *No category* first; empty while nothing is selected. */
+    val selectionCategories: List<SelectionCategory> = emptyList(),
     val loading: Boolean = true,
 ) {
     val isEmpty: Boolean get() = days.isEmpty() && !loading
+
+    val isSelecting: Boolean get() = selected.isNotEmpty()
 }
 
 @HiltViewModel
@@ -129,6 +143,7 @@ class LedgerViewModel
         accounts: AccountRepository,
         categories: CategoryRepository,
         merchants: MerchantRepository,
+        editor: TransactionEditor,
         ticker: LocalDateTicker,
         private val savedState: SavedStateHandle,
     ) : ViewModel() {
@@ -140,16 +155,24 @@ class LedgerViewModel
          * while a cold launch starts without one — which is the lifetime the filter
          * was asked for.
          */
-        private val selection: Flow<Selection> =
+        private val filterKeys: Flow<FilterKeys> =
             combine(
                 savedState.getStateFlow<Long?>(SELECTED_ACCOUNT_ID, null),
                 savedState.getStateFlow<Long?>(SELECTED_CATEGORY_ID, null),
                 savedState.getStateFlow(UNCATEGORISED_ONLY, false),
                 savedState.getStateFlow<Long?>(SELECTED_MERCHANT_ID, null),
-                ::Selection,
+                ::FilterKeys,
             )
 
+        /** The rows picked by a long press, and what can be done to them. */
+        val selection =
+            LedgerSelection(savedState, editor, categories, viewModelScope) {
+                uiState.value.days.flatMapTo(mutableSetOf()) { day -> day.transactions.map { it.id } }
+            }
+
         private val known: Flow<Known> = combine(accounts.all(), categories.all(), merchants.all(), ::Known)
+
+        private val filtering: Flow<Pair<FilterKeys, Set<Long>>> = combine(filterKeys, selection.rowIds, ::Pair)
 
         /**
          * The current day is a source of truth in its own right, not a value read
@@ -162,10 +185,12 @@ class LedgerViewModel
                 repository.needsReviewCount(),
                 ticker.dates(),
                 known,
-                selection,
-            ) { transactions, needsReview, today, known, selection ->
-                val filter = known.resolve(selection)
-                val days = transactions.filter(filter::admits).groupByLocalDay(filter)
+                filtering,
+            ) { transactions, needsReview, today, known, (keys, rowIds) ->
+                val filter = known.resolve(keys)
+                val shown = transactions.filter(filter::admits)
+                val selected = shown.filter { it.id in rowIds }
+                val days = shown.groupByLocalDay(filter)
                 LedgerUiState(
                     days = days,
                     today = today,
@@ -175,6 +200,8 @@ class LedgerViewModel
                     categories = transactions.categoryOptions(today),
                     merchants = transactions.merchantOptions(today, known.merchants),
                     filter = filter,
+                    selected = selected.mapTo(mutableSetOf()) { it.id },
+                    selectionCategories = transactions.categoriesFor(selected, known.categories, today),
                     loading = false,
                 )
             }.stateIn(
@@ -273,8 +300,8 @@ class LedgerViewModel
             )
         }
 
-        /** The saved-state keys, read together. */
-        private data class Selection(
+        /** The filter's saved-state keys, read together. */
+        private data class FilterKeys(
             val accountId: Long?,
             val categoryId: Long?,
             val uncategorisedOnly: Boolean,
@@ -293,7 +320,7 @@ class LedgerViewModel
              * showing everything rather than an empty list under the name of
              * something gone.
              */
-            fun resolve(selection: Selection) =
+            fun resolve(selection: FilterKeys) =
                 LedgerFilter(
                     account = accounts.firstOrNull { it.id == selection.accountId },
                     category =
@@ -340,6 +367,37 @@ private fun <T : Any> List<Transaction>.optionsBy(
 }
 
 private const val RECENT_DAYS = 90L
+
+/**
+ * Every category the [selected] rows could be given, *No category* first, each
+ * with how many of them carry it already, so a pick shows what it replaces.
+ *
+ * The rest follow the form's order for the kinds selected — used most in the
+ * last [RECENT_DAYS] first, then used last, then by name — which puts
+ * *Internet* near the top of a selection of bills. A category nothing carries
+ * yet is still offered, last, since it may be the very one the selection is for.
+ */
+private fun List<Transaction>.categoriesFor(
+    selected: List<Transaction>,
+    known: List<CategoryUsage>,
+    today: LocalDate,
+): List<SelectionCategory> {
+    if (selected.isEmpty()) return emptyList()
+    val kinds = selected.mapTo(mutableSetOf()) { it.kind }
+    val since = today.minusDays(RECENT_DAYS)
+    val used = filter { it.kind in kinds && it.categoryId != null }.groupBy { it.categoryId }
+    val carried = selected.groupingBy { it.categoryId }.eachCount()
+    val named =
+        known
+            .map { it.category }
+            .sortedWith(
+                compareByDescending<Category> { category ->
+                    used[category.id].orEmpty().count { it.localDate >= since }
+                }.thenByDescending { category -> used[category.id]?.maxOf { it.occurredAt } }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name },
+            ).map { SelectionCategory(it, carried[it.id] ?: 0) }
+    return listOf(SelectionCategory(null, carried[null] ?: 0)) + named
+}
 
 /**
  * What the transaction moves, read from where [filter] stands.

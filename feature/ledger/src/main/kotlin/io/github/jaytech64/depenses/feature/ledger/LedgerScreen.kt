@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jaytech64.depenses.core.designsystem.CategoryDialog
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.designsystem.accountLabel
 import io.github.jaytech64.depenses.core.model.Account
@@ -67,6 +69,7 @@ fun LedgerScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val today = state.today
     var choosingFilters by rememberSaveable { mutableStateOf(false) }
+    var acting by rememberSaveable { mutableStateOf(SelectionAction.NONE) }
     val filterActions =
         remember(viewModel) {
             FilterActions(
@@ -77,36 +80,113 @@ fun LedgerScreen(
             )
         }
 
+    BackHandler(enabled = state.isSelecting, onBack = viewModel.selection::end)
+
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            MonthHeader(
-                state = state,
-                onFiltersClick = { choosingFilters = true },
-                onReviewClick = onReviewClick,
-            )
+            if (state.isSelecting) {
+                SelectionBar(state.selected.size, onEnd = viewModel.selection::end, onAct = { acting = it })
+            } else {
+                MonthHeader(state, onFiltersClick = { choosingFilters = true }, onReviewClick = onReviewClick)
+            }
             if (state.filter.isActive) {
-                FilterChips(state.filter, filterActions)
+                FilterChips(state.filter, filterActions, enabled = !state.isSelecting)
             }
 
             when {
-                state.isEmpty -> EmptyLedger(state.filter)
-                today != null -> DayList(state.days, today, onTransactionClick)
+                state.isEmpty -> {
+                    EmptyLedger(state.filter)
+                }
+
+                today != null -> {
+                    DayList(
+                        days = state.days,
+                        today = today,
+                        selected = state.selected,
+                        onClick = { id ->
+                            if (state.isSelecting) viewModel.selection.toggle(id) else onTransactionClick(id)
+                        },
+                        onLongClick = viewModel.selection::toggle,
+                    )
+                }
             }
         }
 
-        FloatingActionButton(
-            onClick = onAddClick,
-            modifier =
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp),
-        ) {
-            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.manual_add))
+        // Hidden while selecting: an entry added now would land outside a selection
+        // the bar is about to act on.
+        if (!state.isSelecting) {
+            AddButton(onAddClick, Modifier.align(Alignment.BottomEnd))
         }
     }
 
     if (choosingFilters) {
         FilterSheet(state, filterActions, onDismiss = { choosingFilters = false })
+    }
+    SelectionDialog(if (state.isSelecting) acting else SelectionAction.NONE, state, viewModel) { acting = it }
+}
+
+@Composable
+private fun AddButton(
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
+    FloatingActionButton(onClick = onClick, modifier = modifier.padding(16.dp)) {
+        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.manual_add))
+    }
+}
+
+/**
+ * The one sheet or dialog [acting] names over the selection. Each closes itself,
+ * or hands over to the next, through [onAct].
+ */
+@Composable
+private fun SelectionDialog(
+    acting: SelectionAction,
+    state: LedgerUiState,
+    viewModel: LedgerViewModel,
+    onAct: (SelectionAction) -> Unit,
+) {
+    val count = state.selected.size
+    val onClose = { onAct(SelectionAction.NONE) }
+    when (acting) {
+        SelectionAction.CATEGORISE -> {
+            SelectionCategorySheet(
+                count = count,
+                categories = state.selectionCategories,
+                onPick = {
+                    viewModel.selection.categorise(it)
+                    onClose()
+                },
+                onAddCategory = { onAct(SelectionAction.ADD_CATEGORY) },
+                onDismiss = onClose,
+            )
+        }
+
+        SelectionAction.ADD_CATEGORY -> {
+            CategoryDialog(
+                name = null,
+                onSave = {
+                    viewModel.selection.categoriseAsNew(it)
+                    onClose()
+                },
+                onDismiss = onClose,
+            )
+        }
+
+        SelectionAction.DELETE -> {
+            ConfirmSelectionDeleteDialog(
+                count = count,
+                onConfirm = {
+                    viewModel.selection.delete()
+                    onClose()
+                },
+                onCancel = onClose,
+            )
+        }
+
+        SelectionAction.NONE -> {
+            Unit
+        }
     }
 }
 
@@ -204,7 +284,9 @@ private fun BalanceRow(
 private fun DayList(
     days: List<LedgerDay>,
     today: LocalDate,
-    onTransactionClick: (Long) -> Unit,
+    selected: Set<Long>,
+    onClick: (Long) -> Unit,
+    onLongClick: (Long) -> Unit,
 ) {
     val locale = currentLocale()
     val labels =
@@ -222,7 +304,18 @@ private fun DayList(
                 )
             }
             items(day.transactions, key = { it.id }) { transaction ->
-                TransactionRow(transaction, locale, onClick = { onTransactionClick(transaction.id) })
+                TransactionRow(
+                    transaction = transaction,
+                    locale = locale,
+                    selection =
+                        when {
+                            selected.isEmpty() -> RowSelection.NONE
+                            transaction.id in selected -> RowSelection.SELECTED
+                            else -> RowSelection.UNSELECTED
+                        },
+                    onClick = { onClick(transaction.id) },
+                    onLongClick = { onLongClick(transaction.id) },
+                )
             }
         }
     }

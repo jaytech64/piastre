@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
+import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.CategoryEntity
@@ -36,6 +37,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Provider
@@ -60,6 +62,14 @@ abstract class LedgerTest {
             accounts = AccountRepository(database.accountDao()),
             categories = categoryRepository(),
             merchants = MerchantRepository(database.merchantDao()),
+            editor =
+                TransactionEditor(
+                    database,
+                    database.transactionDao(),
+                    MerchantRepository(database.merchantDao()),
+                    categoryRepository(),
+                    Clock.systemUTC(),
+                ),
             ticker = LocalDateTicker(Provider { ZONE }),
             savedState = state,
         )
