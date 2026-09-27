@@ -128,6 +128,8 @@ data class LedgerUiState(
     val filter: LedgerFilter = LedgerFilter(),
     /** The rows picked by a long press, and only those still on screen. */
     val selected: Set<Long> = emptySet(),
+    /** What the selected rows add up to, counted as the day and month totals are; null while nothing is selected. */
+    val selectionSummary: BalanceSummary? = null,
     /** What the selection can be given, *No category* first; empty while nothing is selected. */
     val selectionCategories: List<SelectionCategory> = emptyList(),
     val loading: Boolean = true,
@@ -203,6 +205,7 @@ class LedgerViewModel
                     merchants = transactions.merchantOptions(today, known.merchants),
                     filter = filter,
                     selected = selected.mapTo(mutableSetOf()) { it.id },
+                    selectionSummary = selected.takeIf { it.isNotEmpty() }?.summaryOf(filter),
                     selectionCategories = transactions.categoriesFor(selected, known.categories, today),
                     loading = false,
                 )

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,13 +37,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -84,11 +88,13 @@ fun LedgerScreen(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            if (state.isSelecting) {
-                SelectionBar(state.selected.size, onEnd = viewModel.selection::end, onAct = { acting = it })
-            } else {
-                MonthHeader(state, onFiltersClick = { choosingFilters = true }, onReviewClick = onReviewClick)
-            }
+            LedgerTop(
+                state = state,
+                onEndSelection = viewModel.selection::end,
+                onAct = { acting = it },
+                onFiltersClick = { choosingFilters = true },
+                onReviewClick = onReviewClick,
+            )
             if (state.filter.isActive) {
                 FilterChips(state.filter, filterActions, enabled = !state.isSelecting)
             }
@@ -191,6 +197,42 @@ private fun SelectionDialog(
 }
 
 /**
+ * The balance card, or the selection bar in its place.
+ *
+ * The bar is at least as tall as the card it replaces, so the row a long press
+ * landed on stays under the finger instead of sliding up. The height is not
+ * saved: a card measured before a rotation or a font change is the wrong size
+ * after it.
+ */
+@Composable
+private fun LedgerTop(
+    state: LedgerUiState,
+    onEndSelection: () -> Unit,
+    onAct: (SelectionAction) -> Unit,
+    onFiltersClick: () -> Unit,
+    onReviewClick: () -> Unit,
+) {
+    var headerHeight by remember { mutableIntStateOf(0) }
+    val selectionSummary = state.selectionSummary
+    if (selectionSummary != null) {
+        SelectionBar(
+            count = state.selected.size,
+            summary = selectionSummary,
+            onEnd = onEndSelection,
+            onAct = onAct,
+            modifier = Modifier.heightIn(min = with(LocalDensity.current) { headerHeight.toDp() }),
+        )
+    } else {
+        MonthHeader(
+            state,
+            onFiltersClick = onFiltersClick,
+            onReviewClick = onReviewClick,
+            modifier = Modifier.onSizeChanged { headerHeight = it.height },
+        )
+    }
+}
+
+/**
  * The balance, what it is a balance of, what it is made of, and the purchases no
  * total has counted yet.
  */
@@ -199,11 +241,12 @@ private fun MonthHeader(
     state: LedgerUiState,
     onFiltersClick: () -> Unit,
     onReviewClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val locale = currentLocale()
 
     Card(
-        Modifier
+        modifier
             .fillMaxWidth()
             .padding(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
