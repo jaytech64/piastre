@@ -280,6 +280,31 @@ interface TransactionDao {
     @Query("DELETE FROM expense_transaction WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    /**
+     * Gives [categoryId], or none, to exactly the rows [ids] names, and returns how
+     * many that was.
+     *
+     * Unlike [CategoryDao.categoriseAtMerchant], a row that already has a
+     * category takes the new one: these rows were picked one by one, often
+     * precisely because the category they carry is wrong. A dismissed row is left
+     * out, as there.
+     *
+     * The review time is not stamped, for the reason
+     * [CategoryDao.categoriseAtMerchant] gives. [ids] is a selection made by hand,
+     * far below the 32 766 variables Android 12's SQLite binds, so it is never
+     * chunked.
+     */
+    @Query(
+        """
+        UPDATE expense_transaction SET categoryId = :categoryId
+        WHERE id IN (:ids) AND status != 'DISMISSED'
+        """,
+    )
+    suspend fun categorise(
+        ids: Collection<Long>,
+        categoryId: Long?,
+    ): Int
+
     @Query("SELECT COUNT(*) FROM expense_transaction")
     fun count(): Flow<Int>
 

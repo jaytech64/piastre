@@ -155,4 +155,16 @@ class TransactionEditor
                 }
             }
         }
+
+        /**
+         * Gives [categoryId], or none, to exactly [ids] and nothing else: no other
+         * transaction, and no merchant's or account's default. See
+         * [TransactionDao.categorise] for why a category already there is replaced.
+         */
+        suspend fun categoriseAll(
+            ids: Set<Long>,
+            categoryId: Long?,
+        ) {
+            transactions.categorise(ids, categoryId)
+        }
     }
