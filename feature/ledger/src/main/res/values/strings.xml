@@ -122,4 +122,5 @@
     <string name="recurring_stop">Stop repeating</string>
     <string name="recurring_stop_title">Stop repeating %s?</string>
     <string name="recurring_stop_body">What it already added stays in the ledger.</string>
+    <string name="ledger_recurring">recurring</string>
 </resources>
