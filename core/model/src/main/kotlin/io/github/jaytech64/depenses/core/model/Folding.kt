@@ -9,3 +9,10 @@ internal fun String.foldedForMatching(): String =
     Normalizer.normalize(this, Normalizer.Form.NFD).replace(COMBINING_MARKS, "")
 
 private val COMBINING_MARKS = Regex("\\p{Mn}+")
+
+/**
+ * Whether [typed] appears in this name, case and accents aside, so `cafe` finds
+ * Café Myriade and `ÉPICERIE` finds Épicerie. Blank [typed] finds everything.
+ */
+fun String.containsTyped(typed: String): Boolean =
+    foldedForMatching().contains(typed.trim().foldedForMatching(), ignoreCase = true)
