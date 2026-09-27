@@ -373,6 +373,9 @@ interface MerchantDao {
     @Query("SELECT * FROM merchant ORDER BY id")
     suspend fun allOnce(): List<MerchantEntity>
 
+    @Query("SELECT * FROM merchant ORDER BY id")
+    fun all(): Flow<List<MerchantEntity>>
+
     @Query("SELECT * FROM merchant WHERE id = :id")
     suspend fun byId(id: Long): MerchantEntity?
 

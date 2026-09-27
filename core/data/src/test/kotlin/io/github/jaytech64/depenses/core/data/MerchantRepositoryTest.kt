@@ -120,6 +120,17 @@ class MerchantRepositoryTest {
             assertEquals(listOf("Tim Hortons", "Café Olimpico", "Zone Sports"), offered(TransactionKind.EXPENSE))
         }
 
+    @Test
+    fun `every merchant is listed under the name it has now`() =
+        runTest {
+            val metro = merchants.named("Metro")
+            merchants.named("Zone Sports")
+
+            database.merchantDao().renameMerchant(checkNotNull(metro), "Metro Plus")
+
+            assertEquals(listOf("Metro Plus", "Zone Sports"), merchants.all().first().map { it.displayName })
+        }
+
     private suspend fun spend(
         merchant: String,
         daysAgo: Int,

@@ -110,15 +110,11 @@ class MerchantRepository
             today: LocalDate,
         ): Flow<List<Merchant>> =
             merchants.byUse(kind, today.minusDays(RECENT_DAYS).toEpochDay().toInt()).map { rows ->
-                rows.map {
-                    Merchant(
-                        id = it.id,
-                        displayName = it.displayName,
-                        normalisedName = it.normalisedName,
-                        categoryId = it.categoryId,
-                    )
-                }
+                rows.map(MerchantEntity::toDomain)
             }
+
+        /** Every merchant, under the name it has now, whether or not anything was bought there. */
+        fun all(): Flow<List<Merchant>> = merchants.all().map { rows -> rows.map(MerchantEntity::toDomain) }
 
         /**
          * The insert ignores a conflict rather than failing, so the re-read is what
@@ -139,3 +135,11 @@ class MerchantRepository
             const val RECENT_DAYS = 90L
         }
     }
+
+private fun MerchantEntity.toDomain() =
+    Merchant(
+        id = id,
+        displayName = displayName,
+        normalisedName = normalisedName,
+        categoryId = categoryId,
+    )
