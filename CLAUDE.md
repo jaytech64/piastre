@@ -165,6 +165,8 @@ Each of these is something a reasonable-looking change breaks.
 A ledger that drifts a cent per operation is worse than no ledger.
 Arithmetic that leaves `Money` — an average, a percentage in a report — converts at the edge and comes straight back.
 
+A total counts Canadian dollars and says how many rows in another currency it left out ([ADR-0012](docs/adr/0012-a-total-counts-one-currency.md)); `Money.plus` throws on a second currency, so a total that adds rows without `inHomeCurrency` stops the ledger from loading.
+
 ### Money and dates are formatted in exactly one place
 
 `core/designsystem/src/main/kotlin/io/github/jaytech64/depenses/core/designsystem/Formatters.kt` decides what money, dates and times look like, and nothing else may.
