@@ -20,6 +20,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0008](0008-the-ledger-header-says-what-the-balance-is-made-of.md) | The ledger header says what the balance is made of | Accepted — implemented |
 | [0009](0009-a-report-says-what-its-balance-is-made-of.md) | A report says what its balance is made of | Accepted — implemented |
 | [0010](0010-a-merchants-category-is-written-onto-each-purchase.md) | A merchant's category is written onto each purchase, not read through | Accepted — implemented |
+| [0011](0011-a-transfer-under-a-category-is-money-that-left.md) | A transfer under a category is money that left for it | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan in `.lavish/phase-2-capture-mvp.html`.
 Each record after them was written with the branch that made the decision.

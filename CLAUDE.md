@@ -186,6 +186,7 @@ Add a fixture, decide whether the parser can be certain, and if it cannot, leave
 
 **Totals exclude `NEEDS_REVIEW` rows** ([ADR-0002](docs/adr/0002-totals-exclude-unreviewed-rows.md)), and a transfer moves a balance by zero — counting one would charge you twice for what a card payment settles (`Transaction.signedAmount`).
 That zero is the ledger as a whole: a transfer moves the balance of each account it touches, so a total scoped to one account signs it by which end that account is on ([ADR-0006](docs/adr/0006-a-filtered-total-answers-for-one-account.md), `LedgerViewModel.balanceMovedOn`).
+Under a category with no account, a transfer is money that left for that category; under *No category* it stays zero ([ADR-0011](docs/adr/0011-a-transfer-under-a-category-is-money-that-left.md)).
 
 A report's ranking, calendar and spending comparison count expenses alone ([ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md)); its headline is the ledger's balance for the period, with the count and comparison kept under *Dépenses* so they read as spending ([ADR-0009](docs/adr/0009-a-report-says-what-its-balance-is-made-of.md)).
 
