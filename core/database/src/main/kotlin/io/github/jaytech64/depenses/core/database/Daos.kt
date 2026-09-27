@@ -166,6 +166,14 @@ interface TransactionDao {
     @Insert
     suspend fun insert(transaction: ExpenseTransactionEntity): Long
 
+    /**
+     * Returns [RawNotificationEventDao.INSERT_IGNORED] when a row with the same
+     * source key is already there, which for a recurring row means that day has
+     * already been written.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertOrIgnore(transaction: ExpenseTransactionEntity): Long
+
     @Update
     suspend fun update(transaction: ExpenseTransactionEntity)
 
@@ -753,6 +761,20 @@ interface RecurringTransactionDao {
     )
     fun allWithNames(): Flow<List<RecurringWithNames>>
 
+    @Query(
+        """
+        SELECT r.*, m.displayName AS merchantName, a.name AS accountName, a.type AS accountType,
+               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName
+        FROM recurring_transaction r
+        LEFT JOIN merchant m ON m.id = r.merchantId
+        LEFT JOIN account a ON a.id = r.accountId
+        LEFT JOIN account d ON d.id = r.toAccountId
+        LEFT JOIN category c ON c.id = r.categoryId
+        WHERE r.id = :id
+        """,
+    )
+    suspend fun withNamesById(id: Long): RecurringWithNames?
+
     @Query("SELECT * FROM recurring_transaction ORDER BY id")
     suspend fun allOnce(): List<RecurringTransactionEntity>
 
@@ -765,6 +787,9 @@ interface RecurringTransactionDao {
         id: Long,
         nextDueEpochDay: Int?,
     )
+
+    @Query("SELECT COUNT(*) FROM recurring_transaction WHERE nextDueEpochDay IS NOT NULL")
+    fun activeCount(): Flow<Int>
 
     /**
      * Ends a schedule. The rows it wrote stay in the ledger, as the history of

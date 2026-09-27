@@ -172,5 +172,6 @@ internal fun toDomain(row: TransactionWithMerchant): Transaction =
             toAccountType = row.toAccountType,
             categoryId = categoryId,
             categoryName = row.categoryName,
+            recurringId = recurringId,
         )
     }
