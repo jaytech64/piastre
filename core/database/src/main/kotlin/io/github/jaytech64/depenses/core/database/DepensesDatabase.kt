@@ -15,6 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MerchantAliasEntity::class,
         AccountEntity::class,
         CategoryEntity::class,
+        RecurringTransactionEntity::class,
     ],
     version = DepensesDatabase.VERSION,
     exportSchema = true,
@@ -32,8 +33,10 @@ abstract class DepensesDatabase : RoomDatabase() {
 
     abstract fun categoryDao(): CategoryDao
 
+    abstract fun recurringTransactionDao(): RecurringTransactionDao
+
     companion object {
-        const val VERSION: Int = 11
+        const val VERSION: Int = 12
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -51,6 +54,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_8_9,
                 MIGRATION_9_10,
                 MIGRATION_10_11,
+                MIGRATION_11_12,
             )
 
         const val NAME: String = "depenses.db"
@@ -376,6 +380,33 @@ private val MIGRATION_10_11 =
             db.execSQL(
                 "CREATE INDEX IF NOT EXISTS `index_expense_transaction_categoryId` " +
                     "ON `expense_transaction` (`categoryId`)",
+            )
+        }
+    }
+
+/**
+ * Schema 12 adds recurring transactions, and lets a transaction say which one it
+ * belongs to. No transaction belongs to one yet, so the new column stays null.
+ */
+private val MIGRATION_11_12 =
+    object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `recurring_transaction` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `uuid` TEXT NOT NULL, " +
+                    "`amountMinor` INTEGER NOT NULL, `currency` TEXT NOT NULL, `kind` TEXT NOT NULL, " +
+                    "`merchantId` INTEGER, `merchantRaw` TEXT, `accountId` INTEGER, `toAccountId` INTEGER, " +
+                    "`categoryId` INTEGER, `note` TEXT, `rhythm` TEXT NOT NULL, `firstEpochDay` INTEGER NOT NULL, " +
+                    "`lastEpochDay` INTEGER, `nextDueEpochDay` INTEGER)",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_recurring_transaction_uuid` " +
+                    "ON `recurring_transaction` (`uuid`)",
+            )
+            db.execSQL("ALTER TABLE expense_transaction ADD COLUMN recurringId INTEGER DEFAULT NULL")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_expense_transaction_recurringId` " +
+                    "ON `expense_transaction` (`recurringId`)",
             )
         }
     }

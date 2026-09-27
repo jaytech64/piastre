@@ -12,6 +12,7 @@ import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.MatchType
 import io.github.jaytech64.depenses.core.model.ParseState
 import io.github.jaytech64.depenses.core.model.ReviewReason
+import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -84,6 +85,7 @@ data class RawNotificationEventEntity(
         Index("accountId"),
         Index("toAccountId"),
         Index("categoryId"),
+        Index("recurringId"),
     ],
 )
 data class ExpenseTransactionEntity(
@@ -129,6 +131,12 @@ data class ExpenseTransactionEntity(
     val accountId: Long? = null,
     /** Where a transfer landed; null on anything else. */
     val toAccountId: Long? = null,
+    /**
+     * The schedule this row belongs to while that schedule lasts: the typed row
+     * it was made from, and every row it has written since. Null on anything
+     * else, and cleared on every row when the schedule is stopped.
+     */
+    val recurringId: Long? = null,
 )
 
 /**
@@ -229,4 +237,44 @@ data class MerchantAliasEntity(
     val pattern: String,
     val matchType: MatchType,
     val createdBy: AliasOrigin,
+)
+
+/**
+ * A transaction that comes back: what it is, and the days it falls on.
+ *
+ * Each time a day in [rhythm] comes, a row is written into `expense_transaction`
+ * with exactly these fields, and from then on it is an ordinary transaction.
+ * Nothing here is read through at display time, so changing a schedule changes
+ * the rows still to come and never the ones already written.
+ *
+ * [nextDueEpochDay] is the cursor that makes a day happen once. It moves past a
+ * day in the same database transaction that writes that day's row, so a row you
+ * delete afterwards is never written again. It is null once [lastEpochDay] has
+ * passed.
+ *
+ * [uuid] is the schedule's identity outside this database: each row it writes is
+ * keyed on it and the day, so two passes racing over the same day collide on the
+ * transaction table's unique index, and an import can tell a schedule it already
+ * holds from a new one.
+ */
+@Entity(
+    tableName = "recurring_transaction",
+    indices = [Index(value = ["uuid"], unique = true)],
+)
+data class RecurringTransactionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uuid: String,
+    val amountMinor: Long,
+    val currency: String,
+    val kind: TransactionKind,
+    val merchantId: Long?,
+    val merchantRaw: String?,
+    val accountId: Long?,
+    val toAccountId: Long?,
+    val categoryId: Long?,
+    val note: String?,
+    val rhythm: Rhythm,
+    val firstEpochDay: Int,
+    val lastEpochDay: Int?,
+    val nextDueEpochDay: Int?,
 )
