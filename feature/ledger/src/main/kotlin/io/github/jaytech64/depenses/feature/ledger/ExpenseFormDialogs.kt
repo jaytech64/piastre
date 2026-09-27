@@ -44,15 +44,8 @@ internal fun FormDialog(
     onClose: () -> Unit,
 ) {
     when (picking) {
-        Picking.DATE -> {
-            DatePickerSheet(
-                date = state.date,
-                onPicked = {
-                    viewModel.onDateChange(it)
-                    onClose()
-                },
-                onCancel = onClose,
-            )
+        Picking.DATE, Picking.LAST_DATE -> {
+            DateDialog(picking, state, viewModel, onClose)
         }
 
         Picking.TIME -> {
@@ -105,8 +98,41 @@ internal fun FormDialog(
     }
 }
 
+/** The calendar for the transaction's own day, or for the last day it repeats on, which can also be none. */
+@Composable
+private fun DateDialog(
+    picking: Picking,
+    state: ExpenseFormUiState,
+    viewModel: ExpenseFormViewModel,
+    onClose: () -> Unit,
+) {
+    if (picking == Picking.DATE) {
+        DatePickerSheet(
+            date = state.date,
+            onPicked = {
+                viewModel.onDateChange(it)
+                onClose()
+            },
+            onCancel = onClose,
+        )
+        return
+    }
+    DatePickerSheet(
+        date = state.lastDate ?: state.recurrence?.nextAfter(state.date) ?: state.date,
+        onPicked = {
+            viewModel.repeat.onLastDateChange(it)
+            onClose()
+        },
+        onCancel = onClose,
+        onNone = {
+            viewModel.repeat.onLastDateChange(null)
+            onClose()
+        },
+    )
+}
+
 /** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
-internal enum class Picking { NOTHING, DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION, ADD_CATEGORY }
+internal enum class Picking { NOTHING, DATE, LAST_DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION, ADD_CATEGORY }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,6 +140,7 @@ private fun DatePickerSheet(
     date: LocalDate,
     onPicked: (LocalDate) -> Unit,
     onCancel: () -> Unit,
+    onNone: (() -> Unit)? = null,
 ) {
     // The picker speaks UTC millis; the date is held as a plain LocalDate, so the
     // conversion is pinned to UTC at both ends rather than to a zone that would
@@ -131,7 +158,11 @@ private fun DatePickerSheet(
                 Text(stringResource(R.string.manual_save))
             }
         },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
+        dismissButton = {
+            // An end date can be taken away again, which the calendar alone cannot say.
+            onNone?.let { TextButton(onClick = it) { Text(stringResource(R.string.repeat_never)) } }
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
+        },
     ) {
         DatePicker(state = pickerState)
     }

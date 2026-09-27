@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="ledger_today">Aujourd\'hui</string>
     <string name="ledger_yesterday">Hier</string>
     <string name="ledger_balance_month">Solde du mois</string>
@@ -97,5 +97,25 @@
         <item quantity="one">%d transaction dans une autre devise n\'est pas comptée.</item>
         <item quantity="other">%d transactions dans une autre devise ne sont pas comptées.</item>
         <item quantity="many">%d de transactions dans une autre devise ne sont pas comptées.</item>
+    </plurals>
+<string name="form_repeats">Se répète</string>
+    <string name="repeat_never">Jamais</string>
+    <string name="repeat_weekly">Chaque semaine, le %s</string>
+    <string name="repeat_every_two_weeks">Aux deux semaines, le %s</string>
+    <string name="repeat_monthly">Chaque mois, le %s</string>
+    <string name="repeat_yearly">Chaque année, le %s</string>
+    <string name="repeat_ends">Se termine</string>
+    <string name="repeat_ends_on">Le %s</string>
+    <string name="repeat_next">Prochaine : %s</string>
+    <plurals name="repeat_backfill">
+        <item quantity="one">Ceci ajoute %1$d transaction, le %2$s.</item>
+        <item quantity="other">Ceci ajoute %1$d transactions, du %2$s au %3$s.</item>
+        <item quantity="many">Ceci ajoute %1$d transactions, du %2$s au %3$s.</item>
+    </plurals>
+    <!-- "one" also matches 0 in French; the question is only asked when at least one row would be added. -->
+    <plurals name="repeat_backfill_confirm" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Ajouter</item>
+        <item quantity="other">Tout ajouter</item>
+        <item quantity="many">Tout ajouter</item>
     </plurals>
 </resources>

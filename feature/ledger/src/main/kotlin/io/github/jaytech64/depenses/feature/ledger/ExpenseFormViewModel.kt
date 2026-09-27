@@ -9,6 +9,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
+import io.github.jaytech64.depenses.core.data.RecurringRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.designsystem.Formatters
@@ -16,6 +17,8 @@ import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Recurrence
+import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -30,6 +33,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -79,6 +83,21 @@ data class ExpenseFormUiState(
     val fromNowOnChoice: Boolean? = null,
     /** A transaction a notification recorded: its account is the bank's to say, so it is shown, not offered. */
     val isCaptured: Boolean = false,
+    /**
+     * How often the transaction comes back, or null when it does not. Offered only
+     * on a transaction typed by hand that is not already a schedule's: see
+     * [canRepeat].
+     */
+    val rhythm: Rhythm? = null,
+    /** The last day it may come back on, or null when it goes on. */
+    val lastDate: LocalDate? = null,
+    /**
+     * False on a captured transaction, which Wallet will capture again next time,
+     * and on one a schedule already covers, which would then be written twice.
+     */
+    val canRepeat: Boolean = true,
+    /** The rows a repeating save would write for days already past, while that is being asked. */
+    val backfill: Backfill? = null,
     val capturedAccountLabel: String? = null,
     val isEditing: Boolean = false,
     /** True while the transaction being edited is read off disk, so the form never shows "now" in its place. */
@@ -89,8 +108,18 @@ data class ExpenseFormUiState(
 ) {
     val amount: Money? get() = Formatters.parseMoney(amountText)
 
-    /** A transaction needs an amount; a transfer also needs two accounts, and two different ones. */
-    val canSave: Boolean get() = amount != null && !saving && !loading && transferIsSettled
+    /**
+     * A transaction needs an amount; a transfer also needs two accounts, and two
+     * different ones; and one that repeats cannot stop before it starts.
+     */
+    val canSave: Boolean get() = amount != null && !saving && !loading && transferIsSettled && !endsBeforeItStarts
+
+    /** An end date set before the transaction's own day. */
+    val endsBeforeItStarts: Boolean get() = rhythm != null && lastDate != null && lastDate < date
+
+    /** When it comes back after [date], or null when it does not. */
+    val recurrence: Recurrence?
+        get() = rhythm?.takeUnless { endsBeforeItStarts }?.let { Recurrence(it, date, lastDate) }
 
     /** Only a transfer has a destination; switching away from one drops it. */
     val destinationToSave: Long? get() = toAccountId.takeIf { kind == TransactionKind.TRANSFER }
@@ -120,6 +149,8 @@ class ExpenseFormViewModel
         merchants: MerchantRepository,
         private val accounts: AccountRepository,
         private val categories: CategoryRepository,
+        private val recurring: RecurringRepository,
+        private val clock: Clock,
         private val zoneId: Provider<ZoneId>,
     ) : ViewModel() {
         private val editingId: Long? = savedStateHandle.get<Long>(EXPENSE_ID_ARG)
@@ -129,10 +160,10 @@ class ExpenseFormViewModel
 
         private val _uiState =
             MutableStateFlow(
-                zoneId.get().let { zone ->
+                clock.withZone(zoneId.get()).let { local ->
                     ExpenseFormUiState(
-                        date = LocalDate.now(zone),
-                        time = LocalTime.now(zone),
+                        date = LocalDate.now(local),
+                        time = LocalTime.now(local),
                         isEditing = editingId != null,
                         loading = editingId != null,
                     )
@@ -156,6 +187,9 @@ class ExpenseFormViewModel
 
         val knownAccounts: StateFlow<List<Account>> =
             accounts.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
+
+        /** How often it comes back, and until when. */
+        val repeat = RepeatChoice(_uiState)
 
         /** The category, the list it is picked from, and the offer beside it. */
         val category =
@@ -222,40 +256,48 @@ class ExpenseFormViewModel
          * Reports completion through [ExpenseFormUiState.done] rather than a
          * callback, so the screen navigates away on a fact that is already on disk
          * instead of on a promise made from inside a coroutine it does not own.
+         *
+         * A transaction set to repeat from a day already past would write a row for
+         * every day since, so the first save asks, with the count, and writes
+         * nothing; saving again with [pastDaysAgreed] writes them.
          */
-        fun save() {
+        fun save(pastDaysAgreed: Boolean = false) {
             val state = _uiState.value
+            if (state.amount == null || (!pastDaysAgreed && repeat.asksAboutPastDays(today()))) return
             val amount = state.amount ?: return
             val editing = original
             val reach = category.offer.value?.reach
-            _uiState.update { it.copy(saving = true) }
+            _uiState.update { it.copy(saving = true, backfill = null) }
             viewModelScope.launch {
-                if (editing == null) {
-                    transactions.addManual(
-                        amount = amount,
-                        merchantName = state.merchantText,
-                        occurredAt = state.occurredAt(zoneId.get()),
-                        note = state.note,
-                        kind = state.kind,
-                        accountId = state.accountId,
-                        toAccountId = state.destinationToSave,
-                        categoryId = state.categoryId,
-                        reach = reach,
-                    )
-                } else {
-                    editor.edit(
-                        id = editing.id,
-                        amount = amount,
-                        kind = state.kind,
-                        merchantName = state.merchantText,
-                        occurredAt = state.occurredAtLike(editing),
-                        note = state.note,
-                        accountId = state.accountId,
-                        toAccountId = state.destinationToSave,
-                        categoryId = state.categoryId,
-                        reach = reach,
-                    )
-                }
+                val id =
+                    if (editing == null) {
+                        transactions.addManual(
+                            amount = amount,
+                            merchantName = state.merchantText,
+                            occurredAt = state.occurredAt(zoneId.get()),
+                            note = state.note,
+                            kind = state.kind,
+                            accountId = state.accountId,
+                            toAccountId = state.destinationToSave,
+                            categoryId = state.categoryId,
+                            reach = reach,
+                        )
+                    } else {
+                        editor.edit(
+                            id = editing.id,
+                            amount = amount,
+                            kind = state.kind,
+                            merchantName = state.merchantText,
+                            occurredAt = state.occurredAtLike(editing),
+                            note = state.note,
+                            accountId = state.accountId,
+                            toAccountId = state.destinationToSave,
+                            categoryId = state.categoryId,
+                            reach = reach,
+                        )
+                        editing.id
+                    }
+                state.rhythm?.takeIf { state.canRepeat }?.let { recurring.repeat(id, it, state.lastDate) }
                 _uiState.update { it.copy(saving = false, done = true) }
             }
         }
@@ -269,6 +311,8 @@ class ExpenseFormViewModel
                 _uiState.update { it.copy(saving = false, done = true) }
             }
         }
+
+        private val today: () -> LocalDate = { LocalDate.now(clock.withZone(zoneId.get())) }
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L
@@ -293,6 +337,7 @@ private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseForm
         categoryId = transaction.categoryId,
         categoryChosen = transaction.categoryId != null,
         isCaptured = transaction.source == TransactionSource.NOTIFICATION,
+        canRepeat = transaction.source == TransactionSource.MANUAL && transaction.recurringId == null,
         capturedAccountLabel = Formatters.accountName(transaction.accountName, transaction.cardLast4),
         loading = false,
     )

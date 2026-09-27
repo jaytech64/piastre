@@ -94,6 +94,14 @@ fun ExpenseFormScreen(
     )
 
     FormDialog(picking = picking, state = state, viewModel = viewModel, onClose = { picking = Picking.NOTHING })
+
+    state.backfill?.let {
+        BackfillDialog(
+            it,
+            onConfirm = { viewModel.save(pastDaysAgreed = true) },
+            onDismiss = viewModel.repeat::dismissBackfill,
+        )
+    }
 }
 
 @Composable
@@ -154,7 +162,7 @@ private fun EntryForm(
         // After the accounts, because a transfer's category is about where it goes.
         CategorySection(state.categoryId, viewModel.category, onAddCategory = { onPick(Picking.ADD_CATEGORY) })
 
-        WhenRow(state = state, onDateChange = viewModel::onDateChange, onPick = onPick)
+        WhenSection(state = state, viewModel = viewModel, onPick = onPick)
 
         OutlinedTextField(
             value = state.note,
@@ -165,7 +173,7 @@ private fun EntryForm(
 
         FormActions(
             state = state,
-            onSave = viewModel::save,
+            onSave = { viewModel.save() },
             onCancel = onCancel,
             onDelete = { onPick(Picking.DELETE) },
         )
@@ -237,7 +245,7 @@ private fun AccountSlot.picking(): Picking =
 
 /** Defaults to now, because that is when almost every cash purchase is entered. */
 @Composable
-private fun WhenRow(
+internal fun WhenRow(
     state: ExpenseFormUiState,
     onDateChange: (LocalDate) -> Unit,
     onPick: (Picking) -> Unit,
