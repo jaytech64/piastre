@@ -305,6 +305,23 @@ class TransactionEditorTest {
         }
 
     @Test
+    fun `removing several purchases deletes the manual ones and dismisses the captured one`() =
+        runTest {
+            captureCoffee()
+            val captured = capturedId()
+            val first = addManual(merchant = "Dépanneur du coin")
+            val second = addManual(merchant = "Fruiterie du marché")
+            val kept = addManual(merchant = "Boulangerie")
+
+            editor.removeAll(setOf(captured, first, second))
+
+            assertEquals(listOf(kept), repository.confirmed().first().map { it.id })
+            assertNull(database.transactionDao().byId(first))
+            assertNull(database.transactionDao().byId(second))
+            assertEquals(TransactionStatus.DISMISSED, database.transactionDao().byId(captured)?.status)
+        }
+
+    @Test
     fun `turning a captured purchase into income survives Wallet posting it again`() =
         runTest {
             captureCoffee()

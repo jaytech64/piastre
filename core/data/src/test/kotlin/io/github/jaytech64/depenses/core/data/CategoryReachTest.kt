@@ -280,6 +280,72 @@ class CategoryReachTest {
             assertEquals(0, categories.uncategorisedAt(anchor, TransactionKind.EXPENSE, chosen.id).first())
         }
 
+    @Test
+    fun `a category given to chosen transactions replaces theirs and reaches no other`() =
+        runTest {
+            val internet = categories.named("Internet")!!
+            val phone = categories.named("Cellulaire")!!
+            captureAt("VIDEOTRON", "tag-1")
+            captureAt("VIDEOTRON", "tag-2")
+            captureAt("VIDEOTRON", "tag-3")
+            val (bill, other, blank) = confirmedAt("VIDEOTRON")
+            categorise(bill, phone, CategoryReach(others = false, fromNowOn = true))
+            categorise(other, phone, reach = null)
+
+            editor.categoriseAll(setOf(bill.id, blank.id), internet)
+
+            assertEquals(listOf(internet, phone, internet), confirmedAt("VIDEOTRON").map { it.categoryId })
+            captureAt("VIDEOTRON", "tag-4")
+            assertEquals(phone, confirmedAt("VIDEOTRON").last().categoryId)
+        }
+
+    @Test
+    fun `chosen transactions can be left with no category`() =
+        runTest {
+            val phone = categories.named("Cellulaire")!!
+            captureAt("VIDEOTRON", "tag-1")
+            val bill = confirmedAt("VIDEOTRON").single()
+            categorise(bill, phone, reach = null)
+
+            editor.categoriseAll(setOf(bill.id), categoryId = null)
+
+            assertNull(categoryOf(bill))
+        }
+
+    @Test
+    fun `categorising chosen transactions leaves a parser fix free to repair them`() =
+        runTest {
+            val internet = categories.named("Internet")!!
+            captureAt("VIDEOTRON", "tag-1")
+            val bill = confirmedAt("VIDEOTRON").single()
+
+            editor.categoriseAll(setOf(bill.id), internet)
+            captureAt(
+                "VIDEOTRON",
+                "tag-1",
+                text = "85,00 $ avec Carte d'accès Desrives ••0000",
+                postedAt = POSTED_AT + RE_POST_DELAY_MILLIS,
+            )
+
+            assertNull(database.transactionDao().byId(bill.id)?.reviewedAtUtcMillis)
+            val reread = transactions.byId(bill.id)!!
+            assertEquals(Money(8_500, Money.CAD), reread.amount)
+            assertEquals(internet, reread.categoryId)
+        }
+
+    @Test
+    fun `a deleted purchase among the chosen ones is not categorised`() =
+        runTest {
+            val internet = categories.named("Internet")!!
+            captureAt("VIDEOTRON", "tag-1")
+            val bill = confirmedAt("VIDEOTRON").single()
+            editor.remove(bill.id)
+
+            editor.categoriseAll(setOf(bill.id), internet)
+
+            assertNull(database.transactionDao().byId(bill.id)?.categoryId)
+        }
+
     private suspend fun categorise(
         transaction: Transaction,
         categoryId: Long,

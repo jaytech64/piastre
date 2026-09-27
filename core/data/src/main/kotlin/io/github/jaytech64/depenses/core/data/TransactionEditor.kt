@@ -155,4 +155,25 @@ class TransactionEditor
                 }
             }
         }
+
+        /**
+         * Gives [categoryId], or none, to exactly [ids] and nothing else: no other
+         * transaction, and no merchant's or account's default. See
+         * [TransactionDao.categorise] for why a category already there is replaced.
+         */
+        suspend fun categoriseAll(
+            ids: Set<Long>,
+            categoryId: Long?,
+        ) {
+            transactions.categorise(ids, categoryId)
+        }
+
+        /**
+         * [remove] for every one of [ids], in one database transaction: a selection
+         * leaves the ledger whole, or not at all.
+         */
+        suspend fun removeAll(ids: Set<Long>) =
+            database.inTransaction {
+                ids.forEach { remove(it) }
+            }
     }

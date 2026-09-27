@@ -74,4 +74,23 @@
     <string name="category_offer_from_now_on_income">Every future payment from %s</string>
     <string name="category_offer_from_now_on_transfer">Every future transfer to %s</string>
     <string name="category_offer_instead_of">%1$s (instead of %2$s)</string>
+    <plurals name="ledger_selected">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <string name="ledger_select">Select</string>
+    <string name="ledger_selection_end">End selection</string>
+    <string name="ledger_selection_categorise">Categorise</string>
+    <string name="ledger_selection_category_title_single">Category for this transaction</string>
+    <plurals name="ledger_selection_category_title_several">
+        <item quantity="one">Category for these %d transactions</item>
+        <item quantity="other">Category for these %d transactions</item>
+    </plurals>
+    <string name="ledger_selection_delete_title_single">Delete this transaction?</string>
+    <plurals name="ledger_selection_delete_title_several">
+        <item quantity="one">Delete these %d transactions?</item>
+        <item quantity="other">Delete these %d transactions?</item>
+    </plurals>
+    <string name="ledger_selection_delete_body_single">It will no longer appear in the ledger or in any total.</string>
+    <string name="ledger_selection_delete_body_several">They will no longer appear in the ledger or in any total.</string>
 </resources>

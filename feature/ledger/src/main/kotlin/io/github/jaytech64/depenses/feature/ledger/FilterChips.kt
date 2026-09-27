@@ -71,24 +71,28 @@ internal fun filterNames(filter: LedgerFilter): List<String> =
 /**
  * The filters that are on, a removable chip each, in one line that scrolls
  * sideways: three long names never push the list further down the screen.
+ *
+ * Not [enabled] while rows are selected, since clearing a filter then would
+ * show rows the selection's action was never meant to reach.
  */
 @Composable
 internal fun FilterChips(
     filter: LedgerFilter,
     actions: FilterActions,
+    enabled: Boolean,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         filter.account?.let { account ->
-            item(key = "account") { RemovableChip(accountLabel(account)) { actions.onAccount(null) } }
+            item(key = "account") { RemovableChip(accountLabel(account), enabled) { actions.onAccount(null) } }
         }
         filter.category?.let { category ->
-            item(key = "category") { RemovableChip(categoryLabel(category)) { actions.onCategory(null) } }
+            item(key = "category") { RemovableChip(categoryLabel(category), enabled) { actions.onCategory(null) } }
         }
         filter.merchant?.let { merchant ->
-            item(key = "merchant") { RemovableChip(merchant.displayName) { actions.onMerchant(null) } }
+            item(key = "merchant") { RemovableChip(merchant.displayName, enabled) { actions.onMerchant(null) } }
         }
     }
 }
@@ -96,11 +100,13 @@ internal fun FilterChips(
 @Composable
 private fun RemovableChip(
     name: String,
+    enabled: Boolean,
     onRemove: () -> Unit,
 ) {
     InputChip(
         selected = true,
         onClick = onRemove,
+        enabled = enabled,
         label = { Text(name, maxLines = 1) },
         trailingIcon = {
             Icon(

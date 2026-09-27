@@ -47,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -286,10 +287,11 @@ private fun MerchantList(
 
 /** One line of a list you pick from: the mark, the name, and a figure beside it. */
 @Composable
-private fun ChoiceLine(
+internal fun ChoiceLine(
     name: String,
     selected: Boolean,
     aside: String?,
+    color: Color = Color.Unspecified,
     onClick: () -> Unit,
 ) {
     Row(
@@ -301,7 +303,7 @@ private fun ChoiceLine(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         SelectedMark(selected)
-        Text(name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Text(name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, color = color)
         aside?.let { Aside(it) }
     }
 }

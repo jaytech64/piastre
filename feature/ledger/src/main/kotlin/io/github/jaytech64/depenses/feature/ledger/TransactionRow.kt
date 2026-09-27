@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,13 +13,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.Formatters
@@ -27,23 +35,41 @@ import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import java.util.Locale
 
-/** One ledger row: who, when, how it was paid, and how much. */
-
+/**
+ * One ledger row: who, when, how it was paid, and how much.
+ *
+ * A selected row says so twice, with its tint and a check where its initials
+ * were, so being picked never rests on colour alone.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun TransactionRow(
     transaction: Transaction,
     locale: Locale,
+    selection: RowSelection,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
+    val selected = selection == RowSelection.SELECTED
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+            .combinedClickable(
+                onClickLabel = null,
+                onLongClickLabel = stringResource(R.string.ledger_select),
+                onLongClick = onLongClick,
+                onClick = onClick,
+            ).then(if (selection == RowSelection.NONE) Modifier else Modifier.semantics { this.selected = selected })
             .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MerchantInitials(if (transaction.kind == TransactionKind.TRANSFER) ARROW else transaction.displayMerchant)
+        if (selected) {
+            SelectedMark()
+        } else {
+            MerchantInitials(if (transaction.kind == TransactionKind.TRANSFER) ARROW else transaction.displayMerchant)
+        }
 
         Column(Modifier.weight(1f)) {
             Text(
@@ -162,6 +188,18 @@ private fun MerchantInitials(merchant: String?) {
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
         }
+    }
+}
+
+@Composable
+private fun SelectedMark() {
+    Surface(Modifier.size(36.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
+        Icon(
+            Icons.Default.Check,
+            contentDescription = null,
+            Modifier.padding(8.dp),
+            tint = MaterialTheme.colorScheme.onPrimary,
+        )
     }
 }
 
