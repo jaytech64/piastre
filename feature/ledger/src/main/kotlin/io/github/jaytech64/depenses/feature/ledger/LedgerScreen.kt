@@ -212,7 +212,7 @@ private fun MonthHeader(
             BalanceRow(state, locale, onFiltersClick)
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-            MonthFigures(state.thisMonth, locale)
+            SummaryFigures(state.thisMonth, locale)
 
             // Shown only when there is something to say. Totals exclude unreviewed
             // purchases, so without this a low number would be a silent lie — and

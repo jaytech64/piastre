@@ -2,7 +2,7 @@
 
 - **Status:** Accepted — implemented.
 - **Decided:** 2026-09-23, while planning the ledger header (`.lavish/ledger-header-income-and-spending.html`).
-- **Touches:** `:feature:ledger` (`LedgerViewModel`, `MonthFigures`).
+- **Touches:** `:feature:ledger` (`LedgerViewModel`, `SummaryFigures`).
 
 ## Context
 
@@ -27,7 +27,7 @@ Rejected: counting by kind and letting the figures not add up.
 ## Consequences
 
 **The figures always add up to the balance.**
-`MonthSummary.balance` is derived as income − expenses + transfers rather than summed on its own, so the headline cannot disagree with the figures under it.
+`BalanceSummary.balance` is derived as income − expenses + transfers rather than summed on its own, so the headline cannot disagree with the figures under it.
 
 **The whole ledger's *Dépenses* is a report's *dépensé*.**
 Both count confirmed expenses in the calendar month ([ADR-0007](0007-a-report-counts-spending-not-the-balance.md)), so the two screens now agree on the one number they share.
@@ -41,7 +41,7 @@ With the capture banner showing, an account filter on and the font at 200 %, the
 
 ## Where this lives in the code
 
-- `MonthSummary` and `summaryOf` in `feature/ledger/src/main/kotlin/.../LedgerViewModel.kt` — the arithmetic.
-- `MonthFigures` in `feature/ledger/src/main/kotlin/.../MonthFigures.kt` — which figures show, and their signs.
+- `BalanceSummary` and `summaryOf` in `feature/ledger/src/main/kotlin/.../LedgerViewModel.kt` — the arithmetic.
+- `SummaryFigures` in `feature/ledger/src/main/kotlin/.../SummaryFigures.kt` — which figures show, and their signs.
 - `BalanceFigures` in `core/designsystem/src/main/kotlin/.../BalanceFigures.kt` — how they fall back at large font sizes, shared with the reports header since [ADR-0009](0009-a-report-says-what-its-balance-is-made-of.md).
 - `` `income and expenses are counted apart and add up to the balance` `` and `` `a card payment shows as a transfer on the card, not as income` `` in `LedgerViewModelTest`.

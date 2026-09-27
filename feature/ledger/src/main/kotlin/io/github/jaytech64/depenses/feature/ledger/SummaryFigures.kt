@@ -22,27 +22,31 @@ import java.util.Locale
  * many, as ADR-0002 asks of any total that leaves rows out.
  */
 @Composable
-internal fun MonthFigures(
-    month: MonthSummary,
+internal fun SummaryFigures(
+    summary: BalanceSummary,
     locale: Locale,
 ) {
     BalanceFigures(
         buildList {
-            add(BalanceFigure(stringResource(R.string.ledger_income), Formatters.money(month.income, locale)))
-            add(BalanceFigure(stringResource(R.string.ledger_expenses), Formatters.money(month.expenses, locale)))
-            if (month.transfers.minor != 0L) {
+            add(BalanceFigure(stringResource(R.string.ledger_income), Formatters.money(summary.income, locale)))
+            add(BalanceFigure(stringResource(R.string.ledger_expenses), Formatters.money(summary.expenses, locale)))
+            if (summary.transfers.minor != 0L) {
                 add(
                     BalanceFigure(
                         stringResource(R.string.ledger_transfers),
-                        Formatters.signedMoney(month.transfers, locale),
+                        Formatters.signedMoney(summary.transfers, locale),
                     ),
                 )
             }
         },
     )
-    if (month.otherCurrencyCount > 0) {
+    if (summary.otherCurrencyCount > 0) {
         Text(
-            pluralStringResource(R.plurals.ledger_other_currency, month.otherCurrencyCount, month.otherCurrencyCount),
+            pluralStringResource(
+                R.plurals.ledger_other_currency,
+                summary.otherCurrencyCount,
+                summary.otherCurrencyCount,
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
