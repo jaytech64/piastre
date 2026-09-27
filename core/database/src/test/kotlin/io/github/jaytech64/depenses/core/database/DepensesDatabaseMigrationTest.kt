@@ -300,6 +300,19 @@ class DepensesDatabaseMigrationTest {
         assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM account WHERE categoryId IS NOT NULL"))
     }
 
+    @Test
+    fun `migrating to schema 12 keeps the ledger and makes nothing recur`() {
+        helper.createDatabase(NAME, 11).use { database ->
+            database.insertTransaction()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 12, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(1, migrated.count("expense_transaction"))
+        assertEquals(0, migrated.count("recurring_transaction"))
+        assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE recurringId IS NOT NULL"))
+    }
+
     private fun SupportSQLiteDatabase.insertSchema7Transaction(
         sourceKey: String,
         paymentMethod: String?,

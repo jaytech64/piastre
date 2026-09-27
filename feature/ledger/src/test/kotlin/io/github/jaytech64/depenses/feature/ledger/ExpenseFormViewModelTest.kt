@@ -76,32 +76,36 @@ class ExpenseFormViewModelTest {
         viewModel = newViewModel()
     }
 
-    private fun newViewModel(editing: Long? = null) =
-        ExpenseFormViewModel(
-            savedStateHandle = SavedStateHandle(editing?.let { mapOf(EXPENSE_ID_ARG to it) } ?: emptyMap()),
-            transactions = repository,
-            editor =
-                TransactionEditor(
-                    database,
-                    database.transactionDao(),
-                    merchants,
-                    CategoryRepository(
-                        database.categoryDao(),
-                        database.merchantDao(),
-                        database.accountDao(),
-                    ),
-                    Clock.systemUTC(),
-                ),
-            merchants = merchants,
-            accounts = accounts,
-            categories =
+    private fun newViewModel(
+        editing: Long? = null,
+        clock: Clock = Clock.systemUTC(),
+    ) = ExpenseFormViewModel(
+        savedStateHandle = SavedStateHandle(editing?.let { mapOf(EXPENSE_ID_ARG to it) } ?: emptyMap()),
+        transactions = repository,
+        editor =
+            TransactionEditor(
+                database,
+                database.transactionDao(),
+                merchants,
                 CategoryRepository(
                     database.categoryDao(),
                     database.merchantDao(),
                     database.accountDao(),
                 ),
-            zoneId = Provider { ZONE },
-        )
+                Clock.systemUTC(),
+            ),
+        merchants = merchants,
+        accounts = accounts,
+        categories =
+            CategoryRepository(
+                database.categoryDao(),
+                database.merchantDao(),
+                database.accountDao(),
+            ),
+        recurring = database.recurringRepository(clock, ZONE),
+        clock = clock,
+        zoneId = Provider { ZONE },
+    )
 
     @After
     fun tearDown() {

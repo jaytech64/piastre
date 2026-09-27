@@ -9,9 +9,12 @@ import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.database.RawNotificationEventEntity
+import io.github.jaytech64.depenses.core.database.RecurringTransactionEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.ParseState
+import io.github.jaytech64.depenses.core.model.Rhythm
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -80,6 +83,7 @@ class DataErasureTest {
             assertTrue(database.merchantDao().allOnce().isEmpty())
             assertTrue("the names you gave your accounts are data about you", database.accountDao().allOnce().isEmpty())
             assertTrue("so are the categories you named", database.categoryDao().allOnce().isEmpty())
+            assertTrue("and what you pay every month", database.recurringTransactionDao().allOnce().isEmpty())
         }
 
     @Test
@@ -123,6 +127,7 @@ class DataErasureTest {
             ),
         )
         database.categoryDao().insert(CategoryEntity(name = "Épicerie", normalisedName = "EPICERIE"))
+        insertRent()
         database.accountDao().insert(
             AccountEntity(
                 name = "Débit Desrives",
@@ -162,6 +167,26 @@ class DataErasureTest {
             ),
         )
     }
+
+    private suspend fun insertRent() =
+        database.recurringTransactionDao().insert(
+            RecurringTransactionEntity(
+                uuid = "5d1b7e1c",
+                amountMinor = 145_000,
+                currency = "CAD",
+                kind = TransactionKind.EXPENSE,
+                merchantId = null,
+                merchantRaw = "Loyer",
+                accountId = null,
+                toAccountId = null,
+                categoryId = null,
+                note = null,
+                rhythm = Rhythm.MONTHLY,
+                firstEpochDay = 20_705,
+                lastEpochDay = null,
+                nextDueEpochDay = 20_735,
+            ),
+        )
 
     private companion object {
         val NOW: Instant = Instant.parse("2026-09-09T14:00:00Z")

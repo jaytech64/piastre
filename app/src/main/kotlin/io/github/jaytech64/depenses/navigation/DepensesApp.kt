@@ -37,6 +37,8 @@ import io.github.jaytech64.depenses.R
 import io.github.jaytech64.depenses.feature.ledger.EXPENSE_ID_ARG
 import io.github.jaytech64.depenses.feature.ledger.ExpenseFormScreen
 import io.github.jaytech64.depenses.feature.ledger.LedgerScreen
+import io.github.jaytech64.depenses.feature.ledger.RECURRING_ID_ARG
+import io.github.jaytech64.depenses.feature.ledger.RecurringListScreen
 import io.github.jaytech64.depenses.feature.reports.ReportsScreen
 import io.github.jaytech64.depenses.feature.review.ReviewScreen
 import io.github.jaytech64.depenses.feature.settings.CaptureHealthBanner
@@ -121,7 +123,18 @@ private fun MainShell() {
                 }
                 composable(Destination.REPORTS.route) { ReportsScreen() }
                 composable(Destination.REVIEW.route) { ReviewScreen() }
-                composable(Destination.SETTINGS.route) { SettingsScreen() }
+                composable(Destination.SETTINGS.route) {
+                    SettingsScreen(onOpenRecurring = { navController.navigate(RECURRING_LIST_ROUTE) })
+                }
+                composable(RECURRING_LIST_ROUTE) {
+                    RecurringListScreen(onOpen = { id -> navController.navigate(editRecurringRoute(id)) })
+                }
+                composable(
+                    EDIT_RECURRING_ROUTE,
+                    arguments = listOf(navArgument(RECURRING_ID_ARG) { type = NavType.LongType }),
+                ) {
+                    ExpenseFormScreen(onDone = { navController.popBackStack() })
+                }
             }
         }
     }
@@ -183,3 +196,9 @@ private const val ADD_EXPENSE_ROUTE = "ledger/add"
 private const val EDIT_EXPENSE_ROUTE = "ledger/edit/{$EXPENSE_ID_ARG}"
 
 private fun editExpenseRoute(id: Long) = "ledger/edit/$id"
+
+/** Reached from Settings and returning to it; a recurring transaction opens in the same form. */
+private const val RECURRING_LIST_ROUTE = "settings/recurring"
+private const val EDIT_RECURRING_ROUTE = "settings/recurring/{$RECURRING_ID_ARG}"
+
+private fun editRecurringRoute(id: Long) = "settings/recurring/$id"

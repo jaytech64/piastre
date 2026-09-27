@@ -118,6 +118,43 @@ object Formatters {
         locale: Locale = Locale.getDefault(),
     ): String = DAY_MONTH.withLocale(locale).format(date)
 
+    /** The day of the week, named: `Friday`, `vendredi`. */
+    fun weekday(
+        date: LocalDate,
+        locale: Locale = Locale.getDefault(),
+    ): String = WEEKDAY.withLocale(locale).format(date)
+
+    /**
+     * A day of the month as a date says it, for the sentence around it to place:
+     * `25th` and `1st` in English, `25` and `1er` in French, where only the first
+     * of the month takes an ordinal.
+     *
+     * Worked out by hand rather than by ICU's ordinal rules, which give French
+     * `25e` — right for a rank, wrong for a date.
+     */
+    fun dayOfMonth(
+        day: Int,
+        locale: Locale = Locale.getDefault(),
+    ): String =
+        when (locale.language) {
+            Locale.FRENCH.language -> if (day == 1) "1er" else day.toString()
+            else -> day.toString() + englishOrdinalSuffix(day)
+        }
+
+    /** `st`, `nd`, `rd` after a 1, 2 or 3, except from 10 to 19, which all take `th` like the rest. */
+    private fun englishOrdinalSuffix(day: Int): String =
+        if (day / TEN ==
+            1
+        ) {
+            ENGLISH_SUFFIXES.first()
+        } else {
+            ENGLISH_SUFFIXES.getOrElse(day % TEN) { ENGLISH_SUFFIXES.first() }
+        }
+
+    private val ENGLISH_SUFFIXES = listOf("th", "st", "nd", "rd")
+
+    private const val TEN = 10
+
     /**
      * The month a report is read over, named and dated.
      *
@@ -142,6 +179,8 @@ object Formatters {
     private val DAY_MONTH = DateTimeFormatter.ofPattern("d MMMM")
 
     private val MONTH_AND_YEAR = DateTimeFormatter.ofPattern("MMMM yyyy")
+
+    private val WEEKDAY = DateTimeFormatter.ofPattern("EEEE")
 
     /** The two bullets Wallet itself uses ahead of the last four digits. */
     fun cardMask(last4: String?): String? = last4?.let { "\u2022\u2022$it" }

@@ -290,6 +290,8 @@ class ExpenseFormCategoryTest {
                 merchants = MerchantRepository(database.merchantDao()),
                 accounts = accounts,
                 categories = categories,
+                recurring = database.recurringRepository(Clock.systemUTC(), ZONE),
+                clock = Clock.systemUTC(),
                 zoneId = Provider { ZONE },
             )
         backgroundScope.launch { viewModel.category.offer.collect {} }

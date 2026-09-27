@@ -97,4 +97,30 @@
         <item quantity="one">%d transaction in another currency is not counted.</item>
         <item quantity="other">%d transactions in another currency are not counted.</item>
     </plurals>
+<string name="form_repeats">Repeats</string>
+    <string name="repeat_never">Never</string>
+    <string name="repeat_weekly">Every week, on %s</string>
+    <string name="repeat_every_two_weeks">Every 2 weeks, on %s</string>
+    <string name="repeat_monthly">Every month, on the %s</string>
+    <string name="repeat_yearly">Every year, on %s</string>
+    <string name="repeat_ends">Ends</string>
+    <string name="repeat_ends_on">On %s</string>
+    <string name="repeat_next">Next: %s</string>
+    <plurals name="repeat_backfill">
+        <item quantity="one">This adds %1$d\u00A0transaction, on %2$s.</item>
+        <item quantity="other">This adds %1$d\u00A0transactions, from %2$s to %3$s.</item>
+    </plurals>
+    <plurals name="repeat_backfill_confirm">
+        <item quantity="one">Add it</item>
+        <item quantity="other">Add all %d</item>
+    </plurals>
+    <string name="recurring_list_title">Recurring transactions</string>
+    <string name="recurring_list_empty">Nothing repeats yet. Set Repeats when you add a transaction.</string>
+    <string name="recurring_list_next">next %s</string>
+    <string name="recurring_list_ends">ends %s</string>
+    <string name="recurring_edit_title">Recurring transaction</string>
+    <string name="recurring_stop">Stop repeating</string>
+    <string name="recurring_stop_title">Stop repeating %s?</string>
+    <string name="recurring_stop_body">What it already added stays in the ledger.</string>
+    <string name="ledger_recurring">recurring</string>
 </resources>

@@ -91,7 +91,7 @@ class TransactionEditor
         }
 
         /**
-         * A manual row simply takes the new name, or none.
+         * A typed or recurring row simply takes the new name, or none.
          *
          * A captured row keeps its raw string — it is what the bank actually said —
          * and the string is re-pointed at the name you typed, exactly as a
@@ -101,7 +101,7 @@ class TransactionEditor
          */
         private suspend fun ExpenseTransactionEntity.withMerchant(merchant: String?): ExpenseTransactionEntity =
             when (source) {
-                TransactionSource.MANUAL -> {
+                TransactionSource.MANUAL, TransactionSource.RECURRING -> {
                     copy(
                         merchantId = merchant?.let { merchants.assign(raw = it, displayName = it) },
                         merchantRaw = merchant,
@@ -114,8 +114,8 @@ class TransactionEditor
             }
 
         /**
-         * A captured row's account is what its notification said, so only a manual
-         * row takes a new one — but either may become a transfer, and then the
+         * A captured row's account is what its notification said, so only a typed
+         * or recurring row takes a new one — but either may become a transfer, and then the
          * destination is yours to name.
          *
          * The destination is cleared on anything that is not a transfer, so an
@@ -128,15 +128,16 @@ class TransactionEditor
             toAccountId: Long?,
         ): ExpenseTransactionEntity =
             copy(
-                accountId = if (source == TransactionSource.MANUAL) accountId else this.accountId,
+                accountId = if (source == TransactionSource.NOTIFICATION) this.accountId else accountId,
                 toAccountId = toAccountId.takeIf { kind == TransactionKind.TRANSFER },
             )
 
         /**
          * Takes a purchase out of the ledger.
          *
-         * A manual row is deleted: nothing else describes it, and nothing would
-         * bring it back. A captured row is dismissed instead, for the same reasons
+         * A typed or recurring row is deleted: nothing else describes it, and
+         * nothing would bring it back — a schedule has already moved past the day
+         * of every row it wrote. A captured row is dismissed instead, for the same reasons
          * [ReviewRepository.dismiss] keeps one — its notification is still evidence
          * — and one more: with the row gone, the next Wallet re-post would find no
          * purchase under its source key and put it straight back.
@@ -144,7 +145,7 @@ class TransactionEditor
         suspend fun remove(id: Long) {
             val existing = transactions.byId(id) ?: return
             when (existing.source) {
-                TransactionSource.MANUAL -> {
+                TransactionSource.MANUAL, TransactionSource.RECURRING -> {
                     transactions.deleteById(id)
                 }
 

@@ -7,6 +7,7 @@ import android.service.notification.StatusBarNotification
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.jaytech64.depenses.core.data.CaptureCatchUp
 import io.github.jaytech64.depenses.core.data.NotificationCapture
+import io.github.jaytech64.depenses.core.data.RecurringPosting
 import io.github.jaytech64.depenses.core.data.SettingsRepository
 import io.github.jaytech64.depenses.parsing.ParserRegistry
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +38,9 @@ class DepensesListenerService : NotificationListenerService() {
     lateinit var catchUp: CaptureCatchUp
 
     @Inject
+    lateinit var recurring: RecurringPosting
+
+    @Inject
     lateinit var registry: ParserRegistry
 
     @Inject
@@ -58,12 +62,15 @@ class DepensesListenerService : NotificationListenerService() {
      * silently goes missing.
      *
      * A rebind is also the moment a row can be left recorded but unparsed, so the
-     * catch-up pass is scheduled from the same place.
+     * catch-up pass is scheduled from the same place — and, since it can come
+     * without the process restarting, so is writing any recurring transaction
+     * that has fallen due.
      */
     override fun onListenerConnected() {
         super.onListenerConnected()
         noteAlive()
         catchUp.schedule()
+        recurring.schedule()
         record(activeNotifications?.asList().orEmpty())
     }
 

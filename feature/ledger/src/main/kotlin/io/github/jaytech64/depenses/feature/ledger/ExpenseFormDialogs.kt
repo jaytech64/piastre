@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.AccountDialog
 import io.github.jaytech64.depenses.core.designsystem.CategoryDialog
+import io.github.jaytech64.depenses.core.designsystem.Formatters
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -44,15 +45,8 @@ internal fun FormDialog(
     onClose: () -> Unit,
 ) {
     when (picking) {
-        Picking.DATE -> {
-            DatePickerSheet(
-                date = state.date,
-                onPicked = {
-                    viewModel.onDateChange(it)
-                    onClose()
-                },
-                onCancel = onClose,
-            )
+        Picking.DATE, Picking.LAST_DATE -> {
+            DateDialog(picking, state, viewModel, onClose)
         }
 
         Picking.TIME -> {
@@ -68,6 +62,7 @@ internal fun FormDialog(
 
         Picking.DELETE -> {
             ConfirmDeleteDialog(
+                stopping = state.stoppingName(),
                 onConfirm = {
                     viewModel.delete()
                     onClose()
@@ -105,8 +100,41 @@ internal fun FormDialog(
     }
 }
 
+/** The calendar for the transaction's own day, or for the last day it repeats on, which can also be none. */
+@Composable
+private fun DateDialog(
+    picking: Picking,
+    state: ExpenseFormUiState,
+    viewModel: ExpenseFormViewModel,
+    onClose: () -> Unit,
+) {
+    if (picking == Picking.DATE) {
+        DatePickerSheet(
+            date = state.date,
+            onPicked = {
+                viewModel.onDateChange(it)
+                onClose()
+            },
+            onCancel = onClose,
+        )
+        return
+    }
+    DatePickerSheet(
+        date = state.lastDate ?: state.recurrence?.nextAfter(state.date) ?: state.date,
+        onPicked = {
+            viewModel.repeat.onLastDateChange(it)
+            onClose()
+        },
+        onCancel = onClose,
+        onNone = {
+            viewModel.repeat.onLastDateChange(null)
+            onClose()
+        },
+    )
+}
+
 /** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
-internal enum class Picking { NOTHING, DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION, ADD_CATEGORY }
+internal enum class Picking { NOTHING, DATE, LAST_DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION, ADD_CATEGORY }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,6 +142,7 @@ private fun DatePickerSheet(
     date: LocalDate,
     onPicked: (LocalDate) -> Unit,
     onCancel: () -> Unit,
+    onNone: (() -> Unit)? = null,
 ) {
     // The picker speaks UTC millis; the date is held as a plain LocalDate, so the
     // conversion is pinned to UTC at both ends rather than to a zone that would
@@ -131,7 +160,11 @@ private fun DatePickerSheet(
                 Text(stringResource(R.string.manual_save))
             }
         },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
+        dismissButton = {
+            // An end date can be taken away again, which the calendar alone cannot say.
+            onNone?.let { TextButton(onClick = it) { Text(stringResource(R.string.repeat_never)) } }
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
+        },
     ) {
         DatePicker(state = pickerState)
     }
@@ -182,23 +215,53 @@ private fun TimePickerDisplayMode.toggled(): TimePickerDisplayMode =
 
 @Composable
 private fun ConfirmDeleteDialog(
+    stopping: String?,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text(stringResource(R.string.edit_delete_title)) },
-        text = { Text(stringResource(R.string.edit_delete_body)) },
+        title = {
+            Text(
+                stopping?.let { stringResource(R.string.recurring_stop_title, it) }
+                    ?: stringResource(R.string.edit_delete_title),
+            )
+        },
+        text = {
+            Text(
+                stringResource(
+                    if (stopping !=
+                        null
+                    ) {
+                        R.string.recurring_stop_body
+                    } else {
+                        R.string.edit_delete_body
+                    },
+                ),
+            )
+        },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) {
-                Text(stringResource(R.string.edit_delete))
+                Text(stringResource(if (stopping != null) R.string.recurring_stop else R.string.edit_delete))
             }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
     )
+}
+
+/**
+ * What a recurring transaction is called when asking whether to stop it: its
+ * merchant, or — for a transfer, which has none — its amount. Null on anything
+ * that is not a recurring transaction.
+ */
+@Composable
+private fun ExpenseFormUiState.stoppingName(): String? {
+    if (!isSchedule) return null
+    val locale = LocalConfiguration.current.locales[0]
+    return merchantText.ifBlank { amount?.let { Formatters.money(it, locale) }.orEmpty() }
 }
 
 private fun LocalDate.toUtcMillis(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()

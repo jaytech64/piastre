@@ -57,11 +57,15 @@ internal fun ExportDocument.check() {
     if (categoryIds.size != categories.size) inconsistent("two categories share an id")
     accounts.forEach { it.checkCodes() }
     checkCategoryReferences(categoryIds)
+    val recurringIds = checkRecurring(accountIds, merchantIds)
     aliases.forEach { it.checkCodes(merchantIds) }
     val identities = HashSet<Pair<String, String>>()
     transactions.forEach { transaction ->
         transaction.checkCodes()
         transaction.checkReferences(accountIds, merchantIds)
+        if (transaction.recurringId != null && transaction.recurringId !in recurringIds) {
+            inconsistent("transaction ${transaction.sourceKey} belongs to a recurring transaction not in the file")
+        }
         if (!identities.add(transaction.sourcePackage to transaction.sourceKey)) {
             inconsistent("transaction ${transaction.sourceKey} appears twice")
         }
@@ -73,7 +77,8 @@ private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
     val named =
         transactions.map { it.categoryId to "transaction ${it.sourceKey}" } +
             merchants.map { it.categoryId to "merchant ${it.id}" } +
-            accounts.map { it.categoryId to "account ${it.id}" }
+            accounts.map { it.categoryId to "account ${it.id}" } +
+            recurring.map { it.categoryId to "recurring transaction ${it.id}" }
     named.forEach { (id, owner) ->
         if (id != null && id !in categoryIds) inconsistent("$owner has a category not in the file")
     }
@@ -129,11 +134,11 @@ private fun isZone(id: String): Boolean =
         false
     }
 
-private fun <E : Enum<E>> List<E>.names(): Set<String> = mapTo(HashSet()) { it.name }
+internal fun <E : Enum<E>> List<E>.names(): Set<String> = mapTo(HashSet()) { it.name }
 
-private fun inconsistent(detail: String): Nothing = refuse(ImportProblem.Inconsistent(detail))
+internal fun inconsistent(detail: String): Nothing = refuse(ImportProblem.Inconsistent(detail))
 
 private val READER = Json { ignoreUnknownKeys = true }
 
 private const val BYTE_ORDER_MARK = "\uFEFF"
-private const val CURRENCY_CODE_LENGTH = 3
+internal const val CURRENCY_CODE_LENGTH = 3

@@ -166,6 +166,14 @@ interface TransactionDao {
     @Insert
     suspend fun insert(transaction: ExpenseTransactionEntity): Long
 
+    /**
+     * Returns [RawNotificationEventDao.INSERT_IGNORED] when a row with the same
+     * source key is already there, which for a recurring row means that day has
+     * already been written.
+     */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertOrIgnore(transaction: ExpenseTransactionEntity): Long
+
     @Update
     suspend fun update(transaction: ExpenseTransactionEntity)
 
@@ -539,13 +547,16 @@ interface AccountDao {
     )
 
     /**
-     * Returns 1 when the account was removed and 0 when a transaction still uses
-     * it, so nothing is ever left pointing at an account that is gone.
+     * Returns 1 when the account was removed and 0 when a transaction or a
+     * recurring transaction still uses it, so nothing is ever left pointing at an
+     * account that is gone.
      */
     @Query(
         """
         DELETE FROM account WHERE id = :id AND NOT EXISTS (
             SELECT 1 FROM expense_transaction WHERE accountId = :id OR toAccountId = :id
+        ) AND NOT EXISTS (
+            SELECT 1 FROM recurring_transaction WHERE accountId = :id OR toAccountId = :id
         )
         """,
     )
@@ -688,14 +699,16 @@ interface CategoryDao {
 
     /**
      * Removes a category and every trace of it: the transactions that carried it
-     * are left with none, and merchants and accounts stop giving it. A category
-     * moves no balance, so this loses a label and never an amount.
+     * are left with none, and merchants, accounts and recurring transactions stop
+     * giving it. A category moves no balance, so this loses a label and never an
+     * amount.
      */
     @Transaction
     suspend fun delete(id: Long) {
         clearFromTransactions(id)
         clearFromMerchants(id)
         clearFromAccounts(id)
+        clearFromRecurring(id)
         deleteRow(id)
     }
 
@@ -708,9 +721,103 @@ interface CategoryDao {
     @Query("UPDATE account SET categoryId = NULL WHERE categoryId = :id")
     suspend fun clearFromAccounts(id: Long)
 
+    @Query("UPDATE recurring_transaction SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromRecurring(id: Long)
+
     @Query("DELETE FROM category WHERE id = :id")
     suspend fun deleteRow(id: Long)
 }
+
+@Dao
+interface RecurringTransactionDao {
+    @Insert
+    suspend fun insert(recurring: RecurringTransactionEntity): Long
+
+    /** For an import: a schedule whose [RecurringTransactionEntity.uuid] is already here is left alone. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertOrIgnore(recurring: RecurringTransactionEntity): Long
+
+    @Update
+    suspend fun update(recurring: RecurringTransactionEntity)
+
+    @Query("SELECT * FROM recurring_transaction WHERE id = :id")
+    suspend fun byId(id: Long): RecurringTransactionEntity?
+
+    @Query("SELECT * FROM recurring_transaction WHERE uuid = :uuid")
+    suspend fun byUuid(uuid: String): RecurringTransactionEntity?
+
+    /** Every schedule, the soonest next day first, and those that have ended last. */
+    @Query(
+        """
+        SELECT r.*, m.displayName AS merchantName, a.name AS accountName, a.type AS accountType,
+               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName
+        FROM recurring_transaction r
+        LEFT JOIN merchant m ON m.id = r.merchantId
+        LEFT JOIN account a ON a.id = r.accountId
+        LEFT JOIN account d ON d.id = r.toAccountId
+        LEFT JOIN category c ON c.id = r.categoryId
+        ORDER BY r.nextDueEpochDay IS NULL, r.nextDueEpochDay, r.id
+        """,
+    )
+    fun allWithNames(): Flow<List<RecurringWithNames>>
+
+    @Query(
+        """
+        SELECT r.*, m.displayName AS merchantName, a.name AS accountName, a.type AS accountType,
+               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName
+        FROM recurring_transaction r
+        LEFT JOIN merchant m ON m.id = r.merchantId
+        LEFT JOIN account a ON a.id = r.accountId
+        LEFT JOIN account d ON d.id = r.toAccountId
+        LEFT JOIN category c ON c.id = r.categoryId
+        WHERE r.id = :id
+        """,
+    )
+    suspend fun withNamesById(id: Long): RecurringWithNames?
+
+    @Query("SELECT * FROM recurring_transaction ORDER BY id")
+    suspend fun allOnce(): List<RecurringTransactionEntity>
+
+    /** The schedules with a day that has come by [epochDay]. */
+    @Query("SELECT * FROM recurring_transaction WHERE nextDueEpochDay <= :epochDay ORDER BY id")
+    suspend fun dueBy(epochDay: Int): List<RecurringTransactionEntity>
+
+    @Query("UPDATE recurring_transaction SET nextDueEpochDay = :nextDueEpochDay WHERE id = :id")
+    suspend fun moveNextDue(
+        id: Long,
+        nextDueEpochDay: Int?,
+    )
+
+    @Query("SELECT COUNT(*) FROM recurring_transaction WHERE nextDueEpochDay IS NOT NULL")
+    fun activeCount(): Flow<Int>
+
+    /**
+     * Ends a schedule. The rows it wrote stay in the ledger, as the history of
+     * what was paid, and stop naming it.
+     */
+    @Transaction
+    suspend fun stop(id: Long) {
+        releaseTransactions(id)
+        deleteRow(id)
+    }
+
+    @Query("UPDATE expense_transaction SET recurringId = NULL WHERE recurringId = :id")
+    suspend fun releaseTransactions(id: Long)
+
+    @Query("DELETE FROM recurring_transaction WHERE id = :id")
+    suspend fun deleteRow(id: Long)
+}
+
+/** A schedule with the names of what it points at, for the list of them. */
+data class RecurringWithNames(
+    @Embedded val recurring: RecurringTransactionEntity,
+    val merchantName: String?,
+    val accountName: String?,
+    val accountType: AccountType?,
+    val toAccountName: String?,
+    val toAccountType: AccountType?,
+    val categoryName: String?,
+)
 
 /** A category with what uses it. */
 data class CategoryWithCounts(

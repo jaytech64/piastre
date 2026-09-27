@@ -6,8 +6,12 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-/** Where a transaction came from. Manual entry exists because Wallet is not the only way to pay. */
-enum class TransactionSource { NOTIFICATION, MANUAL }
+/**
+ * Where a transaction came from. Manual entry exists because Wallet is not the
+ * only way to pay; a recurring one was written by a schedule you set up, on the
+ * day it fell due.
+ */
+enum class TransactionSource { NOTIFICATION, MANUAL, RECURRING }
 
 /**
  * NEEDS_REVIEW is not an error state: it is the parser declining to guess, which
@@ -78,6 +82,8 @@ data class Transaction(
     /** Null until you give it one. */
     val categoryId: Long? = null,
     val categoryName: String? = null,
+    /** The schedule this belongs to while it lasts, or null. See [RecurringTransaction]. */
+    val recurringId: Long? = null,
 ) {
     /**
      * What to put on screen. The canonical merchant if the raw string resolved to

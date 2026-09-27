@@ -16,6 +16,7 @@ import io.github.jaytech64.depenses.core.data.ImportProblem
 import io.github.jaytech64.depenses.core.data.ImportReader
 import io.github.jaytech64.depenses.core.data.ImportReading
 import io.github.jaytech64.depenses.core.data.RawEventRepository
+import io.github.jaytech64.depenses.core.data.RecurringRepository
 import io.github.jaytech64.depenses.core.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,6 +30,8 @@ import javax.inject.Inject
 data class SettingsUiState(
     val captureEnabled: Boolean = true,
     val rawEventCount: Int = 0,
+    /** Recurring transactions with a day still to come. */
+    val recurringCount: Int = 0,
     val loading: Boolean = true,
 )
 
@@ -65,10 +68,16 @@ class SettingsViewModel
         private val imports: ImportReader,
         private val erasure: DataErasure,
         rawEvents: RawEventRepository,
+        recurring: RecurringRepository,
     ) : ViewModel() {
         val uiState: StateFlow<SettingsUiState> =
-            combine(settings.captureEnabled, rawEvents.count()) { enabled, count ->
-                SettingsUiState(captureEnabled = enabled, rawEventCount = count, loading = false)
+            combine(settings.captureEnabled, rawEvents.count(), recurring.activeCount()) { enabled, count, active ->
+                SettingsUiState(
+                    captureEnabled = enabled,
+                    rawEventCount = count,
+                    recurringCount = active,
+                    loading = false,
+                )
             }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),

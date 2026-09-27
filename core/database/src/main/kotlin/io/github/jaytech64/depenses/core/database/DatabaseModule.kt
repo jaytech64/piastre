@@ -56,4 +56,8 @@ object DatabaseModule {
 
     @Provides
     fun categoryDao(database: DepensesDatabase): CategoryDao = database.categoryDao()
+
+    @Provides
+    fun recurringTransactionDao(database: DepensesDatabase): RecurringTransactionDao =
+        database.recurringTransactionDao()
 }

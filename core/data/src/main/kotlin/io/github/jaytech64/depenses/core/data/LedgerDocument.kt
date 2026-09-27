@@ -11,8 +11,10 @@ import kotlinx.serialization.Serializable
  * Version 2 dropped `paymentMethod`, because cash became an account, and renamed
  * the card list to accounts: a version-1 reader must refuse the file rather than
  * guess at what it no longer says. Fields added since — an account's opening
- * balance, its place in your order, and categories — left it at 2, and default to
- * null or empty for a file written before them.
+ * balance, its place in your order, categories, and recurring transactions — left
+ * it at 2, and default to null or empty for a file written before them. A reader
+ * from before recurring transactions refuses a file holding a row one wrote, on
+ * its source, rather than guessing what that source means.
  */
 internal const val LEDGER_FORMAT_VERSION = 2
 
@@ -33,6 +35,36 @@ internal data class ExportDocument(
     val accounts: List<ExportedAccount>,
     val transactions: List<ExportedTransaction>,
     val categories: List<ExportedCategory> = emptyList(),
+    val recurring: List<ExportedRecurring> = emptyList(),
+)
+
+/**
+ * A recurring transaction. It arrived within version 2, so a file written before
+ * it has none.
+ *
+ * [uuid] is its identity on any phone: an import that finds it already there adds
+ * nothing. [nextDue] travels with it, so a phone that imports it goes on from the
+ * day the exporting one had reached rather than writing again the days whose rows
+ * are in the file. Days are ISO dates, `2026-09-25`, so the file reads as it means.
+ */
+@Serializable
+internal data class ExportedRecurring(
+    val id: Long,
+    val uuid: String,
+    val amountMinor: Long,
+    val currency: String,
+    val kind: String,
+    val merchantId: Long?,
+    val merchantName: String?,
+    val merchantRaw: String?,
+    val accountId: Long?,
+    val toAccountId: Long?,
+    val categoryId: Long?,
+    val note: String?,
+    val rhythm: String,
+    val firstDate: String,
+    val lastDate: String?,
+    val nextDue: String?,
 )
 
 /** A category you named. It arrived within version 2, so a file written before it has none. */
@@ -111,4 +143,6 @@ internal data class ExportedTransaction(
     val toAccountName: String?,
     val categoryId: Long? = null,
     val categoryName: String? = null,
+    /** The recurring transaction in the file this belongs to, when it does. */
+    val recurringId: Long? = null,
 )

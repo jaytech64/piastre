@@ -199,6 +199,11 @@ The ledger header's figures always add up to the balance above them: income and 
 A merchant's category — or, for a transfer, the category of the account it goes into — is copied into each transaction as it is recorded; never `COALESCE` it in at read time, or changing a merchant silently rewrites history ([ADR-0010](docs/adr/0010-a-merchants-category-is-written-onto-each-purchase.md)).
 Categorising rows in bulk must not stamp `reviewedAtUtcMillis`, which would lock a parser fix out of them (`CategoryDao.categoriseAtMerchant`).
 
+### A recurring transaction is written, never projected
+
+A day a schedule falls on becomes a row once it has come, and nothing counts it before; only a typed transaction can repeat, or a captured one would be counted twice ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md), `RecurringRepository.repeat`).
+Due days are caught up at process start, midnight and listener bind (`RecurringPosting`); never reach for WorkManager or an alarm to fire them, which would bring in a permission this app refuses.
+
 ### A parser fix repairs history
 
 Bump `NotificationParser.version` on **any** behaviour change.
