@@ -75,7 +75,7 @@ fun LedgerScreen(
             )
 
             when {
-                state.isEmpty -> EmptyLedger(state.selectedAccount)
+                state.isEmpty -> EmptyLedger(state.filter)
                 today != null -> DayList(state.days, today, onTransactionClick)
             }
         }
@@ -104,7 +104,7 @@ private fun MonthHeader(
     onAccountSelected: (Long?) -> Unit,
     onReviewClick: () -> Unit,
 ) {
-    val selected = state.selectedAccount
+    val selected = state.filter.account
     val locale = currentLocale()
 
     Card(
@@ -171,7 +171,7 @@ private fun BalanceRow(
     locale: Locale,
     onAccountSelected: (Long?) -> Unit,
 ) {
-    val selected = state.selectedAccount
+    val selected = state.filter.account
 
     Row(verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -319,7 +319,7 @@ private fun DayHeader(
  * answers a question they did not ask.
  */
 @Composable
-private fun EmptyLedger(selected: Account?) {
+private fun EmptyLedger(filter: LedgerFilter) {
     Column(
         Modifier
             .fillMaxSize()
@@ -327,7 +327,7 @@ private fun EmptyLedger(selected: Account?) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (selected != null) {
+        if (filter.isActive) {
             Text(stringResource(R.string.ledger_empty_account), style = MaterialTheme.typography.titleMedium)
             return@Column
         }

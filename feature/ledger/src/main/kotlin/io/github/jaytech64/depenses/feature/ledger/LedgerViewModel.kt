@@ -48,6 +48,24 @@ data class MonthSummary(
     val balance: Money get() = income + -expenses + transfers
 }
 
+/**
+ * What the ledger is narrowed to. An empty slot does not narrow it, and a row
+ * has to match every slot that is set.
+ */
+data class LedgerFilter(
+    val account: Account? = null,
+) {
+    val isActive: Boolean get() = account != null
+
+    /**
+     * Both ends of a transfer match an account: money that reached an account is
+     * money on that account, and a screen that showed only the leaving end would
+     * lose half of every transfer.
+     */
+    fun admits(transaction: Transaction): Boolean =
+        account == null || transaction.accountId == account.id || transaction.toAccountId == account.id
+}
+
 data class LedgerUiState(
     val days: List<LedgerDay> = emptyList(),
     /** Null until the clock has been read once; never a sentinel date. */
@@ -56,8 +74,7 @@ data class LedgerUiState(
     val needsReview: Int = 0,
     /** Every account, including ones nothing has ever been spent from. */
     val accounts: List<Account> = emptyList(),
-    /** The account the screen is narrowed to, null while it shows all of them. */
-    val selectedAccount: Account? = null,
+    val filter: LedgerFilter = LedgerFilter(),
     val loading: Boolean = true,
 ) {
     val isEmpty: Boolean get() = days.isEmpty() && !loading
@@ -98,15 +115,15 @@ class LedgerViewModel
                 // An account removed in Settings leaves a filter nothing answers for.
                 // The screen goes back to showing everything, rather than an empty
                 // list under the name of an account that is gone.
-                val selected = allAccounts.firstOrNull { it.id == selectedId }
-                val days = transactions.on(selected).groupByLocalDay(selected)
+                val filter = LedgerFilter(account = allAccounts.firstOrNull { it.id == selectedId })
+                val days = transactions.filter(filter::admits).groupByLocalDay(filter)
                 LedgerUiState(
                     days = days,
                     today = today,
-                    thisMonth = days.summaryOf(YearMonth.from(today), selected),
+                    thisMonth = days.summaryOf(YearMonth.from(today), filter),
                     needsReview = needsReview,
                     accounts = allAccounts,
-                    selectedAccount = selected,
+                    filter = filter,
                     loading = false,
                 )
             }.stateIn(
@@ -121,25 +138,17 @@ class LedgerViewModel
         }
 
         /**
-         * Both ends of a transfer match: money that reached an account is money on
-         * that account, and a screen that showed only the leaving end would lose
-         * half of every transfer.
-         */
-        private fun List<Transaction>.on(account: Account?): List<Transaction> =
-            if (account == null) this else filter { it.accountId == account.id || it.toAccountId == account.id }
-
-        /**
          * Grouped in Kotlin rather than SQL because the rows are already sorted and
          * already in memory — this is the one screen that wants every transaction,
          * so a second query would re-read what the first one just returned. The
          * filter rides along for the same reason.
          */
-        private fun List<Transaction>.groupByLocalDay(account: Account?): List<LedgerDay> =
+        private fun List<Transaction>.groupByLocalDay(filter: LedgerFilter): List<LedgerDay> =
             groupBy { it.localDate }
                 .map { (date, forDay) ->
                     LedgerDay(
                         date = date,
-                        total = forDay.map { it.balanceMovedOn(account) }.reduce(Money::plus),
+                        total = forDay.map { it.balanceMovedOn(filter) }.reduce(Money::plus),
                         transactions = forDay,
                     )
                 }.sortedByDescending { it.date }
@@ -154,7 +163,7 @@ class LedgerViewModel
          */
         private fun List<LedgerDay>.summaryOf(
             month: YearMonth,
-            account: Account?,
+            filter: LedgerFilter,
         ): MonthSummary {
             val rows = filter { YearMonth.from(it.date) == month }.flatMap { it.transactions }
             val zero = Money(0, rows.firstOrNull()?.amount?.currency ?: Money.CAD)
@@ -167,7 +176,7 @@ class LedgerViewModel
             return MonthSummary(
                 income = sumOf(TransactionKind.INCOME) { it.amount },
                 expenses = sumOf(TransactionKind.EXPENSE) { it.amount },
-                transfers = sumOf(TransactionKind.TRANSFER) { it.balanceMovedOn(account) },
+                transfers = sumOf(TransactionKind.TRANSFER) { it.balanceMovedOn(filter) },
             )
         }
 
@@ -178,9 +187,9 @@ class LedgerViewModel
     }
 
 /**
- * What the transaction moves, read from where [account] stands.
+ * What the transaction moves, read from where [filter] stands.
  *
- * With no account it is [Transaction.signedAmount], where a transfer is worth
+ * With no account filter it is [Transaction.signedAmount], where a transfer is worth
  * zero: it moves your own money between your own accounts, so the ledger as a
  * whole is unchanged. One account is not the whole ledger, though — money that
  * left for another account of yours has still left this one — so under a filter
@@ -189,9 +198,11 @@ class LedgerViewModel
  * and that balance is what the filter menu offered to pick from; the two would
  * otherwise disagree about the same transfer, one tap apart.
  */
-private fun Transaction.balanceMovedOn(account: Account?): Money =
-    when {
+private fun Transaction.balanceMovedOn(filter: LedgerFilter): Money {
+    val account = filter.account
+    return when {
         account == null || kind != TransactionKind.TRANSFER -> signedAmount
         accountId == account.id -> -amount
         else -> amount
     }
+}
