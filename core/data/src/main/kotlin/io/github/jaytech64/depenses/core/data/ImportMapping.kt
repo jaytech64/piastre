@@ -5,10 +5,12 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantAliasEntity
+import io.github.jaytech64.depenses.core.database.RecurringTransactionEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.MatchType
+import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
@@ -69,6 +71,7 @@ internal fun ExportedTransaction.toEntity(
     accountIds: Map<Long, Long>,
     merchantIds: Map<Long, Long?>,
     categoryIds: Map<Long, Long?>,
+    recurringIds: Map<Long, Long>,
 ) = ExpenseTransactionEntity(
     rawEventId = null,
     amountMinor = amountMinor,
@@ -94,4 +97,28 @@ internal fun ExportedTransaction.toEntity(
     kind = TransactionKind.valueOf(kind),
     accountId = accountId?.let(accountIds::getValue),
     toAccountId = toAccountId?.let(accountIds::getValue),
+    recurringId = recurringId?.let(recurringIds::getValue),
 )
+
+internal fun ExportedRecurring.toEntity(
+    accountIds: Map<Long, Long>,
+    merchantIds: Map<Long, Long?>,
+    categoryIds: Map<Long, Long?>,
+) = RecurringTransactionEntity(
+    uuid = uuid,
+    amountMinor = amountMinor,
+    currency = currency,
+    kind = TransactionKind.valueOf(kind),
+    merchantId = merchantId?.let { merchantIds[it] },
+    merchantRaw = merchantRaw,
+    accountId = accountId?.let(accountIds::getValue),
+    toAccountId = toAccountId?.let(accountIds::getValue),
+    categoryId = categoryId?.let { categoryIds[it] },
+    note = note,
+    rhythm = Rhythm.valueOf(rhythm),
+    firstEpochDay = epochDay(firstDate),
+    lastEpochDay = lastDate?.let(::epochDay),
+    nextDueEpochDay = nextDue?.let(::epochDay),
+)
+
+private fun epochDay(isoDate: String): Int = LocalDate.parse(isoDate).toEpochDay().toInt()

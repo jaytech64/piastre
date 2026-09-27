@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.RawNotificationEventDao
+import io.github.jaytech64.depenses.core.database.RecurringTransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.AccountOrigin
@@ -36,6 +37,8 @@ class LedgerImport
         private val merchantRows: MerchantDao,
         private val accounts: AccountDao,
         private val categories: CategoryRepository,
+        private val recurring: RecurringTransactionDao,
+        private val posting: RecurringPosting,
     ) {
         /** Reads and checks [input], and says what importing it would do, without writing anything. */
         suspend fun read(input: InputStream): ImportReading {
@@ -54,17 +57,25 @@ class LedgerImport
          * The plan is made again inside the transaction rather than trusted from the
          * reading: the ledger can change while the summary is on screen, and a
          * purchase captured in the meantime must count as already here.
+         *
+         * A recurring transaction the file brings may have days that came since it
+         * was written, so they are caught up straight away rather than at the next
+         * midnight.
          */
-        suspend fun apply(reading: ImportReading.Ready): ImportOutcome =
-            try {
-                database.inTransaction {
-                    val plan = plan(reading.document)
-                    write(reading.document, plan)
-                    ImportOutcome.Imported(plan.summary)
+        suspend fun apply(reading: ImportReading.Ready): ImportOutcome {
+            val outcome =
+                try {
+                    database.inTransaction {
+                        val plan = plan(reading.document)
+                        write(reading.document, plan)
+                        ImportOutcome.Imported(plan.summary)
+                    }
+                } catch (refused: ImportRefused) {
+                    ImportOutcome.Refused(refused.problem)
                 }
-            } catch (refused: ImportRefused) {
-                ImportOutcome.Refused(refused.problem)
-            }
+            if (outcome is ImportOutcome.Imported) posting.catchUp()
+            return outcome
+        }
 
         private suspend fun plan(document: ExportDocument): ImportPlan {
             document.check()
@@ -151,8 +162,26 @@ class LedgerImport
             }
             val categoryIds = document.categories.associate { it.id to categories.named(it.name) }
             giveDefaults(document, accountIds, merchantIds, categoryIds)
-            plan.newTransactions.forEach { transactions.insert(it.toEntity(accountIds, merchantIds, categoryIds)) }
+            val recurringIds =
+                document.recurring.associate { it.id to recurringIdFor(it, accountIds, merchantIds, categoryIds) }
+            plan.newTransactions.forEach {
+                transactions.insert(it.toEntity(accountIds, merchantIds, categoryIds, recurringIds))
+            }
         }
+
+        /**
+         * A recurring transaction already here, found by its identity, is left
+         * exactly as it is — what you changed since the file was written wins — and
+         * the file's rows join it. One not here is added.
+         */
+        private suspend fun recurringIdFor(
+            file: ExportedRecurring,
+            accountIds: Map<Long, Long>,
+            merchantIds: Map<Long, Long?>,
+            categoryIds: Map<Long, Long?>,
+        ): Long =
+            recurring.byUuid(file.uuid)?.id
+                ?: recurring.insert(file.toEntity(accountIds, merchantIds, categoryIds))
 
         /**
          * The category a merchant or account in the file gives what arrives there,

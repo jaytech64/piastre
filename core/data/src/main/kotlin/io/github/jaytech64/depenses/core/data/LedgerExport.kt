@@ -5,12 +5,16 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.AccountDao
 import io.github.jaytech64.depenses.core.database.CategoryDao
 import io.github.jaytech64.depenses.core.database.MerchantDao
+import io.github.jaytech64.depenses.core.database.RecurringTransactionDao
+import io.github.jaytech64.depenses.core.database.RecurringWithNames
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import java.io.OutputStream
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -70,6 +74,7 @@ class LedgerExport
         private val merchants: MerchantDao,
         private val accounts: AccountDao,
         private val categories: CategoryDao,
+        private val recurring: RecurringTransactionDao,
         private val clock: Clock,
     ) {
         /** Returns how many transactions were written. */
@@ -199,6 +204,7 @@ class LedgerExport
                         },
                     transactions = rows.map { it.toExported() },
                     categories = categories.allOnce().map { ExportedCategory(it.id, it.name) },
+                    recurring = recurring.allWithNames().first().map { it.toExported() },
                 )
             out.bufferedWriter(Charsets.UTF_8).apply {
                 write(JSON.encodeToString(document))
@@ -233,7 +239,30 @@ class LedgerExport
                 toAccountName = toAccountName,
                 categoryId = transaction.categoryId,
                 categoryName = categoryName,
+                recurringId = transaction.recurringId,
             )
+
+        private fun RecurringWithNames.toExported() =
+            ExportedRecurring(
+                id = recurring.id,
+                uuid = recurring.uuid,
+                amountMinor = recurring.amountMinor,
+                currency = recurring.currency,
+                kind = recurring.kind.name,
+                merchantId = recurring.merchantId,
+                merchantName = merchantName,
+                merchantRaw = recurring.merchantRaw,
+                accountId = recurring.accountId,
+                toAccountId = recurring.toAccountId,
+                categoryId = recurring.categoryId,
+                note = recurring.note,
+                rhythm = recurring.rhythm.name,
+                firstDate = isoDay(recurring.firstEpochDay),
+                lastDate = recurring.lastEpochDay?.let(::isoDay),
+                nextDue = recurring.nextDueEpochDay?.let(::isoDay),
+            )
+
+        private fun isoDay(epochDay: Int): String = LocalDate.ofEpochDay(epochDay.toLong()).toString()
 
         private companion object {
             const val BYTE_ORDER_MARK = "\uFEFF"

@@ -5,6 +5,8 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Recurrence
+import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import kotlinx.coroutines.flow.first
@@ -19,6 +21,8 @@ import org.robolectric.RobolectricTestRunner
 import java.io.ByteArrayOutputStream
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
 import javax.inject.Provider
@@ -288,6 +292,63 @@ class LedgerImportTest {
             assertEquals(0, target.transactionDao().count().first())
         }
 
+    @Test
+    fun `a recurring transaction comes back with its rows, and goes on from the day it had reached`() =
+        runTest {
+            val rent =
+                source.enter(
+                    1_450_00,
+                    TransactionKind.EXPENSE,
+                    merchant = "Loyer",
+                    on = LocalDate.of(2026, 7, 1),
+                )
+            source.recurring().repeat(rent, Rhythm.MONTHLY, lastDate = null)
+
+            target.importing(source.export())
+
+            val schedule =
+                target
+                    .recurring()
+                    .all()
+                    .first()
+                    .single()
+            assertEquals(LocalDate.of(2026, 10, 1), schedule.nextDue)
+            assertEquals(Recurrence(Rhythm.MONTHLY, LocalDate.of(2026, 7, 1)), schedule.recurrence)
+            val rows = target.transactions().confirmed().first()
+            assertEquals(3, rows.size)
+            assertTrue(rows.all { it.recurringId == schedule.id })
+        }
+
+    @Test
+    fun `a recurring transaction already here is not added twice`() =
+        runTest {
+            val rent =
+                source.enter(
+                    1_450_00,
+                    TransactionKind.EXPENSE,
+                    merchant = "Loyer",
+                    on = LocalDate.of(2026, 7, 1),
+                )
+            source.recurring().repeat(rent, Rhythm.MONTHLY, lastDate = null)
+            val file = source.export()
+            target.importing(file)
+
+            target.importing(file)
+
+            assertEquals(1, target.recurringTransactionDao().allOnce().size)
+            assertEquals(3, target.transactionDao().count().first())
+        }
+
+    @Test
+    fun `a row belonging to a recurring transaction the file does not list refuses the file`() =
+        runTest {
+            val file = document().replace(""""toAccountName": null""", """"toAccountName": null, "recurringId": 7""")
+
+            val reading = target.reading(file)
+
+            assertTrue(reading.toString(), (reading as ImportReading.Refused).problem is ImportProblem.Inconsistent)
+        }
+
     private suspend fun DepensesDatabase.categorised(): List<Pair<String?, String?>> =
         transactionDao().allWithMerchant().filter { it.categoryName != null }.map { it.merchantName to it.categoryName }
 
@@ -320,6 +381,27 @@ class LedgerImportTest {
             merchantRows = merchantDao(),
             accounts = accountDao(),
             categories = categoryRepository(),
+            recurring = recurringTransactionDao(),
+            posting = posting(),
+        )
+
+    private fun DepensesDatabase.posting() =
+        RecurringPosting(
+            this,
+            recurringTransactionDao(),
+            transactionDao(),
+            LocalDateTicker(Provider { ZONE }),
+            Clock.fixed(EXPORTED_AT, ZONE),
+            Provider { ZONE },
+        )
+
+    private fun DepensesDatabase.recurring() =
+        RecurringRepository(
+            this,
+            recurringTransactionDao(),
+            transactionDao(),
+            MerchantRepository(merchantDao()),
+            posting(),
         )
 
     private suspend fun DepensesDatabase.reading(file: String): ImportReading = importer().read(file.byteInputStream())
@@ -337,6 +419,7 @@ class LedgerImportTest {
             merchantDao(),
             accountDao(),
             categoryDao(),
+            recurringTransactionDao(),
             Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
         ).write(bytes, ExportFormat.JSON, LABELS)
         return bytes.toString(Charsets.UTF_8.name())
@@ -351,10 +434,11 @@ class LedgerImportTest {
         note: String? = null,
         categoryId: Long? = null,
         fromNowOn: Boolean = false,
+        on: LocalDate? = null,
     ) = transactions().addManual(
         amount = cad(minor),
         merchantName = merchant,
-        occurredAt = OCCURRED_AT,
+        occurredAt = on?.atTime(LocalTime.NOON)?.atZone(ZONE)?.toInstant() ?: OCCURRED_AT,
         note = note,
         kind = kind,
         accountId = accountId,

@@ -50,6 +50,7 @@ class LedgerExportTest {
                 merchants = database.merchantDao(),
                 accounts = database.accountDao(),
                 categories = database.categoryDao(),
+                recurring = database.recurringTransactionDao(),
                 clock = Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
             )
     }
