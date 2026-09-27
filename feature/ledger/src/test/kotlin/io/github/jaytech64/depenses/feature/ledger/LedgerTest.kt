@@ -115,11 +115,12 @@ abstract class LedgerTest {
         accountId: Long? = null,
         toAccountId: Long? = null,
         categoryId: Long? = null,
+        currency: String = Money.CAD,
     ) = database.transactionDao().insertOrUpdate(
         ExpenseTransactionEntity(
             rawEventId = null,
             amountMinor = amountMinor,
-            currency = Money.CAD,
+            currency = currency,
             occurredAtUtcMillis =
                 day
                     .atTime(NOON, 0)

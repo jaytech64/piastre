@@ -93,4 +93,9 @@
     </plurals>
     <string name="ledger_selection_delete_body_single">Elle n\'apparaîtra plus dans vos dépenses ni dans aucun total.</string>
     <string name="ledger_selection_delete_body_several">Elles n\'apparaîtront plus dans vos dépenses ni dans aucun total.</string>
+    <plurals name="ledger_other_currency">
+        <item quantity="one">%d transaction dans une autre devise n\'est pas comptée.</item>
+        <item quantity="other">%d transactions dans une autre devise ne sont pas comptées.</item>
+        <item quantity="many">%d de transactions dans une autre devise ne sont pas comptées.</item>
+    </plurals>
 </resources>

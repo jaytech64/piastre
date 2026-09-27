@@ -93,4 +93,8 @@
     </plurals>
     <string name="ledger_selection_delete_body_single">It will no longer appear in the ledger or in any total.</string>
     <string name="ledger_selection_delete_body_several">They will no longer appear in the ledger or in any total.</string>
+    <plurals name="ledger_other_currency">
+        <item quantity="one">%d transaction in another currency is not counted.</item>
+        <item quantity="other">%d transactions in another currency are not counted.</item>
+    </plurals>
 </resources>

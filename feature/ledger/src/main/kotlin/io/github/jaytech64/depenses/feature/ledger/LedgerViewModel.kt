@@ -50,6 +50,8 @@ data class MonthSummary(
     val expenses: Money = Money(0, Money.CAD),
     /** Zero on the whole ledger; under a filter, what [balanceMovedOn] says it moved. */
     val transfers: Money = Money(0, Money.CAD),
+    /** The month's rows in a currency no figure here counts (ADR-0012). */
+    val otherCurrencyCount: Int = 0,
 ) {
     /** Negative on a month you only spent, which is most months. */
     val balance: Money get() = income + -expenses + transfers
@@ -268,7 +270,7 @@ class LedgerViewModel
                 .map { (date, forDay) ->
                     LedgerDay(
                         date = date,
-                        total = forDay.map { it.balanceMovedOn(filter) }.reduce(Money::plus),
+                        total = forDay.inHomeCurrency().map { it.balanceMovedOn(filter) }.fold(HOME_ZERO, Money::plus),
                         transactions = forDay,
                     )
                 }.sortedByDescending { it.date }
@@ -276,27 +278,25 @@ class LedgerViewModel
         /**
          * Every day of the calendar month counts, including one dated ahead of
          * today: a purchase the list shows is a purchase the headline above it has
-         * counted.
-         *
-         * An empty figure is zero in the month's own currency, so a month whose
-         * rows are all in one currency never has a Canadian zero added to it.
+         * counted — in Canadian dollars, with the rest counted apart (ADR-0012).
          */
         private fun List<LedgerDay>.summaryOf(
             month: YearMonth,
             filter: LedgerFilter,
         ): MonthSummary {
             val rows = filter { YearMonth.from(it.date) == month }.flatMap { it.transactions }
-            val zero = Money(0, rows.firstOrNull()?.amount?.currency ?: Money.CAD)
+            val counted = rows.inHomeCurrency()
 
             fun sumOf(
                 kind: TransactionKind,
                 amount: (Transaction) -> Money,
-            ): Money = rows.filter { it.kind == kind }.map(amount).fold(zero, Money::plus)
+            ): Money = counted.filter { it.kind == kind }.map(amount).fold(HOME_ZERO, Money::plus)
 
             return MonthSummary(
                 income = sumOf(TransactionKind.INCOME) { it.amount },
                 expenses = sumOf(TransactionKind.EXPENSE) { it.amount },
                 transfers = sumOf(TransactionKind.TRANSFER) { it.balanceMovedOn(filter) },
+                otherCurrencyCount = rows.size - counted.size,
             )
         }
 
@@ -367,6 +367,16 @@ private fun <T : Any> List<Transaction>.optionsBy(
 }
 
 private const val RECENT_DAYS = 90L
+
+private val HOME_ZERO = Money(0, Money.CAD)
+
+/**
+ * The rows a total may add up. Converting needs a rate and a rate needs the
+ * network, so a total counts Canadian dollars and says how many rows it left
+ * out, the rule Reports already follows (ADR-0012). Every total on this screen
+ * goes through here, since [Money.plus] throws on a second currency.
+ */
+private fun List<Transaction>.inHomeCurrency(): List<Transaction> = filter { it.amount.currency == Money.CAD }
 
 /**
  * Every category the [selected] rows could be given, *No category* first, each

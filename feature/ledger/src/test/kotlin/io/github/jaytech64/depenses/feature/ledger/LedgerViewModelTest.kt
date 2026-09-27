@@ -83,6 +83,35 @@ class LedgerViewModelTest : LedgerTest() {
         }
 
     @Test
+    fun `a purchase in US dollars is left out of the totals and counted apart`() =
+        runTest {
+            insert(amountMinor = 1_075, day = TODAY)
+            insert(amountMinor = 745, day = TODAY, currency = "USD")
+            val state = settled()
+
+            assertEquals(Money(-1_075, Money.CAD), state.days.single().total)
+            assertEquals(
+                2,
+                state.days
+                    .single()
+                    .transactions.size,
+            )
+            assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
+            assertEquals(1, state.thisMonth.otherCurrencyCount)
+        }
+
+    @Test
+    fun `a month spent only in another currency counts zero Canadian dollars`() =
+        runTest {
+            insert(amountMinor = 745, day = TODAY, currency = "USD")
+            val state = settled()
+
+            assertEquals(Money(0, Money.CAD), state.days.single().total)
+            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
+            assertEquals(1, state.thisMonth.otherCurrencyCount)
+        }
+
+    @Test
     fun `a month with nothing spent in it yet shows a zero headline rather than last month's`() =
         runTest {
             insert(amountMinor = 3_180, day = LAST_MONTH)
