@@ -234,7 +234,7 @@ class LedgerViewModelTest : LedgerTest() {
                 toAccountId = account("Visa"),
             )
 
-            assertEquals(MonthSummary(), settled().thisMonth)
+            assertEquals(BalanceSummary(), settled().thisMonth)
         }
 
     /**

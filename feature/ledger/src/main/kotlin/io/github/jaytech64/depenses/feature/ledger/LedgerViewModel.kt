@@ -36,7 +36,7 @@ data class LedgerDay(
 )
 
 /**
- * What the month's balance is made of.
+ * What the balance of a set of rows is made of: a month, a day, or a selection.
  *
  * Income and expenses are counted by kind, the same rows a report counts, so
  * the whole ledger's expenses and a report's *dépensé* for the month are one
@@ -45,15 +45,15 @@ data class LedgerDay(
  * than being folded into either of the other two, and the three always add up
  * to [balance].
  */
-data class MonthSummary(
+data class BalanceSummary(
     val income: Money = Money(0, Money.CAD),
     val expenses: Money = Money(0, Money.CAD),
     /** Zero on the whole ledger; under a filter, what [balanceMovedOn] says it moved. */
     val transfers: Money = Money(0, Money.CAD),
-    /** The month's rows in a currency no figure here counts (ADR-0012). */
+    /** The rows in a currency no figure here counts (ADR-0012). */
     val otherCurrencyCount: Int = 0,
 ) {
-    /** Negative on a month you only spent, which is most months. */
+    /** Negative where you only spent, which is most months. */
     val balance: Money get() = income + -expenses + transfers
 }
 
@@ -117,7 +117,7 @@ data class LedgerUiState(
     val days: List<LedgerDay> = emptyList(),
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
-    val thisMonth: MonthSummary = MonthSummary(),
+    val thisMonth: BalanceSummary = BalanceSummary(),
     val needsReview: Int = 0,
     /** Every account, including ones nothing has ever been spent from. */
     val accounts: List<Account> = emptyList(),
@@ -128,6 +128,8 @@ data class LedgerUiState(
     val filter: LedgerFilter = LedgerFilter(),
     /** The rows picked by a long press, and only those still on screen. */
     val selected: Set<Long> = emptySet(),
+    /** What the selected rows add up to, counted as the day and month totals are; null while nothing is selected. */
+    val selectionSummary: BalanceSummary? = null,
     /** What the selection can be given, *No category* first; empty while nothing is selected. */
     val selectionCategories: List<SelectionCategory> = emptyList(),
     val loading: Boolean = true,
@@ -196,13 +198,14 @@ class LedgerViewModel
                 LedgerUiState(
                     days = days,
                     today = today,
-                    thisMonth = days.summaryOf(YearMonth.from(today), filter),
+                    thisMonth = days.monthOf(YearMonth.from(today)).summaryOf(filter),
                     needsReview = needsReview,
                     accounts = known.accounts,
                     categories = transactions.categoryOptions(today),
                     merchants = transactions.merchantOptions(today, known.merchants),
                     filter = filter,
                     selected = selected.mapTo(mutableSetOf()) { it.id },
+                    selectionSummary = selected.takeIf { it.isNotEmpty() }?.summaryOf(filter),
                     selectionCategories = transactions.categoriesFor(selected, known.categories, today),
                     loading = false,
                 )
@@ -270,7 +273,7 @@ class LedgerViewModel
                 .map { (date, forDay) ->
                     LedgerDay(
                         date = date,
-                        total = forDay.inHomeCurrency().map { it.balanceMovedOn(filter) }.fold(HOME_ZERO, Money::plus),
+                        total = forDay.summaryOf(filter).balance,
                         transactions = forDay,
                     )
                 }.sortedByDescending { it.date }
@@ -278,27 +281,10 @@ class LedgerViewModel
         /**
          * Every day of the calendar month counts, including one dated ahead of
          * today: a purchase the list shows is a purchase the headline above it has
-         * counted — in Canadian dollars, with the rest counted apart (ADR-0012).
+         * counted.
          */
-        private fun List<LedgerDay>.summaryOf(
-            month: YearMonth,
-            filter: LedgerFilter,
-        ): MonthSummary {
-            val rows = filter { YearMonth.from(it.date) == month }.flatMap { it.transactions }
-            val counted = rows.inHomeCurrency()
-
-            fun sumOf(
-                kind: TransactionKind,
-                amount: (Transaction) -> Money,
-            ): Money = counted.filter { it.kind == kind }.map(amount).fold(HOME_ZERO, Money::plus)
-
-            return MonthSummary(
-                income = sumOf(TransactionKind.INCOME) { it.amount },
-                expenses = sumOf(TransactionKind.EXPENSE) { it.amount },
-                transfers = sumOf(TransactionKind.TRANSFER) { it.balanceMovedOn(filter) },
-                otherCurrencyCount = rows.size - counted.size,
-            )
-        }
+        private fun List<LedgerDay>.monthOf(month: YearMonth): List<Transaction> =
+            filter { YearMonth.from(it.date) == month }.flatMap { it.transactions }
 
         /** The filter's saved-state keys, read together. */
         private data class FilterKeys(
@@ -369,6 +355,27 @@ private fun <T : Any> List<Transaction>.optionsBy(
 private const val RECENT_DAYS = 90L
 
 private val HOME_ZERO = Money(0, Money.CAD)
+
+/**
+ * What these rows add up to, read from where [filter] stands. The day totals,
+ * the month's headline and the selection all come from here, so a whole day
+ * selected says what its header says, to the cent.
+ */
+private fun List<Transaction>.summaryOf(filter: LedgerFilter): BalanceSummary {
+    val counted = inHomeCurrency()
+
+    fun sumOf(
+        kind: TransactionKind,
+        amount: (Transaction) -> Money,
+    ): Money = counted.filter { it.kind == kind }.map(amount).fold(HOME_ZERO, Money::plus)
+
+    return BalanceSummary(
+        income = sumOf(TransactionKind.INCOME) { it.amount },
+        expenses = sumOf(TransactionKind.EXPENSE) { it.amount },
+        transfers = sumOf(TransactionKind.TRANSFER) { it.balanceMovedOn(filter) },
+        otherCurrencyCount = size - counted.size,
+    )
+}
 
 /**
  * The rows a total may add up. Converting needs a rate and a rate needs the

@@ -2,7 +2,7 @@
 
 - **Status:** Accepted — implemented.
 - **Decided:** 2026-09-27, while planning the selection's total (`.lavish/ledger-selection-total.html`, fork D).
-- **Touches:** `:feature:ledger` (`LedgerViewModel`, `MonthFigures`), `:feature:reports` (unchanged, already followed it).
+- **Touches:** `:feature:ledger` (`LedgerViewModel`, `SummaryFigures`), `:feature:reports` (unchanged, already followed it).
 
 ## Context
 
@@ -39,6 +39,6 @@ A setting to choose it would be a new decision, and would have to move Reports' 
 ## Where this lives in the code
 
 - `inHomeCurrency` in `feature/ledger/src/main/kotlin/.../LedgerViewModel.kt` — the rows a ledger total may add; every total on that screen goes through it.
-- `MonthSummary.otherCurrencyCount` and `MonthFigures` — the count and its note.
+- `BalanceSummary.otherCurrencyCount` and `SummaryFigures` — the count and its note.
 - `ReportRepository` and `otherCurrencyCount` in `:feature:reports` — the same rule, in SQL.
 - `` `a purchase in US dollars is left out of the totals and counted apart` `` in `LedgerViewModelTest`.

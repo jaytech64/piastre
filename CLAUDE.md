@@ -192,7 +192,7 @@ Under a category with no account, a transfer is money that left for that categor
 
 A report's ranking, calendar and spending comparison count expenses alone ([ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md)); its headline is the ledger's balance for the period, with the count and comparison kept under *Dépenses* so they read as spending ([ADR-0009](docs/adr/0009-a-report-says-what-its-balance-is-made-of.md)).
 
-The ledger header's figures always add up to the balance above them: income and expenses by kind, and a filtered account's transfers as a figure of their own, never folded into either ([ADR-0008](docs/adr/0008-the-ledger-header-says-what-the-balance-is-made-of.md), `MonthSummary`).
+The ledger header's figures always add up to the balance above them: income and expenses by kind, and a filtered account's transfers as a figure of their own, never folded into either ([ADR-0008](docs/adr/0008-the-ledger-header-says-what-the-balance-is-made-of.md), `BalanceSummary`).
 
 ### A category is written onto the row, never read through
 

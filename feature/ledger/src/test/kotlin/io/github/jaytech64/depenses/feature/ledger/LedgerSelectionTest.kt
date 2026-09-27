@@ -4,6 +4,8 @@ package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.depenses.core.model.Category
+import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -164,6 +166,89 @@ class LedgerSelectionTest : LedgerTest() {
 
             assertTrue(state.selectionCategories.isEmpty())
             assertNull(state.selected.firstOrNull())
+        }
+
+    @Test
+    fun `a whole day selected adds up to what its header says`() =
+        runTest {
+            val pay = insert(amountMinor = 140_000, day = TODAY, kind = TransactionKind.INCOME)
+            val groceries = insert(amountMinor = 12_025, day = TODAY)
+            val coffee = insert(amountMinor = 4_525, day = TODAY)
+            insert(amountMinor = 9_900, day = YESTERDAY)
+            select(pay, groceries, coffee)
+
+            val state = viewModel.uiState.first { it.selected.size == 3 }
+            val summary = state.selectionSummary!!
+
+            assertEquals(state.days.single { it.date == TODAY }.total, summary.balance)
+            assertEquals(Money(140_000, Money.CAD), summary.income)
+            assertEquals(Money(16_550, Money.CAD), summary.expenses)
+            assertEquals(Money(123_450, Money.CAD), summary.balance)
+        }
+
+    @Test
+    fun `a selected card payment is worth nothing to the whole ledger and moves the account it touches`() =
+        runTest {
+            val desrives = account("Desrives")
+            val visa = account("Visa")
+            val payment =
+                insert(
+                    amountMinor = 50_000,
+                    day = TODAY,
+                    kind = TransactionKind.TRANSFER,
+                    accountId = desrives,
+                    toAccountId = visa,
+                )
+            select(payment)
+
+            assertEquals(
+                Money(0, Money.CAD),
+                viewModel.uiState
+                    .first { it.isSelecting }
+                    .selectionSummary!!
+                    .balance,
+            )
+
+            viewModel.onAccountSelected(desrives)
+            val onDesrives = viewModel.uiState.first { it.filter.account != null }.selectionSummary!!
+
+            assertEquals(Money(-50_000, Money.CAD), onDesrives.transfers)
+            assertEquals(Money(-50_000, Money.CAD), onDesrives.balance)
+        }
+
+    @Test
+    fun `a selected purchase in another currency is counted apart`() =
+        runTest {
+            val bill = insert(amountMinor = 8_500, day = TODAY)
+            val order = insert(amountMinor = 745, day = TODAY, currency = "USD")
+            select(bill, order)
+
+            val summary = viewModel.uiState.first { it.selected.size == 2 }.selectionSummary!!
+
+            assertEquals(Money(-8_500, Money.CAD), summary.balance)
+            assertEquals(1, summary.otherCurrencyCount)
+        }
+
+    @Test
+    fun `a row that leaves the screen leaves the total`() =
+        runTest {
+            val internet = category("Internet")
+            val shown = insert(amountMinor = 8_500, day = TODAY, categoryId = internet)
+            val hidden = insert(amountMinor = 6_000, day = TODAY)
+            select(shown, hidden)
+
+            viewModel.onCategorySelected(CategoryChoice.Named(Category(internet, "Internet")))
+            val summary = viewModel.uiState.first { it.filter.category != null }.selectionSummary!!
+
+            assertEquals(Money(8_500, Money.CAD), summary.expenses)
+        }
+
+    @Test
+    fun `nothing selected adds up to nothing`() =
+        runTest {
+            insert(amountMinor = 8_500, day = TODAY)
+
+            assertNull(settled().selectionSummary)
         }
 
     private suspend fun select(vararg ids: Long) {

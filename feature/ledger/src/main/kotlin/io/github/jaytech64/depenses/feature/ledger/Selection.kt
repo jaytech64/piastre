@@ -34,6 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.designsystem.rememberLongestWord
 
 /**
@@ -46,47 +47,77 @@ internal enum class RowSelection { NONE, SELECTED, UNSELECTED }
 internal enum class SelectionAction { NONE, CATEGORISE, ADD_CATEGORY, DELETE }
 
 /**
- * The balance card's place while rows are selected: how many, and what can be
- * done to them.
+ * The balance card's place while rows are selected: how many, what they add up
+ * to, and what can be done to them.
  *
- * The count sits between the buttons while its longest word fits there, and
- * takes a line of its own above them when it does not: at 200 % in French the
- * space between them cut « sélectionnées » in two.
+ * It takes the card's shape — the net, then the figures it is made of — so the
+ * list does not slide up under the finger that started the selection.
  */
 @Composable
 internal fun SelectionBar(
+    count: Int,
+    summary: BalanceSummary,
+    onEnd: () -> Unit,
+    onAct: (SelectionAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val locale = currentLocale()
+    Card(
+        modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(top = 4.dp, bottom = 16.dp)) {
+            SelectionControls(count, onEnd, onAct)
+            Column(
+                Modifier.padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(Formatters.signedMoney(summary.balance, locale), style = MaterialTheme.typography.displaySmall)
+                HorizontalDivider(
+                    Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+                SummaryFigures(summary, locale)
+            }
+        }
+    }
+}
+
+/**
+ * Close, the count, and the actions. The count sits between the buttons while
+ * its longest word fits there, and takes a line of its own above them when it
+ * does not: at 200 % in French the space between them cut « sélectionnées » in
+ * two.
+ */
+@Composable
+private fun SelectionControls(
     count: Int,
     onEnd: () -> Unit,
     onAct: (SelectionAction) -> Unit,
 ) {
     val label = pluralStringResource(R.plurals.ledger_selected, count, count)
-    val style = MaterialTheme.typography.titleLarge
+    val style = MaterialTheme.typography.titleMedium
     val longestWord = rememberLongestWord(label, style)
-    Card(
-        Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-    ) {
-        BoxWithConstraints(Modifier.padding(4.dp)) {
-            val besideButtons = maxWidth - BUTTON_SIZE * BUTTON_COUNT - LABEL_PADDING * 2
-            val countLabel = @Composable { modifier: Modifier ->
-                Text(label, modifier.padding(horizontal = LABEL_PADDING), style = style)
+    BoxWithConstraints(Modifier.padding(horizontal = 4.dp)) {
+        val besideButtons = maxWidth - BUTTON_SIZE * BUTTON_COUNT - LABEL_PADDING * 2
+        val countLabel = @Composable { modifier: Modifier ->
+            Text(label, modifier.padding(horizontal = LABEL_PADDING), style = style)
+        }
+        if (with(LocalDensity.current) { besideButtons.roundToPx() } >= longestWord) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                EndButton(onEnd)
+                countLabel(Modifier.weight(1f))
+                ActionButtons(onAct)
             }
-            if (with(LocalDensity.current) { besideButtons.roundToPx() } >= longestWord) {
+        } else {
+            Column {
+                countLabel(Modifier.padding(top = LABEL_PADDING))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     EndButton(onEnd)
-                    countLabel(Modifier.weight(1f))
+                    Spacer(Modifier.weight(1f))
                     ActionButtons(onAct)
-                }
-            } else {
-                Column {
-                    countLabel(Modifier.padding(top = LABEL_PADDING))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        EndButton(onEnd)
-                        Spacer(Modifier.weight(1f))
-                        ActionButtons(onAct)
-                    }
                 }
             }
         }
