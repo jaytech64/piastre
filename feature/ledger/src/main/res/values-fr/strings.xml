@@ -118,4 +118,12 @@
         <item quantity="other">Tout ajouter</item>
         <item quantity="many">Tout ajouter</item>
     </plurals>
+    <string name="recurring_list_title">Transactions récurrentes</string>
+    <string name="recurring_list_empty">Rien ne se répète encore. Choisissez Se répète en ajoutant une transaction.</string>
+    <string name="recurring_list_next">prochaine le %s</string>
+    <string name="recurring_list_ends">se termine le %s</string>
+    <string name="recurring_edit_title">Transaction récurrente</string>
+    <string name="recurring_stop">Arrêter</string>
+    <string name="recurring_stop_title">Arrêter %s ?</string>
+    <string name="recurring_stop_body">Ce qui a déjà été ajouté reste dans vos dépenses.</string>
 </resources>

@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.AccountDialog
 import io.github.jaytech64.depenses.core.designsystem.CategoryDialog
+import io.github.jaytech64.depenses.core.designsystem.Formatters
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -61,6 +62,7 @@ internal fun FormDialog(
 
         Picking.DELETE -> {
             ConfirmDeleteDialog(
+                stopping = state.stoppingName(),
                 onConfirm = {
                     viewModel.delete()
                     onClose()
@@ -213,23 +215,53 @@ private fun TimePickerDisplayMode.toggled(): TimePickerDisplayMode =
 
 @Composable
 private fun ConfirmDeleteDialog(
+    stopping: String?,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text(stringResource(R.string.edit_delete_title)) },
-        text = { Text(stringResource(R.string.edit_delete_body)) },
+        title = {
+            Text(
+                stopping?.let { stringResource(R.string.recurring_stop_title, it) }
+                    ?: stringResource(R.string.edit_delete_title),
+            )
+        },
+        text = {
+            Text(
+                stringResource(
+                    if (stopping !=
+                        null
+                    ) {
+                        R.string.recurring_stop_body
+                    } else {
+                        R.string.edit_delete_body
+                    },
+                ),
+            )
+        },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) {
-                Text(stringResource(R.string.edit_delete))
+                Text(stringResource(if (stopping != null) R.string.recurring_stop else R.string.edit_delete))
             }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
     )
+}
+
+/**
+ * What a recurring transaction is called when asking whether to stop it: its
+ * merchant, or — for a transfer, which has none — its amount. Null on anything
+ * that is not a recurring transaction.
+ */
+@Composable
+private fun ExpenseFormUiState.stoppingName(): String? {
+    if (!isSchedule) return null
+    val locale = LocalConfiguration.current.locales[0]
+    return merchantText.ifBlank { amount?.let { Formatters.money(it, locale) }.orEmpty() }
 }
 
 private fun LocalDate.toUtcMillis(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()

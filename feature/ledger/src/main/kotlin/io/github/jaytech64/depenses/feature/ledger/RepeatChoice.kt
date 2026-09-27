@@ -22,16 +22,17 @@ class RepeatChoice internal constructor(
     fun dismissBackfill() = form.update { it.copy(backfill = null) }
 
     /**
-     * True when saving would write rows for days up to [today] besides the one on
-     * the form, and the question has been put on screen instead.
+     * True when saving would write rows for days up to [today] — besides the
+     * transaction on the form, which is its own first — and the question has been
+     * put on screen instead. For a recurring transaction the form's date is the
+     * next day it writes, so that day counts too once it has come.
      */
     internal fun asksAboutPastDays(today: LocalDate): Boolean {
         val state = form.value
-        val backfill =
-            state.recurrence
-                ?.takeIf { state.canRepeat }
-                ?.let { Backfill.of(it.datesBetween(after = state.date, through = today)) }
-                ?: return false
+        val recurrence = state.recurrence?.takeIf { state.canRepeat || state.isSchedule } ?: return false
+        val after = recurrence.datesBetween(after = state.date, through = today)
+        val days = if (state.isSchedule && state.date <= today) listOf(state.date) + after else after
+        val backfill = Backfill.of(days) ?: return false
         form.update { it.copy(backfill = backfill) }
         return true
     }

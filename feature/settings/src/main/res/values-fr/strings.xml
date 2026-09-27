@@ -156,4 +156,10 @@
     <string name="export_column_account">compte</string>
     <string name="export_column_category">catégorie</string>
     <string name="export_column_to_account">compte de destination</string>
+    <string name="settings_recurring">Transactions récurrentes</string>
+    <plurals name="settings_recurring_active">
+        <item quantity="one">%d active</item>
+        <item quantity="other">%d actives</item>
+        <item quantity="many">%d actives</item>
+    </plurals>
 </resources>

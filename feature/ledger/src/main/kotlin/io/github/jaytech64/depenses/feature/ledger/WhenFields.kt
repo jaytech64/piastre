@@ -2,17 +2,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,14 +31,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import io.github.jaytech64.depenses.core.designsystem.ButtonsRow
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Rhythm
+import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneOffset
 
 /** When it happened, and — on a transaction that can repeat, under the date it counts from — when it comes back. */
 @Composable
@@ -38,7 +53,7 @@ internal fun WhenSection(
     onPick: (Picking) -> Unit,
 ) {
     WhenRow(state = state, onDateChange = viewModel::onDateChange, onPick = onPick)
-    if (state.canRepeat) {
+    if (state.canRepeat || state.isSchedule) {
         RepeatFields(
             state,
             onRhythmChange = viewModel.repeat::onRhythmChange,
@@ -59,12 +74,18 @@ private fun RepeatFields(
     onPickLastDate: () -> Unit,
 ) {
     val locale = LocalConfiguration.current.locales[0]
-    RhythmField(rhythm = state.rhythm, date = state.date, onPick = onRhythmChange)
+    RhythmField(
+        rhythm = state.rhythm,
+        date = state.countsFrom,
+        offersNever = !state.isSchedule,
+        onPick = onRhythmChange,
+    )
     if (state.rhythm == null) return
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         EndField(lastDate = state.lastDate, isError = state.endsBeforeItStarts, onOpen = onPickLastDate)
-        state.recurrence?.nextAfter(state.date)?.let { next ->
+        // A recurring transaction's date is already its next day.
+        state.recurrence?.takeUnless { state.isSchedule }?.nextAfter(state.date)?.let { next ->
             Text(
                 stringResource(R.string.repeat_next, Formatters.date(next, locale)),
                 style = MaterialTheme.typography.bodySmall,
@@ -80,6 +101,7 @@ private fun RepeatFields(
 private fun RhythmField(
     rhythm: Rhythm?,
     date: LocalDate,
+    offersNever: Boolean,
     onPick: (Rhythm?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -102,7 +124,8 @@ private fun RhythmField(
                     .fillMaxWidth(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            (listOf(null) + Rhythm.entries).forEach { choice ->
+            // A recurring transaction stops from its own button, which says what stopping keeps.
+            (if (offersNever) listOf(null) + Rhythm.entries else Rhythm.entries).forEach { choice ->
                 DropdownMenuItem(text = { Text(rhythmLabel(choice, date)) }, onClick = { pick(choice) })
             }
         }
@@ -185,3 +208,77 @@ internal fun BackfillDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.manual_cancel)) } },
     )
 }
+
+/** Defaults to now, because that is when almost every cash purchase is entered. */
+@Composable
+internal fun WhenRow(
+    state: ExpenseFormUiState,
+    onDateChange: (LocalDate) -> Unit,
+    onPick: (Picking) -> Unit,
+) {
+    val locale = LocalConfiguration.current.locales[0]
+
+    // The time goes under the date, whole, when the two no longer fit side by side.
+    ButtonsRow(Modifier.fillMaxWidth()) {
+        DateStepper(
+            date = state.date,
+            onStep = onDateChange,
+            onOpen = { onPick(Picking.DATE) },
+        )
+        // A recurring transaction has a day and no hour.
+        if (!state.isSchedule) {
+            OutlinedButton(onClick = { onPick(Picking.TIME) }) {
+                Text(Formatters.time(state.time.toInstantOn(state.date), ZoneOffset.UTC, locale))
+            }
+        }
+    }
+}
+
+/**
+ * The date as an outlined pill with a chevron either side: the chevrons step a
+ * day at a time, for the purchase entered the morning after, and the date itself
+ * opens the calendar for anything further away.
+ *
+ * The outline is drawn 4 dp in from the top and bottom so the pill looks as tall
+ * as the neighbouring [OutlinedButton] while each target keeps its 48 dp touch
+ * height.
+ */
+@Composable
+private fun DateStepper(
+    date: LocalDate,
+    onStep: (LocalDate) -> Unit,
+    onOpen: () -> Unit,
+) {
+    val locale = LocalConfiguration.current.locales[0]
+    val tint = MaterialTheme.colorScheme.primary
+
+    Box(contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .padding(vertical = 4.dp)
+                .border(ButtonDefaults.outlinedButtonBorder(), ButtonDefaults.outlinedShape),
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onStep(date.minusDays(1)) }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    contentDescription = stringResource(R.string.form_previous_day),
+                    tint = tint,
+                )
+            }
+            TextButton(onClick = onOpen) {
+                Text(Formatters.date(date, locale))
+            }
+            IconButton(onClick = { onStep(date.plusDays(1)) }) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(R.string.form_next_day),
+                    tint = tint,
+                )
+            }
+        }
+    }
+}
+
+private fun LocalTime.toInstantOn(date: LocalDate): Instant = date.atTime(this).toInstant(ZoneOffset.UTC)

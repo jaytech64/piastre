@@ -30,6 +30,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.AccountType
+import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -87,7 +88,7 @@ internal fun TransactionRow(
             )
         }
 
-        TransactionAmount(transaction, locale)
+        KindAmount(transaction.kind, transaction.amount, locale)
     }
 }
 
@@ -97,14 +98,15 @@ internal fun TransactionRow(
  * yours and arrived in another, so neither sign would be honest.
  */
 @Composable
-private fun TransactionAmount(
-    transaction: Transaction,
+internal fun KindAmount(
+    kind: TransactionKind,
+    amount: Money,
     locale: Locale,
 ) {
-    when (transaction.kind) {
+    when (kind) {
         TransactionKind.INCOME -> {
             Text(
-                Formatters.signedMoney(transaction.amount, locale),
+                Formatters.signedMoney(amount, locale),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.tertiary,
             )
@@ -112,14 +114,14 @@ private fun TransactionAmount(
 
         TransactionKind.TRANSFER -> {
             Text(
-                Formatters.money(transaction.amount, locale),
+                Formatters.money(amount, locale),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
         TransactionKind.EXPENSE -> {
-            Text(Formatters.money(transaction.amount, locale), style = MaterialTheme.typography.bodyLarge)
+            Text(Formatters.money(amount, locale), style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -140,7 +142,7 @@ private fun Transaction.title(): String =
 
 /** An account as a row names it: your name for it, else its digits, else what kind it is. */
 @Composable
-private fun accountLabel(
+internal fun accountLabel(
     name: String?,
     type: AccountType?,
     last4: String?,
@@ -212,5 +214,5 @@ private fun String?.initials(): String =
         .joinToString("")
         .ifEmpty { "?" }
 
-private const val SEPARATOR = " · "
-private const val ARROW = "→"
+internal const val SEPARATOR = " · "
+internal const val ARROW = "→"

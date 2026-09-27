@@ -18,6 +18,7 @@ import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Recurrence
+import io.github.jaytech64.depenses.core.model.RecurringTransaction
 import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
@@ -44,6 +45,9 @@ import javax.inject.Provider
 
 /** The navigation argument naming the transaction to edit. Absent when adding one. */
 const val EXPENSE_ID_ARG = "expenseId"
+
+/** The navigation argument naming the recurring transaction to edit, in place of [EXPENSE_ID_ARG]. */
+const val RECURRING_ID_ARG = "recurringId"
 
 /** Which end of a transfer a choice is about. Anything else has only a source. */
 enum class AccountSlot { SOURCE, DESTINATION }
@@ -98,6 +102,8 @@ data class ExpenseFormUiState(
     val canRepeat: Boolean = true,
     /** The rows a repeating save would write for days already past, while that is being asked. */
     val backfill: Backfill? = null,
+    /** The recurring transaction being edited, as it was on disk, or null when the form is about a transaction. */
+    val schedule: ScheduleAsStored? = null,
     val capturedAccountLabel: String? = null,
     val isEditing: Boolean = false,
     /** True while the transaction being edited is read off disk, so the form never shows "now" in its place. */
@@ -117,9 +123,20 @@ data class ExpenseFormUiState(
     /** An end date set before the transaction's own day. */
     val endsBeforeItStarts: Boolean get() = rhythm != null && lastDate != null && lastDate < date
 
-    /** When it comes back after [date], or null when it does not. */
+    val isSchedule: Boolean get() = schedule != null
+
+    /**
+     * The day the rhythm counts from. A schedule left on its next day with the same
+     * rhythm goes on counting from its first day, so a bill on the 31st that next
+     * falls on the 30th is still worded, and still comes back, as the 31st. Moved,
+     * or with a new rhythm, it counts from [date]: see `RecurringRepository.change`.
+     */
+    val countsFrom: LocalDate
+        get() = schedule?.takeIf { it.nextDue == date && it.recurrence.rhythm == rhythm }?.recurrence?.firstDate ?: date
+
+    /** When it comes back, or null when it does not. */
     val recurrence: Recurrence?
-        get() = rhythm?.takeUnless { endsBeforeItStarts }?.let { Recurrence(it, date, lastDate) }
+        get() = rhythm?.takeUnless { endsBeforeItStarts }?.let { Recurrence(it, countsFrom, lastDate) }
 
     /** Only a transfer has a destination; switching away from one drops it. */
     val destinationToSave: Long? get() = toAccountId.takeIf { kind == TransactionKind.TRANSFER }
@@ -155,6 +172,10 @@ class ExpenseFormViewModel
     ) : ViewModel() {
         private val editingId: Long? = savedStateHandle.get<Long>(EXPENSE_ID_ARG)
 
+        private val scheduleId: Long? = savedStateHandle.get<Long>(RECURRING_ID_ARG)
+
+        private val writer = FormWriter(transactions, editor, recurring, zoneId::get)
+
         /** The transaction as it was on disk before this edit, or null when adding. */
         private var original: Transaction? = null
 
@@ -164,8 +185,8 @@ class ExpenseFormViewModel
                     ExpenseFormUiState(
                         date = LocalDate.now(local),
                         time = LocalTime.now(local),
-                        isEditing = editingId != null,
-                        loading = editingId != null,
+                        isEditing = editingId != null || scheduleId != null,
+                        loading = editingId != null || scheduleId != null,
                     )
                 },
             )
@@ -207,6 +228,14 @@ class ExpenseFormViewModel
         // A transaction that is no longer there has nothing to edit, so the screen
         // simply closes rather than offering to save into a row that is gone.
         init {
+            scheduleId?.let { id ->
+                viewModelScope.launch {
+                    val schedule = recurring.byId(id)
+                    _uiState.update { state ->
+                        schedule?.let { state.filledFrom(it, today()) } ?: state.copy(loading = false, done = true)
+                    }
+                }
+            }
             editingId?.let { id ->
                 viewModelScope.launch {
                     val transaction = transactions.byId(id)
@@ -264,50 +293,27 @@ class ExpenseFormViewModel
         fun save(pastDaysAgreed: Boolean = false) {
             val state = _uiState.value
             if (state.amount == null || (!pastDaysAgreed && repeat.asksAboutPastDays(today()))) return
-            val amount = state.amount ?: return
-            val editing = original
-            val reach = category.offer.value?.reach
+            val reach =
+                category.offer.value
+                    ?.reach
+                    .takeUnless { state.isSchedule }
             _uiState.update { it.copy(saving = true, backfill = null) }
             viewModelScope.launch {
-                val id =
-                    if (editing == null) {
-                        transactions.addManual(
-                            amount = amount,
-                            merchantName = state.merchantText,
-                            occurredAt = state.occurredAt(zoneId.get()),
-                            note = state.note,
-                            kind = state.kind,
-                            accountId = state.accountId,
-                            toAccountId = state.destinationToSave,
-                            categoryId = state.categoryId,
-                            reach = reach,
-                        )
-                    } else {
-                        editor.edit(
-                            id = editing.id,
-                            amount = amount,
-                            kind = state.kind,
-                            merchantName = state.merchantText,
-                            occurredAt = state.occurredAtLike(editing),
-                            note = state.note,
-                            accountId = state.accountId,
-                            toAccountId = state.destinationToSave,
-                            categoryId = state.categoryId,
-                            reach = reach,
-                        )
-                        editing.id
-                    }
-                state.rhythm?.takeIf { state.canRepeat }?.let { recurring.repeat(id, it, state.lastDate) }
+                writer.write(state, original, scheduleId, reach)
                 _uiState.update { it.copy(saving = false, done = true) }
             }
         }
 
-        /** Only offered while editing: a transaction not yet saved has nothing to remove. */
+        /**
+         * Only offered while editing: a transaction not yet saved has nothing to
+         * remove. On a recurring transaction it stops it, and what it wrote stays.
+         */
         fun delete() {
-            val editing = original ?: return
+            val editing = original
+            if (editing == null && scheduleId == null) return
             _uiState.update { it.copy(saving = true) }
             viewModelScope.launch {
-                editor.remove(editing.id)
+                writer.remove(editing, scheduleId)
                 _uiState.update { it.copy(saving = false, done = true) }
             }
         }
@@ -318,6 +324,37 @@ class ExpenseFormViewModel
             const val STOP_TIMEOUT_MILLIS = 5_000L
         }
     }
+
+/** A recurring transaction as the form found it, which is what its rhythm keeps counting from. */
+data class ScheduleAsStored(
+    val recurrence: Recurrence,
+    val nextDue: LocalDate?,
+)
+
+/**
+ * The form filled from a recurring transaction, dated on the next day it falls
+ * on — or, once it has ended, today, from where it can be started again.
+ */
+private fun ExpenseFormUiState.filledFrom(
+    schedule: RecurringTransaction,
+    today: LocalDate,
+): ExpenseFormUiState =
+    copy(
+        amountText = Formatters.amountInput(schedule.amount),
+        merchantText = schedule.merchantName.orEmpty(),
+        date = schedule.nextDue ?: today,
+        note = schedule.note.orEmpty(),
+        kind = schedule.kind,
+        accountId = schedule.accountId,
+        toAccountId = schedule.toAccountId,
+        categoryId = schedule.categoryId,
+        categoryChosen = true,
+        rhythm = schedule.recurrence.rhythm,
+        lastDate = schedule.recurrence.lastDate,
+        canRepeat = false,
+        schedule = ScheduleAsStored(schedule.recurrence, schedule.nextDue),
+        loading = false,
+    )
 
 /**
  * The form filled from a transaction as stored, read in the zone it was made in —

@@ -181,6 +181,77 @@ class ExpenseFormRepeatTest {
             assertFalse(second.canRepeat)
         }
 
+    @Test
+    fun `a recurring transaction opens on its next day, and a new amount reaches only what comes next`() =
+        runTest {
+            recurring.repeat(typedOn(LocalDate.of(2026, 8, 25)), Rhythm.MONTHLY, lastDate = null)
+            val id =
+                recurring
+                    .all()
+                    .first()
+                    .single()
+                    .id
+            viewModel = open(schedule = id)
+            val opened = viewModel.uiState.first { !it.loading }
+            assertEquals(LocalDate.of(2026, 10, 25), opened.date)
+            assertEquals(Rhythm.MONTHLY, opened.rhythm)
+            assertTrue(opened.isSchedule)
+
+            viewModel.onAmountChange("90,00")
+            viewModel.save()
+            viewModel.uiState.first { it.done }
+
+            assertEquals(9_000L, recurring.byId(id)?.amount?.minor)
+            assertEquals(listOf(8_500L, 8_500L), transactions.confirmed().first().map { it.amount.minor })
+        }
+
+    @Test
+    fun `moving a recurring transaction's next day into the past asks, counting that day`() =
+        runTest {
+            recurring.repeat(typedOn(LocalDate.of(2026, 9, 25)), Rhythm.WEEKLY, lastDate = null)
+            viewModel =
+                open(
+                    schedule =
+                        recurring
+                            .all()
+                            .first()
+                            .single()
+                            .id,
+                )
+            viewModel.uiState.first { !it.loading }
+
+            viewModel.onDateChange(LocalDate.of(2026, 9, 20))
+            viewModel.save()
+            advanceUntilIdle()
+
+            assertEquals(
+                Backfill(2, LocalDate.of(2026, 9, 20), LocalDate.of(2026, 9, 27)),
+                viewModel.uiState.value.backfill,
+            )
+        }
+
+    @Test
+    fun `stopping a recurring transaction from the form keeps what it wrote`() =
+        runTest {
+            recurring.repeat(typedOn(LocalDate.of(2026, 8, 25)), Rhythm.MONTHLY, lastDate = null)
+            viewModel =
+                open(
+                    schedule =
+                        recurring
+                            .all()
+                            .first()
+                            .single()
+                            .id,
+                )
+            viewModel.uiState.first { !it.loading }
+
+            viewModel.delete()
+            viewModel.uiState.first { it.done }
+
+            assertTrue(recurring.all().first().isEmpty())
+            assertEquals(2, transactions.confirmed().first().size)
+        }
+
     private suspend fun typedOn(day: LocalDate): Long =
         transactions.addManual(
             amount = Money(8_500, Money.CAD),
@@ -194,11 +265,20 @@ class ExpenseFormRepeatTest {
             reach = null,
         )
 
-    private fun open(editing: Long? = null): ExpenseFormViewModel {
+    private fun open(
+        editing: Long? = null,
+        schedule: Long? = null,
+    ): ExpenseFormViewModel {
         val merchants = MerchantRepository(database.merchantDao())
         val categories = CategoryRepository(database.categoryDao(), database.merchantDao(), database.accountDao())
         return ExpenseFormViewModel(
-            savedStateHandle = SavedStateHandle(editing?.let { mapOf(EXPENSE_ID_ARG to it) } ?: emptyMap()),
+            savedStateHandle =
+                SavedStateHandle(
+                    listOfNotNull(
+                        editing?.let { EXPENSE_ID_ARG to it },
+                        schedule?.let { RECURRING_ID_ARG to it },
+                    ).toMap(),
+                ),
             transactions = transactions,
             editor = TransactionEditor(database, database.transactionDao(), merchants, categories, CLOCK),
             merchants = merchants,

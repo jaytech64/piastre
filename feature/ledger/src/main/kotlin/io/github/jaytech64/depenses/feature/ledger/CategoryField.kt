@@ -39,12 +39,13 @@ import io.github.jaytech64.depenses.core.model.TransactionKind
 internal fun CategorySection(
     selectedId: Long?,
     picker: CategoryPicker,
+    offers: Boolean,
     onAddCategory: () -> Unit,
 ) {
     val categories by picker.known.collectAsStateWithLifecycle()
     val offer by picker.offer.collectAsStateWithLifecycle()
     CategoryField(selectedId, categories, onPick = picker::onPick, onAddCategory = onAddCategory)
-    offer?.let {
+    offer?.takeIf { offers }?.let {
         CategoryOfferBoxes(it, onOthersChange = picker::onOthersChange, onFromNowOnChange = picker::onFromNowOnChange)
     }
 }

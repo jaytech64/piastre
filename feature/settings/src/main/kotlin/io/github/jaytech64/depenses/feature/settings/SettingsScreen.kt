@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +32,7 @@ import java.time.Instant
 
 @Composable
 fun SettingsScreen(
+    onOpenRecurring: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     healthViewModel: CaptureHealthViewModel = hiltViewModel(),
 ) {
@@ -72,6 +74,17 @@ fun SettingsScreen(
         AccountsSection()
 
         CategoriesSection()
+
+        SettingRow(
+            title = stringResource(R.string.settings_recurring),
+            body =
+                pluralStringResource(
+                    R.plurals.settings_recurring_active,
+                    state.recurringCount,
+                    state.recurringCount,
+                ),
+            onClick = onOpenRecurring,
+        )
 
         DataSection(lastAction = lastAction, viewModel = viewModel)
 
@@ -147,6 +160,7 @@ internal fun SettingRow(
     title: String,
     body: String,
     titleColor: Color = Color.Unspecified,
+    onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     val longestWord =
@@ -158,6 +172,7 @@ internal fun SettingRow(
     SubcomposeLayout(
         Modifier
             .fillMaxWidth()
+            .then(onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) { constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)

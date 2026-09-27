@@ -114,4 +114,12 @@
         <item quantity="one">Add it</item>
         <item quantity="other">Add all %d</item>
     </plurals>
+    <string name="recurring_list_title">Recurring transactions</string>
+    <string name="recurring_list_empty">Nothing repeats yet. Set Repeats when you add a transaction.</string>
+    <string name="recurring_list_next">next %s</string>
+    <string name="recurring_list_ends">ends %s</string>
+    <string name="recurring_edit_title">Recurring transaction</string>
+    <string name="recurring_stop">Stop repeating</string>
+    <string name="recurring_stop_title">Stop repeating %s?</string>
+    <string name="recurring_stop_body">What it already added stays in the ledger.</string>
 </resources>
