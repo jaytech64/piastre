@@ -107,8 +107,8 @@
     <string name="repeat_ends_on">On %s</string>
     <string name="repeat_next">Next: %s</string>
     <plurals name="repeat_backfill">
-        <item quantity="one">This adds %1$d transaction, on %2$s.</item>
-        <item quantity="other">This adds %1$d transactions, from %2$s to %3$s.</item>
+        <item quantity="one">This adds %1$d\u00A0transaction, on %2$s.</item>
+        <item quantity="other">This adds %1$d\u00A0transactions, from %2$s to %3$s.</item>
     </plurals>
     <plurals name="repeat_backfill_confirm">
         <item quantity="one">Add it</item>

@@ -108,9 +108,9 @@
     <string name="repeat_ends_on">Le %s</string>
     <string name="repeat_next">Prochaine : %s</string>
     <plurals name="repeat_backfill">
-        <item quantity="one">Ceci ajoute %1$d transaction, le %2$s.</item>
-        <item quantity="other">Ceci ajoute %1$d transactions, du %2$s au %3$s.</item>
-        <item quantity="many">Ceci ajoute %1$d transactions, du %2$s au %3$s.</item>
+        <item quantity="one">Ceci ajoute %1$d\u00A0transaction, le %2$s.</item>
+        <item quantity="other">Ceci ajoute %1$d\u00A0transactions, du %2$s au %3$s.</item>
+        <item quantity="many">Ceci ajoute %1$d\u00A0transactions, du %2$s au %3$s.</item>
     </plurals>
     <!-- "one" also matches 0 in French; the question is only asked when at least one row would be added. -->
     <plurals name="repeat_backfill_confirm" tools:ignore="ImpliedQuantity">
