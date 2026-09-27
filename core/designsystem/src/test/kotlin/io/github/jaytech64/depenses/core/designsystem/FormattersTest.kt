@@ -206,4 +206,25 @@ class FormattersTest {
     private companion object {
         val LABELS = Formatters.RelativeDayLabels(today = "Aujourd'hui", yesterday = "Hier")
     }
+
+    @Test
+    fun `a day of the month in English takes its ordinal, the teens included`() {
+        val days = listOf(1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 31).map { Formatters.dayOfMonth(it, Locale.CANADA) }
+
+        assertEquals(listOf("1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd", "23rd", "31st"), days)
+    }
+
+    @Test
+    fun `a day of the month in French is a plain number, except the first`() {
+        assertEquals("1er", Formatters.dayOfMonth(1, Locale.CANADA_FRENCH))
+        assertEquals("25", Formatters.dayOfMonth(25, Locale.CANADA_FRENCH))
+    }
+
+    @Test
+    fun `a weekday is named in the locale`() {
+        val friday = LocalDate.of(2026, 9, 25)
+
+        assertEquals("vendredi", Formatters.weekday(friday, Locale.CANADA_FRENCH))
+        assertEquals("Friday", Formatters.weekday(friday, Locale.CANADA))
+    }
 }
