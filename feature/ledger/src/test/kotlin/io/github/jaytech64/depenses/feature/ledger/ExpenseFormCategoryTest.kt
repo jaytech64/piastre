@@ -34,6 +34,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Provider
 
@@ -254,7 +255,7 @@ class ExpenseFormCategoryTest {
             assertEquals(
                 mortgage,
                 accounts
-                    .all()
+                    .all(LocalDate.now())
                     .first()
                     .single { it.id == loan }
                     .categoryId,

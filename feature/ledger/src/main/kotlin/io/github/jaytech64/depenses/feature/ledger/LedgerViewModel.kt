@@ -21,10 +21,12 @@ import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.containsTyped
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
@@ -197,7 +199,12 @@ class LedgerViewModel
                 uiState.value.days.flatMapTo(mutableSetOf()) { day -> day.transactions.map { it.id } }
             }
 
-        private val known: Flow<Known> = combine(accounts.all(), categories.all(), merchants.all(), ::Known)
+        /** The accounts with what each holds today, so their balances move at midnight too. */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private val known: Flow<Known> =
+            ticker.dates().flatMapLatest { today ->
+                combine(accounts.all(today), categories.all(), merchants.all(), ::Known)
+            }
 
         private val filtering: Flow<Pair<FilterKeys, Set<Long>>> = combine(filters.keys, selection.rowIds, ::Pair)
 

@@ -51,7 +51,7 @@ class ReportRepositoryTest {
             spend(on = SUNDAY, amountMinor = 500)
             spend(on = SUNDAY.plusDays(1), amountMinor = 9_999)
 
-            val spending = reports.spending(week()).first()
+            val spending = reports.spending(week(), TODAY).first()
 
             assertEquals(Money(4_000, Money.CAD), spending.total)
             assertEquals(3, spending.count)
@@ -64,7 +64,7 @@ class ReportRepositoryTest {
             record(on = MONDAY, amountMinor = 150_000, kind = TransactionKind.INCOME, key = "pay")
             record(on = MONDAY, amountMinor = 6_000, kind = TransactionKind.TRANSFER, key = "move")
 
-            assertEquals(Money(1_000, Money.CAD), reports.spending(week()).first().total)
+            assertEquals(Money(1_000, Money.CAD), reports.spending(week(), TODAY).first().total)
         }
 
     @Test
@@ -76,7 +76,7 @@ class ReportRepositoryTest {
             record(on = MONDAY, amountMinor = 6_000, kind = TransactionKind.TRANSFER, key = "move")
             record(on = SUNDAY.plusDays(1), amountMinor = 9_999, kind = TransactionKind.INCOME, key = "next week")
 
-            assertEquals(Money(152_500, Money.CAD), reports.income(week()).first())
+            assertEquals(Money(152_500, Money.CAD), reports.income(week(), TODAY).first())
         }
 
     @Test
@@ -92,7 +92,7 @@ class ReportRepositoryTest {
             )
             record(on = MONDAY, amountMinor = 40_000, kind = TransactionKind.INCOME, currency = "USD", key = "abroad")
 
-            assertEquals(Money(150_000, Money.CAD), reports.income(week()).first())
+            assertEquals(Money(150_000, Money.CAD), reports.income(week(), TODAY).first())
         }
 
     @Test
@@ -101,7 +101,7 @@ class ReportRepositoryTest {
             spend(on = MONDAY, amountMinor = 1_000)
             record(on = MONDAY, amountMinor = 8_000, status = TransactionStatus.NEEDS_REVIEW, key = "unsure")
 
-            val spending = reports.spending(week()).first()
+            val spending = reports.spending(week(), TODAY).first()
 
             assertEquals(Money(1_000, Money.CAD), spending.total)
             assertEquals(1, spending.count)
@@ -113,7 +113,7 @@ class ReportRepositoryTest {
             spend(on = MONDAY, amountMinor = 1_000)
             spend(on = SUNDAY, amountMinor = 500)
 
-            val days = reports.dailyTotals(week()).first()
+            val days = reports.dailyTotals(week(), TODAY).first()
 
             assertEquals(setOf(MONDAY, SUNDAY), days.keys)
             assertEquals(Money(1_000, Money.CAD), days[MONDAY])
@@ -122,14 +122,14 @@ class ReportRepositoryTest {
     @Test
     fun `a period nothing happened in totals zero rather than failing`() =
         runTest {
-            val spending = reports.spending(week()).first()
+            val spending = reports.spending(week(), TODAY).first()
 
             assertEquals(Money(0, Money.CAD), spending.total)
             assertEquals(0, spending.count)
-            assertEquals(Money(0, Money.CAD), reports.total(week()).first())
-            assertEquals(Money(0, Money.CAD), reports.income(week()).first())
-            assertTrue(reports.dailyTotals(week()).first().isEmpty())
-            assertTrue(reports.topMerchants(week(), limit = 5).first().isEmpty())
+            assertEquals(Money(0, Money.CAD), reports.total(week(), TODAY).first())
+            assertEquals(Money(0, Money.CAD), reports.income(week(), TODAY).first())
+            assertTrue(reports.dailyTotals(week(), TODAY).first().isEmpty())
+            assertTrue(reports.topMerchants(week(), TODAY, limit = 5).first().isEmpty())
         }
 
     @Test
@@ -142,7 +142,7 @@ class ReportRepositoryTest {
             spend(on = MONDAY, amountMinor = 625, merchantId = cafe, key = "c")
             spend(on = MONDAY, amountMinor = 5_000, merchantId = null, key = "nameless")
 
-            val ranking = reports.topMerchants(week(), limit = 5).first()
+            val ranking = reports.topMerchants(week(), TODAY, limit = 5).first()
 
             assertEquals(listOf("Metro Plus", "Café Olimpico"), ranking.map { it.name })
             assertEquals(Money(6_420, Money.CAD), ranking.first().total)
@@ -161,7 +161,7 @@ class ReportRepositoryTest {
                 )
             }
 
-            assertEquals(5, reports.topMerchants(week(), limit = 5).first().size)
+            assertEquals(5, reports.topMerchants(week(), TODAY, limit = 5).first().size)
         }
 
     @Test
@@ -170,8 +170,8 @@ class ReportRepositoryTest {
             spend(on = MONDAY, amountMinor = 1_000)
             spend(on = MONDAY, amountMinor = 4_500, currency = "USD", key = "abroad")
 
-            assertEquals(Money(1_000, Money.CAD), reports.spending(week()).first().total)
-            assertEquals(1, reports.otherCurrencyCount(week()).first())
+            assertEquals(Money(1_000, Money.CAD), reports.spending(week(), TODAY).first().total)
+            assertEquals(1, reports.otherCurrencyCount(week(), TODAY).first())
         }
 
     @Test
@@ -180,7 +180,7 @@ class ReportRepositoryTest {
             record(on = MONDAY, amountMinor = 40_000, kind = TransactionKind.INCOME, currency = "USD", key = "pay")
             record(on = MONDAY, amountMinor = 6_000, kind = TransactionKind.TRANSFER, currency = "USD", key = "move")
 
-            assertEquals(1, reports.otherCurrencyCount(week()).first())
+            assertEquals(1, reports.otherCurrencyCount(week(), TODAY).first())
         }
 
     @Test
@@ -193,7 +193,20 @@ class ReportRepositoryTest {
 
             val september = ReportPeriod.containing(PeriodUnit.MONTH, LocalDate.of(2026, 9, 16))
 
-            assertEquals(Money(3_000, Money.CAD), reports.spending(september).first().total)
+            assertEquals(Money(3_000, Money.CAD), reports.spending(september, TODAY).first().total)
+        }
+
+    @Test
+    fun `a purchase dated after today counts from its day, not before`() =
+        runTest {
+            spend(on = LocalDate.of(2026, 9, 29), amountMinor = 1_000)
+            spend(on = LocalDate.of(2026, 10, 15), amountMinor = 21_240, key = "insurance")
+            val october = ReportPeriod.containing(PeriodUnit.MONTH, LocalDate.of(2026, 10, 1))
+            val september = ReportPeriod.containing(PeriodUnit.MONTH, LocalDate.of(2026, 9, 1))
+
+            assertEquals(Money(0, Money.CAD), reports.spending(october, LocalDate.of(2026, 10, 14)).first().total)
+            assertEquals(Money(21_240, Money.CAD), reports.spending(october, LocalDate.of(2026, 10, 15)).first().total)
+            assertEquals(Money(1_000, Money.CAD), reports.spending(september, LocalDate.of(2026, 9, 30)).first().total)
         }
 
     private suspend fun spend(
@@ -251,6 +264,9 @@ class ReportRepositoryTest {
     private companion object {
         val MONDAY: LocalDate = LocalDate.of(2026, 9, 14)
         val SUNDAY: LocalDate = LocalDate.of(2026, 9, 20)
+
+        /** Well after every period read here, so today's bound narrows none of them. */
+        val TODAY: LocalDate = LocalDate.of(2026, 12, 31)
         const val MILLIS_IN_DAY = 86_400_000L
     }
 }

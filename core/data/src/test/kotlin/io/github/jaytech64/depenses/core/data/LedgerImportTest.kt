@@ -149,7 +149,7 @@ class LedgerImportTest {
             assertTrue(
                 target
                     .accounts()
-                    .all()
+                    .all(LocalDate.of(2026, 12, 31))
                     .first()
                     .isEmpty(),
             )
@@ -175,7 +175,7 @@ class LedgerImportTest {
             val opening =
                 target
                     .accounts()
-                    .all()
+                    .all(LocalDate.of(2026, 12, 31))
                     .first()
                     .associate { it.name to it.openingBalance }
             assertEquals(cad(-1_000_00), opening["Visa"])
@@ -196,7 +196,7 @@ class LedgerImportTest {
             val account =
                 target
                     .accounts()
-                    .all()
+                    .all(LocalDate.of(2026, 12, 31))
                     .first()
                     .single()
             assertEquals("Chèques", account.name)
@@ -466,9 +466,14 @@ class LedgerImportTest {
             }.sortedBy { it.toString() }
 
     private suspend fun DepensesDatabase.balances() =
-        accounts().all().first().map { listOf(it.name, it.type, it.openingBalance, it.balance) }
+        accounts()
+            .all(
+                LocalDate.of(2026, 12, 31),
+            ).first()
+            .map { listOf(it.name, it.type, it.openingBalance, it.balance) }
 
-    private suspend fun DepensesDatabase.accountNames() = accounts().all().first().map { it.name }
+    private suspend fun DepensesDatabase.accountNames() =
+        accounts().all(LocalDate.of(2026, 12, 31)).first().map { it.name }
 
     private fun refused(problem: ImportProblem) = ImportReading.Refused(problem)
 

@@ -6,14 +6,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,9 +26,15 @@ class AccountsViewModel
     @Inject
     constructor(
         private val repository: AccountRepository,
+        ticker: LocalDateTicker,
     ) : ViewModel() {
+        /** With what each holds today, which moves at midnight when a row dated tomorrow comes due. */
+        @OptIn(ExperimentalCoroutinesApi::class)
         val accounts: StateFlow<List<Account>> =
-            repository.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
+            ticker
+                .dates()
+                .flatMapLatest(repository::all)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
         private val removalRefusedState = MutableStateFlow(false)
 

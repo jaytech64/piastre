@@ -25,6 +25,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Provider
 
@@ -82,7 +83,7 @@ class AccountRepositoryTest {
             captureCoffee(key = "tag-2", postedAt = POSTED_AT + HOUR)
 
             val purchases = transactions.confirmed().first()
-            val account = accounts.all().first().single()
+            val account = accounts.all(TODAY).first().single()
 
             assertEquals(setOf(account.id), purchases.map { it.accountId }.toSet())
             assertEquals("Carte d'accès Desrives", account.issuerLabel)
@@ -105,7 +106,7 @@ class AccountRepositoryTest {
     fun `a notification without digits is not pinned to any account`() =
         runTest {
             assertNull(accounts.resolve("Carte d'accès Desrives", null))
-            assertTrue(accounts.all().first().isEmpty())
+            assertTrue(accounts.all(TODAY).first().isEmpty())
         }
 
     /** An account you typed in must never be claimed by capture, even with matching digits. */
@@ -123,7 +124,7 @@ class AccountRepositoryTest {
     fun `naming an account shows on every purchase made with it`() =
         runTest {
             captureCoffee(key = "tag-1", postedAt = POSTED_AT)
-            val account = accounts.all().first().single()
+            val account = accounts.all(TODAY).first().single()
 
             accounts.rename(account.id, "  Débit Desrives ")
 
@@ -146,7 +147,7 @@ class AccountRepositoryTest {
 
             assertNull(
                 accounts
-                    .all()
+                    .all(TODAY)
                     .first()
                     .single()
                     .name,
@@ -159,7 +160,7 @@ class AccountRepositoryTest {
             captureCoffee(key = "tag-1", postedAt = POSTED_AT)
             val used =
                 accounts
-                    .all()
+                    .all(TODAY)
                     .first()
                     .single()
                     .id
@@ -167,7 +168,7 @@ class AccountRepositoryTest {
 
             assertFalse(accounts.remove(used))
             assertTrue(accounts.remove(unused))
-            assertEquals(listOf(used), accounts.all().first().map { it.id })
+            assertEquals(listOf(used), accounts.all(TODAY).first().map { it.id })
         }
 
     @Test
@@ -215,7 +216,7 @@ class AccountRepositoryTest {
             enter(8_82, TransactionKind.EXPENSE, accountId = card)
             enter(412_50, TransactionKind.TRANSFER, accountId = bank, toAccountId = card)
 
-            val balances = accounts.all().first().associate { it.name to it.balance.minor }
+            val balances = accounts.all(TODAY).first().associate { it.name to it.balance.minor }
 
             assertEquals(1_850_00L + 1_500_00 - 412_50, balances["Débit"])
             assertEquals(-640_25L - 8_82 + 412_50, balances["Visa"])
@@ -227,7 +228,7 @@ class AccountRepositoryTest {
             val id = accounts.add(name = "Amex papier", type = AccountType.CARD, last4 = "8484")
             enter(12_50, TransactionKind.EXPENSE, accountId = id)
 
-            val account = accounts.all().first().single()
+            val account = accounts.all(TODAY).first().single()
 
             assertNull(account.openingBalance)
             assertEquals(-12_50L, account.balance.minor)
@@ -245,7 +246,7 @@ class AccountRepositoryTest {
             assertEquals(
                 100_00L,
                 accounts
-                    .all()
+                    .all(TODAY)
                     .first()
                     .single()
                     .balance.minor,
@@ -292,7 +293,7 @@ class AccountRepositoryTest {
             accounts.add(name = "Chèques", type = AccountType.BANK, last4 = null)
             accounts.resolve("Carte d'accès Desrives", "0000")
 
-            assertEquals(listOf("Visa Desrives", "Chèques", null), accounts.all().first().map { it.name })
+            assertEquals(listOf("Visa Desrives", "Chèques", null), accounts.all(TODAY).first().map { it.name })
         }
 
     @Test
@@ -306,7 +307,7 @@ class AccountRepositoryTest {
 
             assertEquals(
                 listOf("Chèques", "Visa Desrives", "Argent comptant"),
-                accounts.all().first().map { it.name },
+                accounts.all(TODAY).first().map { it.name },
             )
         }
 
@@ -321,7 +322,7 @@ class AccountRepositoryTest {
 
             assertEquals(
                 listOf("Argent comptant", "Visa Desrives", "Chèques"),
-                accounts.all().first().map { it.name },
+                accounts.all(TODAY).first().map { it.name },
             )
         }
 
@@ -334,7 +335,7 @@ class AccountRepositoryTest {
             accounts.remove(cash)
             accounts.move(
                 accounts
-                    .all()
+                    .all(TODAY)
                     .first()
                     .last()
                     .id,
@@ -345,7 +346,58 @@ class AccountRepositoryTest {
 
             assertEquals(
                 listOf("Chèques", "Visa Desrives", "Épargne"),
-                accounts.all().first().map { it.name },
+                accounts.all(TODAY).first().map { it.name },
+            )
+        }
+
+    @Test
+    fun `a row dated after today moves no balance until its day`() =
+        runTest {
+            val bank =
+                accounts.add(
+                    "Chèques",
+                    AccountType.BANK,
+                    last4 = null,
+                    openingBalance = Money(100_000, Money.CAD),
+                )
+            TransactionRepository(
+                database,
+                database.transactionDao(),
+                MerchantRepository(database.merchantDao()),
+                CategoryRepository(database.categoryDao(), database.merchantDao(), database.accountDao()),
+                Provider { ZONE },
+            ).addManual(
+                amount = Money(21_240, Money.CAD),
+                merchantName = "Assurance auto",
+                occurredAt =
+                    LocalDate
+                        .of(2026, 10, 15)
+                        .atTime(12, 0)
+                        .atZone(ZONE)
+                        .toInstant(),
+                note = null,
+                kind = TransactionKind.EXPENSE,
+                accountId = bank,
+                toAccountId = null,
+                categoryId = null,
+                reach = null,
+            )
+
+            assertEquals(
+                100_000L,
+                accounts
+                    .all(LocalDate.of(2026, 10, 14))
+                    .first()
+                    .single { it.id == bank }
+                    .balance.minor,
+            )
+            assertEquals(
+                78_760L,
+                accounts
+                    .all(LocalDate.of(2026, 10, 15))
+                    .first()
+                    .single { it.id == bank }
+                    .balance.minor,
             )
         }
 
@@ -354,5 +406,8 @@ class AccountRepositoryTest {
         const val WALLET = "com.google.android.apps.walletnfcrel"
         const val POSTED_AT = 1_788_740_166_564L
         const val HOUR = 3_600_000L
+
+        /** After every row these tests record, so a balance counts all of them. */
+        val TODAY: LocalDate = LocalDate.of(2026, 12, 31)
     }
 }
