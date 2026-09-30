@@ -82,6 +82,8 @@ fun LedgerScreen(
                 onMerchant = viewModel::onMerchantSelected,
                 onFrom = viewModel::onFromSelected,
                 onTo = viewModel::onToSelected,
+                onAtLeast = viewModel::onAtLeastTyped,
+                onAtMost = viewModel::onAtMostTyped,
                 onClearAll = viewModel::onFiltersCleared,
             )
         }

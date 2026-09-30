@@ -17,6 +17,12 @@
     <string name="ledger_filter_any_day">Any day</string>
     <string name="ledger_filter_since">Since %s</string>
     <string name="ledger_filter_until">Until %s</string>
+    <string name="ledger_filters_how_much">How much</string>
+    <string name="ledger_filter_at_least">At least</string>
+    <string name="ledger_filter_at_most">At most</string>
+    <string name="ledger_filter_amounts_crossed">Must be at most the maximum</string>
+    <string name="ledger_filter_at_least_chip">%s or more</string>
+    <string name="ledger_filter_at_most_chip">Up to %s</string>
     <plurals name="ledger_filters_show">
         <item quantity="one">Show %d transaction</item>
         <item quantity="other">Show %d transactions</item>

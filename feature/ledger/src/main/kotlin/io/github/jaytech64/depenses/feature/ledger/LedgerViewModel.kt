@@ -12,6 +12,7 @@ import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
+import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Category
 import io.github.jaytech64.depenses.core.model.CategoryUsage
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
+import kotlin.math.abs
 
 /** One local day, with its balance: what came in minus what went out. */
 data class LedgerDay(
@@ -86,11 +88,19 @@ data class LedgerFilter(
     val from: LocalDate? = null,
     /** The last day shown, itself included. */
     val to: LocalDate? = null,
+    /**
+     * The smallest amount shown, itself included. Compared with the number each
+     * row shows, in its own currency: converting would need a rate, and a rate
+     * needs the network.
+     */
+    val atLeast: Money? = null,
+    /** The largest amount shown, itself included; compared as [atLeast] is. */
+    val atMost: Money? = null,
 ) {
     val hasDates: Boolean get() = from != null || to != null
 
     /** How many slots other than the dates are set; the dates are the period, which is said on its own. */
-    val countBesideDates: Int get() = listOfNotNull(account, category, merchant).size
+    val countBesideDates: Int get() = listOfNotNull(account, category, merchant, atLeast ?: atMost).size
 
     val isActive: Boolean get() = hasDates || countBesideDates > 0
 
@@ -99,7 +109,9 @@ data class LedgerFilter(
             transaction.isIn(category) &&
             (merchant == null || transaction.merchantId == merchant.id) &&
             (from == null || transaction.localDate >= from) &&
-            (to == null || transaction.localDate <= to)
+            (to == null || transaction.localDate <= to) &&
+            (atLeast == null || transaction.amount.minor >= atLeast.minor) &&
+            (atMost == null || transaction.amount.minor <= atMost.minor)
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
@@ -138,6 +150,11 @@ data class LedgerUiState(
     /** Likewise only merchants some confirmed row names. */
     val merchants: List<FilterOption<Merchant>> = emptyList(),
     val filter: LedgerFilter = LedgerFilter(),
+    /** The amounts as typed, which the filter's own can no longer say once they are read. */
+    val typedAtLeast: String = "",
+    val typedAtMost: String = "",
+    /** *At least* is above *At most*, so neither narrows anything until one is changed. */
+    val amountsCrossed: Boolean = false,
     /** The rows picked by a long press, and only those still on screen. */
     val selected: Set<Long> = emptySet(),
     /** What the selected rows add up to, counted as the day and month totals are; null while nothing is selected. */
@@ -185,6 +202,11 @@ class LedgerViewModel
                 ),
                 savedState.getStateFlow<Long?>(FROM_EPOCH_DAY, null),
                 savedState.getStateFlow<Long?>(TO_EPOCH_DAY, null),
+                combine(
+                    savedState.getStateFlow(AT_LEAST_TYPED, ""),
+                    savedState.getStateFlow(AT_MOST_TYPED, ""),
+                    ::AmountKeys,
+                ),
                 ::FilterKeys,
             )
 
@@ -224,6 +246,9 @@ class LedgerViewModel
                     categories = transactions.categoryOptions(today),
                     merchants = transactions.merchantOptions(today, known.merchants),
                     filter = filter,
+                    typedAtLeast = keys.amounts.atLeast,
+                    typedAtMost = keys.amounts.atMost,
+                    amountsCrossed = keys.amounts.crossed,
                     selected = selected.mapTo(mutableSetOf()) { it.id },
                     selectionSummary = selected.takeIf { it.isNotEmpty() }?.summaryOf(filter),
                     selectionCategories = transactions.categoriesFor(selected, known.categories, today),
@@ -261,6 +286,16 @@ class LedgerViewModel
             savedState[TO_EPOCH_DAY] = date?.toEpochDay()
         }
 
+        /** What was typed in *At least*; blank shows every amount up to [LedgerFilter.atMost] again. */
+        fun onAtLeastTyped(text: String) {
+            savedState[AT_LEAST_TYPED] = text
+        }
+
+        /** What was typed in *At most*; blank shows every amount from [LedgerFilter.atLeast] on again. */
+        fun onAtMostTyped(text: String) {
+            savedState[AT_MOST_TYPED] = text
+        }
+
         /** Every filter off at once. */
         fun onFiltersCleared() {
             onAccountSelected(null)
@@ -268,6 +303,8 @@ class LedgerViewModel
             onMerchantSelected(null)
             onFromSelected(null)
             onToSelected(null)
+            onAtLeastTyped("")
+            onAtMostTyped("")
         }
 
         /**
@@ -330,7 +367,26 @@ class LedgerViewModel
             val where: WhereKeys,
             val fromEpochDay: Long?,
             val toEpochDay: Long?,
+            val amounts: AmountKeys,
         )
+
+        /**
+         * The amounts as typed. They are kept as text rather than as amounts, so
+         * the fields hold what was typed — `12,` on the way to `12,50` — across
+         * the page closing and the screen being rebuilt.
+         */
+        private data class AmountKeys(
+            val atLeast: String,
+            val atMost: String,
+        ) {
+            val low: Money? = atLeast.asAmount()
+            val high: Money? = atMost.asAmount()
+            val crossed: Boolean = low != null && high != null && low.minor > high.minor
+
+            /** Read as [Formatters.parseMoney] reads the form's amount, and as a size whichever sign was typed. */
+            private fun String.asAmount(): Money? =
+                Formatters.parseMoney(this)?.let { Money(abs(it.minor), it.currency) }
+        }
 
         /** The keys of the filters that narrow by where the money went. */
         private data class WhereKeys(
@@ -366,6 +422,8 @@ class LedgerViewModel
                     merchant = merchants.firstOrNull { it.id == selection.where.merchantId },
                     from = selection.fromEpochDay?.let(LocalDate::ofEpochDay),
                     to = selection.toEpochDay?.let(LocalDate::ofEpochDay),
+                    atLeast = selection.amounts.low.takeUnless { selection.amounts.crossed },
+                    atMost = selection.amounts.high.takeUnless { selection.amounts.crossed },
                 )
         }
 
@@ -377,6 +435,8 @@ class LedgerViewModel
             const val SELECTED_MERCHANT_ID = "selectedMerchantId"
             const val FROM_EPOCH_DAY = "fromEpochDay"
             const val TO_EPOCH_DAY = "toEpochDay"
+            const val AT_LEAST_TYPED = "atLeastTyped"
+            const val AT_MOST_TYPED = "atMostTyped"
         }
     }
 

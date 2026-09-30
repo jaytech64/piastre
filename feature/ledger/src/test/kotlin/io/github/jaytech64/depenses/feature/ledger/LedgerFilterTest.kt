@@ -402,4 +402,71 @@ class LedgerFilterTest : LedgerTest() {
 
             assertEquals(1, state.shownCount)
         }
+
+    @Test
+    fun `the ledger narrows to amounts between two ends, both included`() =
+        runTest {
+            insert(amountMinor = 1_999, day = TODAY)
+            insert(amountMinor = 2_000, day = TODAY)
+            insert(amountMinor = 5_000, day = TODAY)
+            insert(amountMinor = 5_001, day = TODAY)
+
+            viewModel.onAtLeastTyped("20")
+            viewModel.onAtMostTyped("50,00")
+            val state = viewModel.uiState.first { it.filter.atLeast != null && it.filter.atMost != null }
+
+            assertEquals(Money(-7_000, Money.CAD), state.headline.balance)
+        }
+
+    @Test
+    fun `an amount is matched on its size, whichever way the money went`() =
+        runTest {
+            insert(amountMinor = 5_000, day = TODAY, kind = TransactionKind.INCOME, merchantRaw = "PAIE")
+            insert(amountMinor = 5_000, day = TODAY, kind = TransactionKind.EXPENSE)
+            insert(amountMinor = 500, day = TODAY)
+
+            viewModel.onAtLeastTyped("40")
+            val state = viewModel.uiState.first { it.filter.atLeast != null }
+
+            assertEquals(2, state.shownCount)
+        }
+
+    @Test
+    fun `an amount in another currency is matched on the number it shows`() =
+        runTest {
+            insert(amountMinor = 3_000, day = TODAY, currency = "USD")
+            insert(amountMinor = 7_000, day = TODAY)
+
+            viewModel.onAtMostTyped("50.00")
+            val state = viewModel.uiState.first { it.filter.atMost != null }
+
+            assertEquals(1, state.shownCount)
+            assertEquals(1, state.headline.otherCurrencyCount)
+        }
+
+    @Test
+    fun `a minimum above the maximum narrows nothing and says so`() =
+        runTest {
+            insert(amountMinor = 3_000, day = TODAY)
+
+            viewModel.onAtLeastTyped("50")
+            viewModel.onAtMostTyped("20")
+            val state = viewModel.uiState.first { it.amountsCrossed }
+
+            assertNull(state.filter.atLeast)
+            assertNull(state.filter.atMost)
+            assertEquals(1, state.shownCount)
+        }
+
+    @Test
+    fun `what was typed in an amount survives the screen being rebuilt`() =
+        runTest {
+            viewModel.onAtLeastTyped("12,")
+            viewModel.uiState.first { it.typedAtLeast == "12," }
+
+            val rebuilt = ledgerViewModel(savedState).uiState.first { !it.loading }
+
+            assertEquals("12,", rebuilt.typedAtLeast)
+            assertEquals(Money(1_200, Money.CAD), rebuilt.filter.atLeast)
+        }
 }

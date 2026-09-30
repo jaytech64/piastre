@@ -199,6 +199,9 @@ private fun FilterFields(
 
     SectionTitle(R.string.ledger_filters_when)
     DateFields(state.filter, onPickDate)
+
+    SectionTitle(R.string.ledger_filters_how_much)
+    AmountFields(state, actions)
 }
 
 @Composable

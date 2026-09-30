@@ -75,6 +75,7 @@ internal fun FilterChips(
     enabled: Boolean,
 ) {
     val dates = datesLabel(filter, today)
+    val amounts = amountsLabel(filter)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -93,6 +94,14 @@ internal fun FilterChips(
                 RemovableChip(it, enabled) {
                     actions.onFrom(null)
                     actions.onTo(null)
+                }
+            }
+        }
+        amounts?.let {
+            item(key = "amounts") {
+                RemovableChip(it, enabled) {
+                    actions.onAtLeast("")
+                    actions.onAtMost("")
                 }
             }
         }
@@ -133,6 +142,20 @@ internal fun datesLabel(
         from != null && to != null -> Formatters.dateSpan(from, to, today, locale)
         from != null -> stringResource(R.string.ledger_filter_since, Formatters.shortDate(from, today, locale))
         to != null -> stringResource(R.string.ledger_filter_until, Formatters.shortDate(to, today, locale))
+        else -> null
+    }
+}
+
+/** What the filter's amounts say — `$20.00 or more`, `$20.00 – $50.00` — or null while it has none. */
+@Composable
+private fun amountsLabel(filter: LedgerFilter): String? {
+    val locale = currentLocale()
+    val low = filter.atLeast?.let { Formatters.money(it, locale) }
+    val high = filter.atMost?.let { Formatters.money(it, locale) }
+    return when {
+        low != null && high != null -> "$low – $high"
+        low != null -> stringResource(R.string.ledger_filter_at_least_chip, low)
+        high != null -> stringResource(R.string.ledger_filter_at_most_chip, high)
         else -> null
     }
 }

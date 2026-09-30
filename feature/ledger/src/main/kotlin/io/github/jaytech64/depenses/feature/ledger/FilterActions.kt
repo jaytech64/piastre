@@ -11,5 +11,7 @@ internal class FilterActions(
     val onMerchant: (Long?) -> Unit,
     val onFrom: (LocalDate?) -> Unit,
     val onTo: (LocalDate?) -> Unit,
+    val onAtLeast: (String) -> Unit,
+    val onAtMost: (String) -> Unit,
     val onClearAll: () -> Unit,
 )

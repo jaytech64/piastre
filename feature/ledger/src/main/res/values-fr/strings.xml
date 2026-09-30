@@ -17,6 +17,12 @@
     <string name="ledger_filter_any_day">N\'importe quel jour</string>
     <string name="ledger_filter_since">Depuis le %s</string>
     <string name="ledger_filter_until">Jusqu\'au %s</string>
+    <string name="ledger_filters_how_much">Combien</string>
+    <string name="ledger_filter_at_least">Au moins</string>
+    <string name="ledger_filter_at_most">Au plus</string>
+    <string name="ledger_filter_amounts_crossed">Doit être inférieur ou égal au maximum</string>
+    <string name="ledger_filter_at_least_chip">%s et plus</string>
+    <string name="ledger_filter_at_most_chip">Jusqu\'à %s</string>
     <plurals name="ledger_filters_show">
         <item quantity="one">Voir %d opération</item>
         <item quantity="many">Voir %d d\'opérations</item>
