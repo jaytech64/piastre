@@ -27,11 +27,11 @@
     <string name="ledger_filter_note">La note contient</string>
     <string name="ledger_filter_note_chip">« %s »</string>
     <plurals name="ledger_filters_show">
-        <item quantity="one">Voir %d\u00A0opération</item>
-        <item quantity="many">Voir %d\u00A0d\'opérations</item>
-        <item quantity="other">Voir %d\u00A0opérations</item>
+        <item quantity="one">Voir %d\u00A0transaction</item>
+        <item quantity="many">Voir %d\u00A0de transactions</item>
+        <item quantity="other">Voir %d\u00A0transactions</item>
     </plurals>
-    <string name="ledger_filters_show_none">Aucune opération</string>
+    <string name="ledger_filters_show_none">Aucune transaction</string>
     <string name="ledger_filter_account">Compte</string>
     <string name="ledger_filter_category">Catégorie</string>
     <string name="ledger_filter_merchant">Marchand</string>
