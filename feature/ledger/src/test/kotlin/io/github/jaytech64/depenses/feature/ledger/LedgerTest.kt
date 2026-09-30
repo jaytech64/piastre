@@ -182,6 +182,7 @@ abstract class LedgerTest {
         val TODAY: LocalDate = LocalDate.now(ZONE)
         val YESTERDAY: LocalDate = TODAY.minusDays(1)
         val LAST_MONTH: LocalDate = TODAY.minusMonths(1)
+        val TWO_MONTHS_AGO: LocalDate = TODAY.minusMonths(2)
 
         /**
          * A second day inside the current month whichever day the suite runs on:

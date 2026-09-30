@@ -58,6 +58,7 @@ import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.containsTyped
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 /**
  * The filters that are on, a removable chip each, in one line that scrolls
@@ -69,9 +70,11 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun FilterChips(
     filter: LedgerFilter,
+    today: LocalDate,
     actions: FilterActions,
     enabled: Boolean,
 ) {
+    val dates = datesLabel(filter, today)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -84,6 +87,14 @@ internal fun FilterChips(
         }
         filter.merchant?.let { merchant ->
             item(key = "merchant") { RemovableChip(merchant.displayName, enabled) { actions.onMerchant(null) } }
+        }
+        dates?.let {
+            item(key = "dates") {
+                RemovableChip(it, enabled) {
+                    actions.onFrom(null)
+                    actions.onTo(null)
+                }
+            }
         }
     }
 }
@@ -107,6 +118,23 @@ private fun RemovableChip(
             )
         },
     )
+}
+
+/** What the filter's dates say — `Since Sep 1`, `Sep 1 – 30` — or null while it has none. */
+@Composable
+internal fun datesLabel(
+    filter: LedgerFilter,
+    today: LocalDate,
+): String? {
+    val locale = currentLocale()
+    val from = filter.from
+    val to = filter.to
+    return when {
+        from != null && to != null -> Formatters.dateSpan(from, to, today, locale)
+        from != null -> stringResource(R.string.ledger_filter_since, Formatters.shortDate(from, today, locale))
+        to != null -> stringResource(R.string.ledger_filter_until, Formatters.shortDate(to, today, locale))
+        else -> null
+    }
 }
 
 @Composable

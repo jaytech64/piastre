@@ -70,7 +70,7 @@ class LedgerViewModelTest : LedgerTest() {
 
             assertEquals(Money(-3_417, Money.CAD), state.days.single { it.date == TODAY }.total)
             assertEquals(Money(-3_180, Money.CAD), state.days.single { it.date == ANOTHER_DAY_THIS_MONTH }.total)
-            assertEquals(Money(-6_597, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-6_597, Money.CAD), state.headline.balance)
         }
 
     @Test
@@ -79,7 +79,7 @@ class LedgerViewModelTest : LedgerTest() {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 9_900, day = LAST_MONTH)
 
-            assertEquals(Money(-1_075, Money.CAD), settled().thisMonth.balance)
+            assertEquals(Money(-1_075, Money.CAD), settled().headline.balance)
         }
 
     @Test
@@ -96,8 +96,8 @@ class LedgerViewModelTest : LedgerTest() {
                     .single()
                     .transactions.size,
             )
-            assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
-            assertEquals(1, state.thisMonth.otherCurrencyCount)
+            assertEquals(Money(-1_075, Money.CAD), state.headline.balance)
+            assertEquals(1, state.headline.otherCurrencyCount)
         }
 
     @Test
@@ -107,8 +107,8 @@ class LedgerViewModelTest : LedgerTest() {
             val state = settled()
 
             assertEquals(Money(0, Money.CAD), state.days.single().total)
-            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
-            assertEquals(1, state.thisMonth.otherCurrencyCount)
+            assertEquals(Money(0, Money.CAD), state.headline.balance)
+            assertEquals(1, state.headline.otherCurrencyCount)
         }
 
     @Test
@@ -117,7 +117,7 @@ class LedgerViewModelTest : LedgerTest() {
             insert(amountMinor = 3_180, day = LAST_MONTH)
             val state = settled()
 
-            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(0, Money.CAD), state.headline.balance)
             assertFalse(state.isEmpty)
         }
 
@@ -128,7 +128,7 @@ class LedgerViewModelTest : LedgerTest() {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 2_000, day = TODAY.withDayOfMonth(TODAY.lengthOfMonth()))
 
-            assertEquals(Money(-3_075, Money.CAD), settled().thisMonth.balance)
+            assertEquals(Money(-3_075, Money.CAD), settled().headline.balance)
         }
 
     /**
@@ -142,7 +142,7 @@ class LedgerViewModelTest : LedgerTest() {
             insert(amountMinor = 9_999, day = TODAY, status = TransactionStatus.NEEDS_REVIEW)
             val state = settled()
 
-            assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-1_075, Money.CAD), state.headline.balance)
             assertEquals(
                 1,
                 state.days
@@ -194,7 +194,7 @@ class LedgerViewModelTest : LedgerTest() {
             insert(amountMinor = 4_210, day = TODAY)
             val state = settled()
 
-            assertEquals(Money(10_790, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(10_790, Money.CAD), state.headline.balance)
             assertEquals(Money(10_790, Money.CAD), state.days.single().total)
         }
 
@@ -205,7 +205,7 @@ class LedgerViewModelTest : LedgerTest() {
             insert(amountMinor = 150_000, day = ANOTHER_DAY_THIS_MONTH)
             insert(amountMinor = 36_237, day = TODAY)
             insert(amountMinor = 9_900, day = LAST_MONTH)
-            val month = settled().thisMonth
+            val month = settled().headline
 
             assertEquals(Money(245_000, Money.CAD), month.income)
             assertEquals(Money(186_237, Money.CAD), month.expenses)
@@ -217,7 +217,7 @@ class LedgerViewModelTest : LedgerTest() {
         runTest {
             insert(amountMinor = 15_000, day = TODAY, kind = TransactionKind.INCOME)
             insert(amountMinor = 9_999, day = TODAY, status = TransactionStatus.NEEDS_REVIEW)
-            val month = settled().thisMonth
+            val month = settled().headline
 
             assertEquals(Money(15_000, Money.CAD), month.income)
             assertEquals(Money(0, Money.CAD), month.expenses)
@@ -234,7 +234,7 @@ class LedgerViewModelTest : LedgerTest() {
                 toAccountId = account("Visa"),
             )
 
-            assertEquals(BalanceSummary(), settled().thisMonth)
+            assertEquals(BalanceSummary(), settled().headline)
         }
 
     /**
@@ -257,7 +257,7 @@ class LedgerViewModelTest : LedgerTest() {
             )
 
             viewModel.onAccountSelected(visa)
-            val month = settled().thisMonth
+            val month = settled().headline
 
             assertEquals(Money(0, Money.CAD), month.income)
             assertEquals(Money(121_480, Money.CAD), month.expenses)
@@ -269,7 +269,7 @@ class LedgerViewModelTest : LedgerTest() {
                 Money(-90_000, Money.CAD),
                 viewModel.uiState
                     .first { it.filter.account?.id == desrives }
-                    .thisMonth.transfers,
+                    .headline.transfers,
             )
         }
 
@@ -295,7 +295,7 @@ class LedgerViewModelTest : LedgerTest() {
             val state = settled()
 
             assertEquals("Desrives", state.filter.account?.name)
-            assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-1_075, Money.CAD), state.headline.balance)
             assertEquals(
                 listOf(1_075L),
                 state.days
@@ -315,7 +315,7 @@ class LedgerViewModelTest : LedgerTest() {
 
             viewModel.onAccountSelected(desrives)
 
-            assertEquals(Money(-1_075, Money.CAD), settled().thisMonth.balance)
+            assertEquals(Money(-1_075, Money.CAD), settled().headline.balance)
         }
 
     @Test
@@ -372,14 +372,14 @@ class LedgerViewModelTest : LedgerTest() {
             )
 
             viewModel.onAccountSelected(desrives)
-            assertEquals(Money(-6_575, Money.CAD), settled().thisMonth.balance)
+            assertEquals(Money(-6_575, Money.CAD), settled().headline.balance)
 
             viewModel.onAccountSelected(cash)
             assertEquals(
                 Money(6_000, Money.CAD),
                 viewModel.uiState
                     .first { it.filter.account?.id == cash }
-                    .thisMonth.balance,
+                    .headline.balance,
             )
         }
 
@@ -398,7 +398,7 @@ class LedgerViewModelTest : LedgerTest() {
 
             val state = settled()
 
-            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(0, Money.CAD), state.headline.balance)
             assertEquals(Money(0, Money.CAD), state.days.single().total)
         }
 
@@ -413,7 +413,7 @@ class LedgerViewModelTest : LedgerTest() {
             val state = viewModel.uiState.first { it.filter.account?.id == epargne }
 
             assertTrue(state.isEmpty)
-            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(0, Money.CAD), state.headline.balance)
         }
 
     /**
@@ -452,6 +452,6 @@ class LedgerViewModelTest : LedgerTest() {
             val state = viewModel.uiState.first { it.filter.account == null }
 
             assertNull(state.filter.account)
-            assertEquals(Money(-1_075, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-1_075, Money.CAD), state.headline.balance)
         }
 }

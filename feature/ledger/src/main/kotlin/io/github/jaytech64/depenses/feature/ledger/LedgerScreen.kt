@@ -80,6 +80,8 @@ fun LedgerScreen(
                 onAccount = viewModel::onAccountSelected,
                 onCategory = viewModel::onCategorySelected,
                 onMerchant = viewModel::onMerchantSelected,
+                onFrom = viewModel::onFromSelected,
+                onTo = viewModel::onToSelected,
                 onClearAll = viewModel::onFiltersCleared,
             )
         }
@@ -95,8 +97,8 @@ fun LedgerScreen(
                 onFiltersClick = { choosingFilters = true },
                 onReviewClick = onReviewClick,
             )
-            if (state.filter.isActive) {
-                FilterChips(state.filter, filterActions, enabled = !state.isSelecting)
+            if (state.filter.isActive && today != null) {
+                FilterChips(state.filter, today, filterActions, enabled = !state.isSelecting)
             }
 
             when {
@@ -255,7 +257,7 @@ private fun MonthHeader(
             BalanceRow(state, locale, onFiltersClick)
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-            SummaryFigures(state.thisMonth, locale)
+            SummaryFigures(state.headline, locale)
 
             // Shown only when there is something to say. Totals exclude unreviewed
             // purchases, so without this a low number would be a silent lie — and
@@ -293,12 +295,12 @@ private fun BalanceRow(
     Row(verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                balanceLabel(state.filter),
+                balanceLabel(state.filter, state.today),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                Formatters.signedMoney(state.thisMonth.balance, locale),
+                Formatters.signedMoney(state.headline.balance, locale),
                 style = MaterialTheme.typography.displaySmall,
             )
         }
@@ -318,16 +320,21 @@ private fun BalanceRow(
 }
 
 /**
- * The period the balance is of, then how many filters narrow it. The chips
+ * The period the balance is of — this month, or the filter's dates (ADR-0014) —
+ * then how many other filters narrow it. The chips
  * right below name each one, so naming them here too only made the label
  * run to several lines.
  */
 @Composable
-private fun balanceLabel(filter: LedgerFilter): String {
-    if (!filter.isActive) return stringResource(R.string.ledger_balance_month)
-    return listOf(
-        stringResource(R.string.ledger_period_this_month),
-        pluralStringResource(R.plurals.ledger_filter_count, filter.activeCount, filter.activeCount),
+private fun balanceLabel(
+    filter: LedgerFilter,
+    today: LocalDate?,
+): String {
+    if (!filter.isActive || today == null) return stringResource(R.string.ledger_balance_month)
+    val others = filter.countBesideDates
+    return listOfNotNull(
+        datesLabel(filter, today) ?: stringResource(R.string.ledger_period_this_month),
+        pluralStringResource(R.plurals.ledger_filter_count, others, others).takeIf { others > 0 },
     ).joinToString(" · ")
 }
 

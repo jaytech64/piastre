@@ -118,6 +118,66 @@ object Formatters {
         locale: Locale = Locale.getDefault(),
     ): String = DAY_MONTH.withLocale(locale).format(date)
 
+    /**
+     * A day short enough for a chip: `Sep 1` and `1er sept.`, with the year only
+     * when it is not [today]'s, where leaving it out would say the wrong one.
+     *
+     * English puts the month first here, where [dayAndMonth] does not: a chip
+     * reads as a date written on a form, and that is how English writes it.
+     */
+    fun shortDate(
+        date: LocalDate,
+        today: LocalDate,
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        val dayAndMonth =
+            if (locale.language == Locale.FRENCH.language) {
+                dayOfMonth(date.dayOfMonth, locale) + " " + SHORT_MONTH.withLocale(locale).format(date)
+            } else {
+                SHORT_MONTH.withLocale(locale).format(date) + " " + date.dayOfMonth
+            }
+        return withYearUnlessCurrent(dayAndMonth, date, today, locale)
+    }
+
+    /**
+     * Two days as one span, both included: `Sep 1 – 30` and `1er – 30 sept.`
+     * within a month, and each day whole — `Sep 28 – Oct 3` — across two.
+     */
+    fun dateSpan(
+        from: LocalDate,
+        to: LocalDate,
+        today: LocalDate,
+        locale: Locale = Locale.getDefault(),
+    ): String {
+        if (YearMonth.from(from) != YearMonth.from(to)) {
+            return shortDate(from, today, locale) + SPAN + shortDate(to, today, locale)
+        }
+        val month = SHORT_MONTH.withLocale(locale).format(from)
+        val days =
+            if (locale.language == Locale.FRENCH.language) {
+                dayOfMonth(from.dayOfMonth, locale) + SPAN + to.dayOfMonth + " " + month
+            } else {
+                month + " " + from.dayOfMonth + SPAN + to.dayOfMonth
+            }
+        return withYearUnlessCurrent(days, from, today, locale)
+    }
+
+    private fun withYearUnlessCurrent(
+        text: String,
+        date: LocalDate,
+        today: LocalDate,
+        locale: Locale,
+    ): String =
+        when {
+            date.year == today.year -> text
+            locale.language == Locale.FRENCH.language -> text + " " + date.year
+            else -> text + ", " + date.year
+        }
+
+    private val SHORT_MONTH = DateTimeFormatter.ofPattern("MMM")
+
+    private const val SPAN = " – "
+
     /** The day of the week, named: `Friday`, `vendredi`. */
     fun weekday(
         date: LocalDate,

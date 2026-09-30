@@ -11,6 +11,12 @@
     <string name="ledger_filters_clear_all">Tout retirer</string>
     <string name="ledger_filters_close">Fermer</string>
     <string name="ledger_filters_where">Où</string>
+    <string name="ledger_filters_when">Quand</string>
+    <string name="ledger_filter_from">Du</string>
+    <string name="ledger_filter_to">Au</string>
+    <string name="ledger_filter_any_day">N\'importe quel jour</string>
+    <string name="ledger_filter_since">Depuis le %s</string>
+    <string name="ledger_filter_until">Jusqu\'au %s</string>
     <plurals name="ledger_filters_show">
         <item quantity="one">Voir %d opération</item>
         <item quantity="many">Voir %d d\'opérations</item>

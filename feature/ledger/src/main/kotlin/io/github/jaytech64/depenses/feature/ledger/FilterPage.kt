@@ -54,6 +54,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -87,6 +89,7 @@ internal fun FilterPage(
     onDismiss: () -> Unit,
 ) {
     var choosingMerchant by rememberSaveable { mutableStateOf(false) }
+    var pickingDate by rememberSaveable { mutableStateOf<DateEnd?>(null) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -120,9 +123,17 @@ internal fun FilterPage(
                             .padding(horizontal = 24.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
-                        FilterFields(state, actions, onChooseMerchant = { choosingMerchant = true })
+                        FilterFields(
+                            state,
+                            actions,
+                            onChooseMerchant = { choosingMerchant = true },
+                            onPickDate = { pickingDate = it },
+                        )
                     }
                     ShowButton(state.shownCount, onClick = onDismiss)
+                }
+                pickingDate?.let { end ->
+                    DateEndPicker(end, state, actions, onClose = { pickingDate = null })
                 }
             }
         }
@@ -179,11 +190,15 @@ private fun FilterFields(
     state: LedgerUiState,
     actions: FilterActions,
     onChooseMerchant: () -> Unit,
+    onPickDate: (DateEnd) -> Unit,
 ) {
     SectionTitle(R.string.ledger_filters_where)
     AccountFilterField(state.accounts, state.filter.account, actions.onAccount)
     CategoryFilterField(state.categories, state.filter.category, actions.onCategory)
     MerchantFilterField(state.filter.merchant, onChooseMerchant)
+
+    SectionTitle(R.string.ledger_filters_when)
+    DateFields(state.filter, onPickDate)
 }
 
 @Composable
@@ -310,31 +325,80 @@ private fun FilterDropdown(
     }
 }
 
-/**
- * Looks like the other two fields and opens the merchant list instead of a menu.
- * A read-only text field swallows clicks, so the press is read off its
- * interaction source.
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MerchantFilterField(
     selected: Merchant?,
     onOpen: () -> Unit,
 ) {
-    val interactions = remember { MutableInteractionSource() }
-    LaunchedEffect(interactions) {
-        interactions.interactions.collect { if (it is PressInteraction.Release) onOpen() }
-    }
-    OutlinedTextField(
+    OpeningField(
+        label = stringResource(R.string.ledger_filter_merchant),
         value = selected?.displayName ?: stringResource(R.string.ledger_filter_all_merchants),
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(stringResource(R.string.ledger_filter_merchant)) },
-        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
-        interactionSource = interactions,
+        onOpen = onOpen,
         modifier = Modifier.fillMaxWidth(),
     )
 }
+
+/**
+ * Looks like the dropdown fields and opens something else — a list, a calendar —
+ * instead of a menu. A read-only text field swallows clicks, so the press is
+ * read off its interaction source.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun OpeningField(
+    label: String,
+    value: String,
+    onOpen: () -> Unit,
+    modifier: Modifier,
+    trailingIcon: @Composable () -> Unit = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
+) {
+    val interactions = remember { MutableInteractionSource() }
+    val focus = LocalFocusManager.current
+    LaunchedEffect(interactions) {
+        interactions.interactions.collect {
+            if (it is PressInteraction.Release) {
+                // Otherwise the field keeps a focus ring after what it opened has closed.
+                focus.clearFocus()
+                onOpen()
+            }
+        }
+    }
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        singleLine = true,
+        label = { Text(label) },
+        trailingIcon = trailingIcon,
+        interactionSource = interactions,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Two fields side by side, one above the other once the font is large enough
+ * that half the width would cut a date or an amount short.
+ */
+@Composable
+internal fun FieldPair(
+    first: @Composable (Modifier) -> Unit,
+    second: @Composable (Modifier) -> Unit,
+) {
+    if (LocalDensity.current.fontScale > STACKED_ABOVE_FONT_SCALE) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            first(Modifier.fillMaxWidth())
+            second(Modifier.fillMaxWidth())
+        }
+    } else {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            first(Modifier.weight(1f))
+            second(Modifier.weight(1f))
+        }
+    }
+}
+
+/** Past this, a date such as « 30 sept. 2026 » no longer fits in half a phone's width. */
+private const val STACKED_ABOVE_FONT_SCALE = 1.3f
 
 @Composable
 private fun MerchantList(

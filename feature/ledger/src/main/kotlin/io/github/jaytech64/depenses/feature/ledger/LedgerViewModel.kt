@@ -82,16 +82,24 @@ data class LedgerFilter(
     val category: CategoryChoice? = null,
     /** Matched by id, so every spelling Wallet has used for one merchant matches it. */
     val merchant: Merchant? = null,
+    /** The first day shown, itself included. */
+    val from: LocalDate? = null,
+    /** The last day shown, itself included. */
+    val to: LocalDate? = null,
 ) {
-    /** How many slots are set. */
-    val activeCount: Int get() = listOfNotNull(account, category, merchant).size
+    val hasDates: Boolean get() = from != null || to != null
 
-    val isActive: Boolean get() = activeCount > 0
+    /** How many slots other than the dates are set; the dates are the period, which is said on its own. */
+    val countBesideDates: Int get() = listOfNotNull(account, category, merchant).size
+
+    val isActive: Boolean get() = hasDates || countBesideDates > 0
 
     fun admits(transaction: Transaction): Boolean =
         transaction.isOn(account) &&
             transaction.isIn(category) &&
-            (merchant == null || transaction.merchantId == merchant.id)
+            (merchant == null || transaction.merchantId == merchant.id) &&
+            (from == null || transaction.localDate >= from) &&
+            (to == null || transaction.localDate <= to)
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
@@ -120,7 +128,8 @@ data class LedgerUiState(
     val days: List<LedgerDay> = emptyList(),
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
-    val thisMonth: BalanceSummary = BalanceSummary(),
+    /** This month's rows, or the filter's days once it has some. */
+    val headline: BalanceSummary = BalanceSummary(),
     val needsReview: Int = 0,
     /** Every account, including ones nothing has ever been spent from. */
     val accounts: List<Account> = emptyList(),
@@ -167,10 +176,15 @@ class LedgerViewModel
          */
         private val filterKeys: Flow<FilterKeys> =
             combine(
-                savedState.getStateFlow<Long?>(SELECTED_ACCOUNT_ID, null),
-                savedState.getStateFlow<Long?>(SELECTED_CATEGORY_ID, null),
-                savedState.getStateFlow(UNCATEGORISED_ONLY, false),
-                savedState.getStateFlow<Long?>(SELECTED_MERCHANT_ID, null),
+                combine(
+                    savedState.getStateFlow<Long?>(SELECTED_ACCOUNT_ID, null),
+                    savedState.getStateFlow<Long?>(SELECTED_CATEGORY_ID, null),
+                    savedState.getStateFlow(UNCATEGORISED_ONLY, false),
+                    savedState.getStateFlow<Long?>(SELECTED_MERCHANT_ID, null),
+                    ::WhereKeys,
+                ),
+                savedState.getStateFlow<Long?>(FROM_EPOCH_DAY, null),
+                savedState.getStateFlow<Long?>(TO_EPOCH_DAY, null),
                 ::FilterKeys,
             )
 
@@ -204,7 +218,7 @@ class LedgerViewModel
                 LedgerUiState(
                     days = days,
                     today = today,
-                    thisMonth = days.monthOf(YearMonth.from(today)).summaryOf(filter),
+                    headline = days.headlineRows(filter, today).summaryOf(filter),
                     needsReview = needsReview,
                     accounts = known.accounts,
                     categories = transactions.categoryOptions(today),
@@ -237,11 +251,23 @@ class LedgerViewModel
             savedState[SELECTED_MERCHANT_ID] = id
         }
 
+        /** Null shows every day up to [LedgerFilter.to] again. */
+        fun onFromSelected(date: LocalDate?) {
+            savedState[FROM_EPOCH_DAY] = date?.toEpochDay()
+        }
+
+        /** Null shows every day from [LedgerFilter.from] on again. */
+        fun onToSelected(date: LocalDate?) {
+            savedState[TO_EPOCH_DAY] = date?.toEpochDay()
+        }
+
         /** Every filter off at once. */
         fun onFiltersCleared() {
             onAccountSelected(null)
             onCategorySelected(null)
             onMerchantSelected(null)
+            onFromSelected(null)
+            onToSelected(null)
         }
 
         /**
@@ -285,15 +311,29 @@ class LedgerViewModel
                 }.sortedByDescending { it.date }
 
         /**
-         * Every day of the calendar month counts, including one dated ahead of
-         * today: a purchase the list shows is a purchase the headline above it has
-         * counted.
+         * The rows the headline adds up. Under a filter with dates, every row
+         * shown: the dates are the period, so the headline and the list below it
+         * are one set of rows (ADR-0014). Otherwise this month's — every day of
+         * the calendar month, including one dated ahead of today, since a purchase
+         * the list shows is a purchase the headline above it has counted.
          */
-        private fun List<LedgerDay>.monthOf(month: YearMonth): List<Transaction> =
-            filter { YearMonth.from(it.date) == month }.flatMap { it.transactions }
+        private fun List<LedgerDay>.headlineRows(
+            filter: LedgerFilter,
+            today: LocalDate,
+        ): List<Transaction> {
+            val month = YearMonth.from(today)
+            return filter { filter.hasDates || YearMonth.from(it.date) == month }.flatMap { it.transactions }
+        }
 
         /** The filter's saved-state keys, read together. */
         private data class FilterKeys(
+            val where: WhereKeys,
+            val fromEpochDay: Long?,
+            val toEpochDay: Long?,
+        )
+
+        /** The keys of the filters that narrow by where the money went. */
+        private data class WhereKeys(
             val accountId: Long?,
             val categoryId: Long?,
             val uncategorisedOnly: Boolean,
@@ -314,16 +354,18 @@ class LedgerViewModel
              */
             fun resolve(selection: FilterKeys) =
                 LedgerFilter(
-                    account = accounts.firstOrNull { it.id == selection.accountId },
+                    account = accounts.firstOrNull { it.id == selection.where.accountId },
                     category =
-                        if (selection.uncategorisedOnly) {
+                        if (selection.where.uncategorisedOnly) {
                             CategoryChoice.Uncategorised
                         } else {
                             categories
-                                .firstOrNull { it.category.id == selection.categoryId }
+                                .firstOrNull { it.category.id == selection.where.categoryId }
                                 ?.let { CategoryChoice.Named(it.category) }
                         },
-                    merchant = merchants.firstOrNull { it.id == selection.merchantId },
+                    merchant = merchants.firstOrNull { it.id == selection.where.merchantId },
+                    from = selection.fromEpochDay?.let(LocalDate::ofEpochDay),
+                    to = selection.toEpochDay?.let(LocalDate::ofEpochDay),
                 )
         }
 
@@ -333,6 +375,8 @@ class LedgerViewModel
             const val SELECTED_CATEGORY_ID = "selectedCategoryId"
             const val UNCATEGORISED_ONLY = "uncategorisedOnly"
             const val SELECTED_MERCHANT_ID = "selectedMerchantId"
+            const val FROM_EPOCH_DAY = "fromEpochDay"
+            const val TO_EPOCH_DAY = "toEpochDay"
         }
     }
 

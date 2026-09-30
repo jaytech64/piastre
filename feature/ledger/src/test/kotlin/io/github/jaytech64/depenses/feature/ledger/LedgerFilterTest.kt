@@ -55,7 +55,7 @@ class LedgerFilterTest : LedgerTest() {
             val state = viewModel.uiState.first { it.filter.category != null }
 
             assertEquals(CategoryChoice.Named(Category(groceries, "Épicerie")), state.filter.category)
-            assertEquals(Money(-4_000, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-4_000, Money.CAD), state.headline.balance)
             assertEquals(
                 listOf(4_000L),
                 state.days
@@ -75,7 +75,7 @@ class LedgerFilterTest : LedgerTest() {
             viewModel.onCategorySelected(CategoryChoice.Uncategorised)
             val state = viewModel.uiState.first { it.filter.category != null }
 
-            assertEquals(Money(-575, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-575, Money.CAD), state.headline.balance)
         }
 
     @Test
@@ -92,7 +92,7 @@ class LedgerFilterTest : LedgerTest() {
             viewModel.onCategorySelected(CategoryChoice.Named(Category(groceries, "Épicerie")))
             val state = viewModel.uiState.first { it.filter.account != null && it.filter.category != null }
 
-            assertEquals(Money(-4_000, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-4_000, Money.CAD), state.headline.balance)
         }
 
     /**
@@ -119,8 +119,8 @@ class LedgerFilterTest : LedgerTest() {
             viewModel.onCategorySelected(CategoryChoice.Named(Category(mortgageCategory, "Hypothèque")))
             val state = viewModel.uiState.first { it.filter.category != null }
 
-            assertEquals(Money(-120_000, Money.CAD), state.thisMonth.transfers)
-            assertEquals(Money(-120_000, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-120_000, Money.CAD), state.headline.transfers)
+            assertEquals(Money(-120_000, Money.CAD), state.headline.balance)
             assertEquals(Money(-120_000, Money.CAD), state.days.single().total)
         }
 
@@ -144,7 +144,7 @@ class LedgerFilterTest : LedgerTest() {
             viewModel.onCategorySelected(CategoryChoice.Named(Category(mortgageCategory, "Hypothèque")))
             val state = viewModel.uiState.first { it.filter.account != null && it.filter.category != null }
 
-            assertEquals(Money(120_000, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(120_000, Money.CAD), state.headline.balance)
         }
 
     /** A card payment is most of what goes uncategorised, and counting it would charge the purchases twice. */
@@ -170,7 +170,7 @@ class LedgerFilterTest : LedgerTest() {
                     .single()
                     .transactions.size,
             )
-            assertEquals(Money(0, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(0, Money.CAD), state.headline.balance)
         }
 
     @Test
@@ -206,7 +206,7 @@ class LedgerFilterTest : LedgerTest() {
             database.categoryDao().delete(groceries)
             val state = viewModel.uiState.first { it.filter.category == null }
 
-            assertEquals(Money(-4_575, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-4_575, Money.CAD), state.headline.balance)
         }
 
     @Test
@@ -222,7 +222,7 @@ class LedgerFilterTest : LedgerTest() {
             viewModel.onFiltersCleared()
             val state = viewModel.uiState.first { !it.filter.isActive }
 
-            assertEquals(Money(-4_575, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-4_575, Money.CAD), state.headline.balance)
         }
 
     @Test
@@ -238,7 +238,7 @@ class LedgerFilterTest : LedgerTest() {
             val state = viewModel.uiState.first { it.filter.merchant != null }
 
             assertEquals("Metro Plus", state.filter.merchant?.displayName)
-            assertEquals(Money(-7_000, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-7_000, Money.CAD), state.headline.balance)
             assertEquals(2, state.days.sumOf { it.transactions.size })
         }
 
@@ -261,7 +261,7 @@ class LedgerFilterTest : LedgerTest() {
                     it.filter.account != null && it.filter.category != null && it.filter.merchant != null
                 }
 
-            assertEquals(Money(-4_000, Money.CAD), state.thisMonth.balance)
+            assertEquals(Money(-4_000, Money.CAD), state.headline.balance)
         }
 
     @Test
@@ -306,12 +306,100 @@ class LedgerFilterTest : LedgerTest() {
             viewModel.onAccountSelected(visa)
             viewModel.onCategorySelected(CategoryChoice.Uncategorised)
             viewModel.onMerchantSelected(metro)
-            viewModel.uiState.first { it.filter.merchant != null }
+            viewModel.onFromSelected(LAST_MONTH)
+            viewModel.onToSelected(TODAY)
+            viewModel.uiState.first { it.filter.merchant != null && it.filter.to != null }
 
             val rebuilt = ledgerViewModel(savedState).uiState.first { !it.loading }.filter
 
             assertEquals("Visa", rebuilt.account?.name)
             assertEquals(CategoryChoice.Uncategorised, rebuilt.category)
             assertEquals("Metro Plus", rebuilt.merchant?.displayName)
+            assertEquals(LAST_MONTH, rebuilt.from)
+            assertEquals(TODAY, rebuilt.to)
+        }
+
+    @Test
+    fun `the ledger narrows to the days between two dates, both included`() =
+        runTest {
+            insert(amountMinor = 100, day = TWO_MONTHS_AGO)
+            insert(amountMinor = 200, day = LAST_MONTH)
+            insert(amountMinor = 400, day = YESTERDAY)
+            insert(amountMinor = 800, day = TODAY)
+
+            viewModel.onFromSelected(LAST_MONTH)
+            viewModel.onToSelected(YESTERDAY)
+            val state = viewModel.uiState.first { it.filter.from != null && it.filter.to != null }
+
+            assertEquals(listOf(YESTERDAY, LAST_MONTH), state.days.map { it.date })
+        }
+
+    @Test
+    fun `a date with no other end shows every day on its side of it`() =
+        runTest {
+            insert(amountMinor = 100, day = TWO_MONTHS_AGO)
+            insert(amountMinor = 200, day = LAST_MONTH)
+            insert(amountMinor = 800, day = TODAY)
+
+            viewModel.onFromSelected(LAST_MONTH)
+            val after = viewModel.uiState.first { it.filter.from != null }
+            viewModel.onFromSelected(null)
+            viewModel.onToSelected(LAST_MONTH)
+            val before = viewModel.uiState.first { it.filter.from == null && it.filter.to != null }
+
+            assertEquals(listOf(TODAY, LAST_MONTH), after.days.map { it.date })
+            assertEquals(listOf(LAST_MONTH, TWO_MONTHS_AGO), before.days.map { it.date })
+        }
+
+    @Test
+    fun `under a date filter the headline counts every day shown, not this month`() =
+        runTest {
+            insert(amountMinor = 200, day = LAST_MONTH)
+            insert(amountMinor = 800, day = TODAY)
+
+            viewModel.onFromSelected(LAST_MONTH)
+            val state = viewModel.uiState.first { it.filter.from != null }
+
+            assertEquals(Money(-1_000, Money.CAD), state.headline.balance)
+        }
+
+    @Test
+    fun `a period that ended before this month still has a balance`() =
+        runTest {
+            insert(amountMinor = 200, day = LAST_MONTH)
+            insert(amountMinor = 800, day = TODAY)
+
+            viewModel.onFromSelected(LAST_MONTH)
+            viewModel.onToSelected(LAST_MONTH)
+            val state = viewModel.uiState.first { it.filter.to != null }
+
+            assertEquals(Money(-200, Money.CAD), state.headline.balance)
+        }
+
+    @Test
+    fun `without dates a filtered headline is still this month's`() =
+        runTest {
+            val visa = account("Visa")
+            insert(amountMinor = 200, day = LAST_MONTH, accountId = visa)
+            insert(amountMinor = 800, day = TODAY, accountId = visa)
+
+            viewModel.onAccountSelected(visa)
+            val state = viewModel.uiState.first { it.filter.account != null }
+
+            assertEquals(Money(-800, Money.CAD), state.headline.balance)
+            assertEquals(2, state.shownCount)
+        }
+
+    @Test
+    fun `clearing the filters takes the dates away too`() =
+        runTest {
+            insert(amountMinor = 200, day = LAST_MONTH)
+            viewModel.onFromSelected(TODAY)
+            viewModel.uiState.first { it.filter.from != null }
+
+            viewModel.onFiltersCleared()
+            val state = viewModel.uiState.first { !it.filter.isActive }
+
+            assertEquals(1, state.shownCount)
         }
 }
