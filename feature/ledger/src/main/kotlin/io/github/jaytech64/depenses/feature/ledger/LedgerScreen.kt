@@ -290,16 +290,10 @@ private fun BalanceRow(
     locale: Locale,
     onFiltersClick: () -> Unit,
 ) {
-    val names = filterNames(state.filter)
-
     Row(verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                if (names.isEmpty()) {
-                    stringResource(R.string.ledger_balance_month)
-                } else {
-                    stringResource(R.string.ledger_balance_month_filtered, names.joinToString(" · "))
-                },
+                balanceLabel(state.filter),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -321,6 +315,20 @@ private fun BalanceRow(
             )
         }
     }
+}
+
+/**
+ * The period the balance is of, then how many filters narrow it. The chips
+ * right below name each one, so naming them here too only made the label
+ * run to several lines.
+ */
+@Composable
+private fun balanceLabel(filter: LedgerFilter): String {
+    if (!filter.isActive) return stringResource(R.string.ledger_balance_month)
+    return listOf(
+        stringResource(R.string.ledger_period_this_month),
+        pluralStringResource(R.plurals.ledger_filter_count, filter.activeCount, filter.activeCount),
+    ).joinToString(" · ")
 }
 
 @Composable

@@ -26,7 +26,11 @@
     <string name="ledger_filter_merchant_search">Search merchants</string>
     <string name="ledger_filter_back">Back</string>
     <string name="ledger_filter_clear">Remove %s</string>
-    <string name="ledger_balance_month_filtered">%s · this month</string>
+    <string name="ledger_period_this_month">This month</string>
+    <plurals name="ledger_filter_count">
+        <item quantity="one">%d filter</item>
+        <item quantity="other">%d filters</item>
+    </plurals>
     <string name="ledger_empty_filtered">Nothing matches these filters</string>
     <string name="ledger_transfer">Transfer</string>
     <string name="ledger_account">Account</string>

@@ -83,7 +83,10 @@ data class LedgerFilter(
     /** Matched by id, so every spelling Wallet has used for one merchant matches it. */
     val merchant: Merchant? = null,
 ) {
-    val isActive: Boolean get() = account != null || category != null || merchant != null
+    /** How many slots are set. */
+    val activeCount: Int get() = listOfNotNull(account, category, merchant).size
+
+    val isActive: Boolean get() = activeCount > 0
 
     fun admits(transaction: Transaction): Boolean =
         transaction.isOn(account) &&

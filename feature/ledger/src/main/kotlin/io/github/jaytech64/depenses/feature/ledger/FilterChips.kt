@@ -59,15 +59,6 @@ import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.containsTyped
 import kotlinx.coroutines.launch
 
-/** The name of each filter that is on, in the order account, category, merchant. */
-@Composable
-internal fun filterNames(filter: LedgerFilter): List<String> =
-    listOfNotNull(
-        filter.account?.let { accountLabel(it) },
-        filter.category?.let { categoryLabel(it) },
-        filter.merchant?.displayName,
-    )
-
 /**
  * The filters that are on, a removable chip each, in one line that scrolls
  * sideways: three long names never push the list further down the screen.
