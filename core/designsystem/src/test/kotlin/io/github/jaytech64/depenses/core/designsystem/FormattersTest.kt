@@ -111,6 +111,19 @@ class FormattersTest {
         assertFalse(header, header.contains("2026"))
     }
 
+    @Test
+    fun `a day heading never breaks a day from its month`() {
+        val header =
+            Formatters.dayHeader(
+                LocalDate.of(2026, 10, 1),
+                LocalDate.of(2026, 9, 30),
+                LABELS,
+                Locale.CANADA_FRENCH,
+            )
+
+        assertEquals("jeudi 1\u00A0octobre", header)
+    }
+
     /**
      * A purchase belongs to the clock it was made under. Reading a Montréal coffee
      * back from another zone must not move it.

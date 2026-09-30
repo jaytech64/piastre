@@ -230,8 +230,12 @@ object Formatters {
         locale: Locale = Locale.getDefault(),
     ): String = MONTH_AND_YEAR.withLocale(locale).format(month)
 
-    /** Weekday, day, month — never the year, which on a ledger is always this one. */
-    private val DAY_AND_MONTH = DateTimeFormatter.ofPattern("EEEE d MMMM")
+    /**
+     * Weekday, day, month — never the year, which on a ledger is always this one.
+     * The day and its month are held together, so a line that wraps never leaves
+     * « jeudi 1 » at the end of one line and « octobre » at the start of the next.
+     */
+    private val DAY_AND_MONTH = DateTimeFormatter.ofPattern("EEEE d\u00A0MMMM")
 
     /**
      * Day then month, as `fr-CA` writes it — the locale this app has to get right,
