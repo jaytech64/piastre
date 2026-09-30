@@ -313,6 +313,38 @@ class DepensesDatabaseMigrationTest {
         assertEquals(0, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE recurringId IS NOT NULL"))
     }
 
+    @Test
+    fun `migrating to schema 13 makes the row a schedule started from its first recurring row`() {
+        helper.createDatabase(NAME, 12).use { database ->
+            database.execSQL(
+                "INSERT INTO recurring_transaction (id, uuid, amountMinor, currency, kind, rhythm, firstEpochDay, " +
+                    "nextDueEpochDay) VALUES (7, 'abc', 8500, 'CAD', 'EXPENSE', 'MONTHLY', 20666, 20727)",
+            )
+            database.insertTransaction(sourceKey = "typed-first", source = "MANUAL")
+            database.insertTransaction(sourceKey = "typed-other", source = "MANUAL")
+            database.execSQL(
+                "UPDATE expense_transaction SET localDateEpochDay = 20666, recurringId = 7 " +
+                    "WHERE sourceKey = 'typed-first'",
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 13, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(
+            "abc:2026-08-01",
+            migrated.singleString(
+                "SELECT sourceKey FROM expense_transaction WHERE recurringId = 7 AND source = 'RECURRING'",
+            ),
+        )
+        assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE source = 'MANUAL'"))
+    }
+
+    private fun SupportSQLiteDatabase.singleString(sql: String): String =
+        query(sql).use { cursor ->
+            cursor.moveToFirst()
+            cursor.getString(0)
+        }
+
     private fun SupportSQLiteDatabase.insertSchema7Transaction(
         sourceKey: String,
         paymentMethod: String?,

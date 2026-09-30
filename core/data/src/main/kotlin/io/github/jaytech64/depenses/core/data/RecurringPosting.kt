@@ -117,6 +117,12 @@ class RecurringPosting
 /** Not a package name, and deliberately not one: no parser can claim it. */
 internal const val RECURRING_SOURCE = "recurring"
 
+/** The identity of a schedule's row for [day]: the schedule and the day, the one thing that makes two rows the same. */
+internal fun recurringSourceKey(
+    uuid: String,
+    day: LocalDate,
+): String = "$uuid:$day"
+
 /**
  * The row a schedule writes for [day].
  *
@@ -125,8 +131,7 @@ internal const val RECURRING_SOURCE = "recurring"
  * rather than one worked out from that instant, so the ledger files it on its
  * due day whatever zone it is later read from.
  *
- * The source key is the schedule and the day: the one thing that makes two rows
- * the same occurrence.
+ * Its source key is [recurringSourceKey].
  */
 internal fun RecurringTransactionEntity.occurrenceOn(
     day: LocalDate,
@@ -155,7 +160,7 @@ internal fun RecurringTransactionEntity.occurrenceOn(
         parserId = null,
         parserVersion = null,
         sourcePackage = RECURRING_SOURCE,
-        sourceKey = "$uuid:$day",
+        sourceKey = recurringSourceKey(uuid, day),
         cardLabel = null,
         cardLast4 = null,
         note = note,

@@ -174,6 +174,31 @@ class RecurringRepositoryTest {
         }
 
     @Test
+    fun `the transaction a schedule starts from reads as recurring, like the rows it writes`() =
+        runTest {
+            val first = typed(on = LocalDate.of(2026, 8, 1))
+
+            recurring.repeat(first, Rhythm.MONTHLY, lastDate = null)
+
+            val schedule = recurring.all().first().single()
+            assertEquals(listOf(TransactionSource.RECURRING, TransactionSource.RECURRING), ledger().map { it.source })
+            assertEquals(schedule.id, transactions.byId(first)?.recurringId)
+        }
+
+    @Test
+    fun `the first day is never written a second time`() =
+        runTest {
+            val first = typed(on = LocalDate.of(2026, 8, 1))
+            recurring.repeat(first, Rhythm.MONTHLY, lastDate = null)
+            val schedule = recurring.all().first().single()
+
+            database.recurringTransactionDao().moveNextDue(schedule.id, LocalDate.of(2026, 8, 1).toEpochDay().toInt())
+            posting.catchUp()
+
+            assertEquals(2, ledger().size)
+        }
+
+    @Test
     fun `the schedule's category is written even where the merchant gives another`() =
         runTest {
             val internet = categories.named("Internet")!!
