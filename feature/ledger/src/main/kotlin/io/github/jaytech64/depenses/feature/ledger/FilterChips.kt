@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -76,7 +77,12 @@ internal fun FilterChips(
 ) {
     val dates = datesLabel(filter, today)
     val amounts = amountsLabel(filter)
+    // A row keeps whichever chip it last started with in view, so a chip added
+    // ahead of it would open scrolled out of sight.
+    val scroll = rememberLazyListState()
+    LaunchedEffect(filter) { scroll.scrollToItem(0) }
     LazyRow(
+        state = scroll,
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
