@@ -1,6 +1,6 @@
 # 14. A dated filter's headline is the balance of its dates
 
-- **Status:** Accepted — implemented.
+- **Status:** Accepted, revised once — implemented.
 - **Decided:** 2026-09-29, while planning the amount, note and date filters (`.lavish/ledger-six-filters.html`, fork F2).
 - **Touches:** `:feature:ledger` (`LedgerViewModel`, `LedgerScreen`).
 
@@ -33,6 +33,14 @@ The label is what tells them apart, so it always names the period, and never onl
 
 **An open end runs to the edge of the ledger.**
 *Since Sep 1* counts a purchase dated ahead of today, the way this month's headline already does.
+
+## Revision — the open end stops at today
+
+- **Decided:** 2026-09-30, with [ADR-0015](0015-a-transaction-counts-from-its-day.md).
+
+The consequence above, that *Since Sep 1* counts a purchase dated ahead of today, no longer holds.
+A row dated after today is kept out of the list and waits above today, so the headline, which is still every row shown, no longer counts it.
+The decision itself is unchanged.
 
 ## Where this lives in the code
 
