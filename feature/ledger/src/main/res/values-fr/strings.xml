@@ -27,9 +27,9 @@
     <string name="ledger_filter_note">La note contient</string>
     <string name="ledger_filter_note_chip">« %s »</string>
     <plurals name="ledger_filters_show">
-        <item quantity="one">Voir %d opération</item>
-        <item quantity="many">Voir %d d\'opérations</item>
-        <item quantity="other">Voir %d opérations</item>
+        <item quantity="one">Voir %d\u00A0opération</item>
+        <item quantity="many">Voir %d\u00A0d\'opérations</item>
+        <item quantity="other">Voir %d\u00A0opérations</item>
     </plurals>
     <string name="ledger_filters_show_none">Aucune opération</string>
     <string name="ledger_filter_account">Compte</string>
@@ -44,9 +44,9 @@
     <string name="ledger_filter_clear">Retirer %s</string>
     <string name="ledger_period_this_month">Ce mois-ci</string>
     <plurals name="ledger_filter_count">
-        <item quantity="one">%d filtre</item>
-        <item quantity="many">%d de filtres</item>
-        <item quantity="other">%d filtres</item>
+        <item quantity="one">%d\u00A0filtre</item>
+        <item quantity="many">%d\u00A0de filtres</item>
+        <item quantity="other">%d\u00A0filtres</item>
     </plurals>
     <string name="ledger_empty_filtered">Rien ne correspond à ces filtres</string>
     <string name="ledger_transfer">Virement</string>

@@ -27,8 +27,8 @@
     <string name="ledger_filter_note">Note contains</string>
     <string name="ledger_filter_note_chip">“%s”</string>
     <plurals name="ledger_filters_show">
-        <item quantity="one">Show %d transaction</item>
-        <item quantity="other">Show %d transactions</item>
+        <item quantity="one">Show %d\u00A0transaction</item>
+        <item quantity="other">Show %d\u00A0transactions</item>
     </plurals>
     <string name="ledger_filters_show_none">Show no transactions</string>
     <string name="ledger_filter_account">Account</string>
@@ -43,8 +43,8 @@
     <string name="ledger_filter_clear">Remove %s</string>
     <string name="ledger_period_this_month">This month</string>
     <plurals name="ledger_filter_count">
-        <item quantity="one">%d filter</item>
-        <item quantity="other">%d filters</item>
+        <item quantity="one">%d\u00A0filter</item>
+        <item quantity="other">%d\u00A0filters</item>
     </plurals>
     <string name="ledger_empty_filtered">Nothing matches these filters</string>
     <string name="ledger_transfer">Transfer</string>
