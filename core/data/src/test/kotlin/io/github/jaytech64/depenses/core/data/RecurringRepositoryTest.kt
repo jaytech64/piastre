@@ -53,7 +53,7 @@ class RecurringRepositoryTest {
                 database,
                 database.recurringTransactionDao(),
                 database.transactionDao(),
-                LocalDateTicker(Provider { ZONE }),
+                LocalDateTicker(clock, Provider { ZONE }),
                 clock,
                 Provider { ZONE },
             )

@@ -390,7 +390,7 @@ class LedgerImportTest {
             this,
             recurringTransactionDao(),
             transactionDao(),
-            LocalDateTicker(Provider { ZONE }),
+            LocalDateTicker(Clock.fixed(EXPORTED_AT, ZONE), Provider { ZONE }),
             Clock.fixed(EXPORTED_AT, ZONE),
             Provider { ZONE },
         )

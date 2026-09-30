@@ -33,6 +33,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Provider
@@ -308,7 +309,7 @@ class ReportsViewModelTest {
                         ),
                     zoneId = Provider { ZONE },
                 ),
-            ticker = LocalDateTicker(Provider { ZONE }),
+            ticker = LocalDateTicker(Clock.systemUTC(), Provider { ZONE }),
             savedState = state,
         )
 

@@ -70,7 +70,7 @@ abstract class LedgerTest {
                     categoryRepository(),
                     Clock.systemUTC(),
                 ),
-            ticker = LocalDateTicker(Provider { ZONE }),
+            ticker = LocalDateTicker(Clock.systemUTC(), Provider { ZONE }),
             savedState = state,
         )
 
