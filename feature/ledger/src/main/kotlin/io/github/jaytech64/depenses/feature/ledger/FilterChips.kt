@@ -105,6 +105,11 @@ internal fun FilterChips(
                 }
             }
         }
+        filter.note?.let { note ->
+            item(key = "note") {
+                RemovableChip(stringResource(R.string.ledger_filter_note_chip, note), enabled) { actions.onNote("") }
+            }
+        }
     }
 }
 

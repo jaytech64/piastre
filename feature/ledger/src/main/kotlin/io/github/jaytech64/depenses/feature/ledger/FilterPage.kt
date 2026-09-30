@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -59,6 +61,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -202,6 +205,36 @@ private fun FilterFields(
 
     SectionTitle(R.string.ledger_filters_how_much)
     AmountFields(state, actions)
+
+    SectionTitle(R.string.ledger_filters_note)
+    NoteField(state.typedNote, actions.onNote)
+}
+
+/**
+ * Matched as the merchant search is, ignoring case and accents, so `cafe`
+ * finds *Café*. Held here as well as in the view model, for the reason
+ * [AmountFields] gives.
+ */
+@Composable
+private fun NoteField(
+    typed: String,
+    onType: (String) -> Unit,
+) {
+    var text by rememberSaveable { mutableStateOf(typed) }
+    val focus = LocalFocusManager.current
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onType(it)
+        },
+        label = { Text(stringResource(R.string.ledger_filter_note)) },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

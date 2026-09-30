@@ -469,4 +469,46 @@ class LedgerFilterTest : LedgerTest() {
             assertEquals("12,", rebuilt.typedAtLeast)
             assertEquals(Money(1_200, Money.CAD), rebuilt.filter.atLeast)
         }
+
+    @Test
+    fun `the ledger narrows to notes containing what was typed, whatever the case and accents`() =
+        runTest {
+            insert(amountMinor = 1_000, day = TODAY, note = "Cadeau de fête pour Élise")
+            insert(amountMinor = 2_000, day = TODAY, note = "Épicerie de la semaine")
+            insert(amountMinor = 4_000, day = TODAY)
+
+            viewModel.onNoteTyped("  elise ")
+            val state = viewModel.uiState.first { it.filter.note != null }
+
+            assertEquals("elise", state.filter.note)
+            assertEquals(Money(-1_000, Money.CAD), state.headline.balance)
+        }
+
+    @Test
+    fun `a blank note filter narrows nothing`() =
+        runTest {
+            insert(amountMinor = 4_000, day = TODAY)
+
+            viewModel.onNoteTyped("   ")
+            val state = viewModel.uiState.first { it.typedNote == "   " }
+
+            assertFalse(state.filter.isActive)
+            assertEquals(1, state.shownCount)
+        }
+
+    @Test
+    fun `the header counts every filter beside the dates`() =
+        runTest {
+            val visa = account("Visa")
+            insert(amountMinor = 4_000, day = TODAY, accountId = visa, note = "cadeau")
+
+            viewModel.onAccountSelected(visa)
+            viewModel.onAtLeastTyped("10")
+            viewModel.onAtMostTyped("100")
+            viewModel.onNoteTyped("cadeau")
+            viewModel.onFromSelected(LAST_MONTH)
+            val state = viewModel.uiState.first { it.filter.note != null && it.filter.from != null }
+
+            assertEquals(3, state.filter.countBesideDates)
+        }
 }

@@ -116,6 +116,7 @@ abstract class LedgerTest {
         toAccountId: Long? = null,
         categoryId: Long? = null,
         currency: String = Money.CAD,
+        note: String? = null,
     ) = database.transactionDao().insertOrUpdate(
         ExpenseTransactionEntity(
             rawEventId = null,
@@ -150,10 +151,11 @@ abstract class LedgerTest {
                     categoryId,
                     merchantId,
                     merchantRaw,
+                    note,
                 ).joinToString("-", prefix = "tag-"),
             cardLabel = "Récompenses Visa",
             cardLast4 = "0000",
-            note = null,
+            note = note,
             kind = kind,
             accountId = accountId,
             toAccountId = toAccountId,

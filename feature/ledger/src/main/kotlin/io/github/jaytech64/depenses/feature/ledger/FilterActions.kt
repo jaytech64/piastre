@@ -13,5 +13,6 @@ internal class FilterActions(
     val onTo: (LocalDate?) -> Unit,
     val onAtLeast: (String) -> Unit,
     val onAtMost: (String) -> Unit,
+    val onNote: (String) -> Unit,
     val onClearAll: () -> Unit,
 )

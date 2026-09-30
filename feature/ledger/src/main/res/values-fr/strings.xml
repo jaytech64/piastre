@@ -23,6 +23,9 @@
     <string name="ledger_filter_amounts_crossed">Doit être inférieur ou égal au maximum</string>
     <string name="ledger_filter_at_least_chip">%s et plus</string>
     <string name="ledger_filter_at_most_chip">Jusqu\'à %s</string>
+    <string name="ledger_filters_note">Note</string>
+    <string name="ledger_filter_note">La note contient</string>
+    <string name="ledger_filter_note_chip">« %s »</string>
     <plurals name="ledger_filters_show">
         <item quantity="one">Voir %d opération</item>
         <item quantity="many">Voir %d d\'opérations</item>

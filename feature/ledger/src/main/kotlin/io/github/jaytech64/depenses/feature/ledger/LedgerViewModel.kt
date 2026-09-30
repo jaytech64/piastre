@@ -20,6 +20,7 @@ import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.containsTyped
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -96,11 +97,13 @@ data class LedgerFilter(
     val atLeast: Money? = null,
     /** The largest amount shown, itself included; compared as [atLeast] is. */
     val atMost: Money? = null,
+    /** Words a row's note contains, whatever their case and accents. */
+    val note: String? = null,
 ) {
     val hasDates: Boolean get() = from != null || to != null
 
     /** How many slots other than the dates are set; the dates are the period, which is said on its own. */
-    val countBesideDates: Int get() = listOfNotNull(account, category, merchant, atLeast ?: atMost).size
+    val countBesideDates: Int get() = listOfNotNull(account, category, merchant, atLeast ?: atMost, note).size
 
     val isActive: Boolean get() = hasDates || countBesideDates > 0
 
@@ -111,7 +114,8 @@ data class LedgerFilter(
             (from == null || transaction.localDate >= from) &&
             (to == null || transaction.localDate <= to) &&
             (atLeast == null || transaction.amount.minor >= atLeast.minor) &&
-            (atMost == null || transaction.amount.minor <= atMost.minor)
+            (atMost == null || transaction.amount.minor <= atMost.minor) &&
+            (note == null || transaction.note?.containsTyped(note) == true)
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
@@ -153,6 +157,7 @@ data class LedgerUiState(
     /** The amounts as typed, which the filter's own can no longer say once they are read. */
     val typedAtLeast: String = "",
     val typedAtMost: String = "",
+    val typedNote: String = "",
     /** *At least* is above *At most*, so neither narrows anything until one is changed. */
     val amountsCrossed: Boolean = false,
     /** The rows picked by a long press, and only those still on screen. */
@@ -207,6 +212,7 @@ class LedgerViewModel
                     savedState.getStateFlow(AT_MOST_TYPED, ""),
                     ::AmountKeys,
                 ),
+                savedState.getStateFlow(NOTE_TYPED, ""),
                 ::FilterKeys,
             )
 
@@ -248,6 +254,7 @@ class LedgerViewModel
                     filter = filter,
                     typedAtLeast = keys.amounts.atLeast,
                     typedAtMost = keys.amounts.atMost,
+                    typedNote = keys.note,
                     amountsCrossed = keys.amounts.crossed,
                     selected = selected.mapTo(mutableSetOf()) { it.id },
                     selectionSummary = selected.takeIf { it.isNotEmpty() }?.summaryOf(filter),
@@ -296,6 +303,11 @@ class LedgerViewModel
             savedState[AT_MOST_TYPED] = text
         }
 
+        /** What was typed in *Note contains*; blank shows every note again, and rows with none. */
+        fun onNoteTyped(text: String) {
+            savedState[NOTE_TYPED] = text
+        }
+
         /** Every filter off at once. */
         fun onFiltersCleared() {
             onAccountSelected(null)
@@ -305,6 +317,7 @@ class LedgerViewModel
             onToSelected(null)
             onAtLeastTyped("")
             onAtMostTyped("")
+            onNoteTyped("")
         }
 
         /**
@@ -368,6 +381,7 @@ class LedgerViewModel
             val fromEpochDay: Long?,
             val toEpochDay: Long?,
             val amounts: AmountKeys,
+            val note: String,
         )
 
         /**
@@ -424,6 +438,7 @@ class LedgerViewModel
                     to = selection.toEpochDay?.let(LocalDate::ofEpochDay),
                     atLeast = selection.amounts.low.takeUnless { selection.amounts.crossed },
                     atMost = selection.amounts.high.takeUnless { selection.amounts.crossed },
+                    note = selection.note.trim().ifEmpty { null },
                 )
         }
 
@@ -437,6 +452,7 @@ class LedgerViewModel
             const val TO_EPOCH_DAY = "toEpochDay"
             const val AT_LEAST_TYPED = "atLeastTyped"
             const val AT_MOST_TYPED = "atMostTyped"
+            const val NOTE_TYPED = "noteTyped"
         }
     }
 
