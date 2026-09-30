@@ -110,6 +110,7 @@ private fun MainShell() {
                         onReviewClick = { open(Destination.REVIEW) },
                         onAddClick = { navController.navigate(ADD_EXPENSE_ROUTE) },
                         onTransactionClick = { id -> navController.navigate(editExpenseRoute(id)) },
+                        onRecurringClick = { id -> navController.navigate(editRecurringRoute(id)) },
                     )
                 }
                 composable(ADD_EXPENSE_ROUTE) {

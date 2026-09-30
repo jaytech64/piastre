@@ -139,13 +139,13 @@ class ReportsViewModel
         ): Flow<ReportsUiState> {
             val month = ReportPeriod.containing(PeriodUnit.MONTH, period.start)
             val previousIncome: Flow<Money?> =
-                if (period.unit == PeriodUnit.MONTH) reports.income(period.previous()) else flowOf(null)
+                if (period.unit == PeriodUnit.MONTH) reports.income(period.previous(), today) else flowOf(null)
             return combine(
-                combine(reports.spending(period), reports.total(period.previous()), ::Pair),
-                combine(reports.income(period), previousIncome, ::Pair),
-                reports.topMerchants(period, TOP_MERCHANTS),
-                reports.dailyTotals(month),
-                combine(reports.otherCurrencyCount(period), needsReview, ::Pair),
+                combine(reports.spending(period, today), reports.total(period.previous(), today), ::Pair),
+                combine(reports.income(period, today), previousIncome, ::Pair),
+                reports.topMerchants(period, today, TOP_MERCHANTS),
+                reports.dailyTotals(month, today),
+                combine(reports.otherCurrencyCount(period, today), needsReview, ::Pair),
             ) { (spending, before), (income, incomeBefore), merchants, monthTotals, (otherCurrency, review) ->
                 ReportsUiState(
                     period = period,

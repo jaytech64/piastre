@@ -49,7 +49,8 @@ internal fun TransactionRow(
     locale: Locale,
     selection: RowSelection,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
+    dayLabel: String? = null,
 ) {
     val selected = selection == RowSelection.SELECTED
     Row(
@@ -58,7 +59,7 @@ internal fun TransactionRow(
             .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
             .combinedClickable(
                 onClickLabel = null,
-                onLongClickLabel = stringResource(R.string.ledger_select),
+                onLongClickLabel = onLongClick?.let { stringResource(R.string.ledger_select) },
                 onLongClick = onLongClick,
                 onClick = onClick,
             ).then(if (selection == RowSelection.NONE) Modifier else Modifier.semantics { this.selected = selected })
@@ -73,17 +74,20 @@ internal fun TransactionRow(
         }
 
         Column(Modifier.weight(1f)) {
+            // A line above today wraps rather than cuts: its day is the point of it,
+            // and at a large font size a cut would take the day first.
+            val lines = if (dayLabel == null) 1 else Int.MAX_VALUE
             Text(
                 transaction.title(),
                 style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
+                maxLines = lines,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                transaction.subtitle(locale),
+                dayLabel?.let { transaction.upcomingSubtitle(it) } ?: transaction.subtitle(locale),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                maxLines = lines,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -170,6 +174,22 @@ private fun Transaction.subtitle(locale: Locale): String {
             else -> Formatters.cardMask(cardLast4)
         }
     return listOfNotNull(whenLabel(locale), categoryName, what).joinToString(SEPARATOR)
+}
+
+/**
+ * For a line above today: its day where the time would be, since there is no day
+ * heading over it, then the category, then that it recurs or where it is paid from.
+ */
+@Composable
+private fun Transaction.upcomingSubtitle(dayLabel: String): String {
+    val what =
+        when {
+            source == TransactionSource.RECURRING -> stringResource(R.string.ledger_recurring)
+            kind == TransactionKind.TRANSFER -> stringResource(R.string.ledger_transfer)
+            accountId != null -> accountLabel(accountName, accountType, cardLast4)
+            else -> stringResource(R.string.ledger_manual_entry)
+        }
+    return listOfNotNull(dayLabel, categoryName, what).joinToString(SEPARATOR)
 }
 
 /**

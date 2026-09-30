@@ -345,7 +345,7 @@ class ExpenseFormViewModelTest {
             assertEquals(
                 15_000L,
                 accounts
-                    .all()
+                    .all(LocalDate.now())
                     .first()
                     .single { it.id == bank }
                     .balance.minor,
@@ -478,7 +478,7 @@ class ExpenseFormViewModelTest {
     /** The cash account every real database is created with, made on demand here. */
     private suspend fun cashAccount(): Long =
         accounts
-            .all()
+            .all(LocalDate.now())
             .first()
             .firstOrNull { it.type == AccountType.CASH }
             ?.id

@@ -48,6 +48,9 @@ abstract class LedgerTest {
     protected lateinit var savedState: SavedStateHandle
     protected lateinit var viewModel: LedgerViewModel
 
+    /** What time it is for the ledger: noon on [TODAY], unless a test moves it. */
+    protected open val clock: Clock = Clock.fixed(TODAY.atTime(NOON, 0).atZone(ZONE).toInstant(), ZONE)
+
     @Before
     fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher())
@@ -70,7 +73,8 @@ abstract class LedgerTest {
                     categoryRepository(),
                     Clock.systemUTC(),
                 ),
-            ticker = LocalDateTicker(Provider { ZONE }),
+            recurring = database.recurringRepository(clock, ZONE),
+            ticker = LocalDateTicker(clock, Provider { ZONE }),
             savedState = state,
         )
 
@@ -181,16 +185,14 @@ abstract class LedgerTest {
 
     protected companion object {
         val ZONE: ZoneId = ZoneId.of("America/Toronto")
-        val TODAY: LocalDate = LocalDate.now(ZONE)
+
+        /** Mid-month, so yesterday is in this month and tomorrow is too, whenever the suite runs. */
+        val TODAY: LocalDate = LocalDate.of(2026, 9, 16)
         val YESTERDAY: LocalDate = TODAY.minusDays(1)
+        val TOMORROW: LocalDate = TODAY.plusDays(1)
         val LAST_MONTH: LocalDate = TODAY.minusMonths(1)
         val TWO_MONTHS_AGO: LocalDate = TODAY.minusMonths(2)
-
-        /**
-         * A second day inside the current month whichever day the suite runs on:
-         * yesterday belongs to the month before it on the first of every month.
-         */
-        val ANOTHER_DAY_THIS_MONTH: LocalDate = if (TODAY.dayOfMonth == 1) TODAY.plusDays(1) else YESTERDAY
+        val ANOTHER_DAY_THIS_MONTH: LocalDate = YESTERDAY
         const val NOON = 12
     }
 }

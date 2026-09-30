@@ -11,6 +11,7 @@ import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,8 +50,14 @@ class AccountRepository
             return accounts.walletAccount(issuerLabel, last4)?.id
         }
 
-        fun all(): Flow<List<Account>> =
-            accounts.allWithCounts(Money.CAD).map { rows -> rows.map(AccountWithCount::toDomain) }
+        /**
+         * Every account, with what it holds on [today]: a transaction dated after
+         * today counts from its day (ADR-0015).
+         */
+        fun all(today: LocalDate): Flow<List<Account>> =
+            accounts
+                .allWithCounts(Money.CAD, today.toEpochDay().toInt())
+                .map { rows -> rows.map(AccountWithCount::toDomain) }
 
         /** A blank name clears it, and a card goes back to showing its digits. */
         suspend fun rename(

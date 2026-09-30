@@ -5,6 +5,7 @@ package io.github.jaytech64.depenses.core.data
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.time.Clock
 import java.time.Duration
 import java.time.LocalDate
 import java.time.ZoneId
@@ -24,13 +25,14 @@ import javax.inject.Singleton
 class LocalDateTicker
     @Inject
     constructor(
+        private val clock: Clock,
         private val zoneId: Provider<ZoneId>,
     ) {
         fun dates(): Flow<LocalDate> =
             flow {
                 while (true) {
                     val zone = zoneId.get()
-                    val today = LocalDate.now(zone)
+                    val today = LocalDate.now(clock.withZone(zone))
                     emit(today)
                     delay(millisUntilNextDay(today, zone))
                 }
@@ -42,7 +44,7 @@ class LocalDateTicker
             zone: ZoneId,
         ): Long =
             Duration
-                .between(java.time.Instant.now(), today.plusDays(1).atStartOfDay(zone).toInstant())
+                .between(clock.instant(), today.plusDays(1).atStartOfDay(zone).toInstant())
                 .toMillis()
                 .coerceAtLeast(1) + BOUNDARY_MARGIN_MILLIS
 

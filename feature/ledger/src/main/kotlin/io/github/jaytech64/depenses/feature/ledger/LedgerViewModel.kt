@@ -10,6 +10,7 @@ import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
+import io.github.jaytech64.depenses.core.data.RecurringRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.designsystem.Formatters
@@ -21,10 +22,12 @@ import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.containsTyped
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
@@ -141,7 +144,13 @@ data class SelectionCategory(
 )
 
 data class LedgerUiState(
+    /** What has happened, day by day: nothing dated after today. */
     val days: List<LedgerDay> = emptyList(),
+    /** What is dated after today, the soonest first; it counts in nothing above it (ADR-0015). */
+    val upcoming: List<UpcomingLine> = emptyList(),
+    /** What [upcoming] comes to, counted as a day is. */
+    val upcomingSummary: BalanceSummary = BalanceSummary(),
+    val upcomingOpen: Boolean = false,
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
     /** This month's rows, or the filter's days once it has some. */
@@ -168,12 +177,12 @@ data class LedgerUiState(
     val selectionCategories: List<SelectionCategory> = emptyList(),
     val loading: Boolean = true,
 ) {
-    val isEmpty: Boolean get() = days.isEmpty() && !loading
+    val isEmpty: Boolean get() = days.isEmpty() && upcoming.isEmpty() && !loading
 
     val isSelecting: Boolean get() = selected.isNotEmpty()
 
     /** How many transactions the filters leave on the ledger. */
-    val shownCount: Int get() = days.sumOf { it.transactions.size }
+    val shownCount: Int get() = days.sumOf { it.transactions.size } + upcoming.size
 }
 
 @HiltViewModel
@@ -185,6 +194,7 @@ class LedgerViewModel
         categories: CategoryRepository,
         merchants: MerchantRepository,
         editor: TransactionEditor,
+        recurring: RecurringRepository,
         ticker: LocalDateTicker,
         private val savedState: SavedStateHandle,
     ) : ViewModel() {
@@ -197,9 +207,18 @@ class LedgerViewModel
                 uiState.value.days.flatMapTo(mutableSetOf()) { day -> day.transactions.map { it.id } }
             }
 
-        private val known: Flow<Known> = combine(accounts.all(), categories.all(), merchants.all(), ::Known)
+        /** The accounts with what each holds today, so their balances move at midnight too. */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private val known: Flow<Known> =
+            ticker.dates().flatMapLatest { today ->
+                combine(accounts.all(today), categories.all(), merchants.all(), ::Known)
+            }
 
-        private val filtering: Flow<Pair<FilterKeys, Set<Long>>> = combine(filters.keys, selection.rowIds, ::Pair)
+        /** Whether what is dated after today is shown open or as its one line. */
+        val upcoming = UpcomingGroup(savedState)
+
+        private val filtering: Flow<Triple<FilterKeys, Set<Long>, Boolean>> =
+            combine(filters.keys, selection.rowIds, upcoming.open, ::Triple)
 
         /**
          * The current day is a source of truth in its own right, not a value read
@@ -208,18 +227,26 @@ class LedgerViewModel
          */
         val uiState: StateFlow<LedgerUiState> =
             combine(
-                repository.confirmed(),
+                combine(repository.confirmed(), recurring.nextRows(), ::Pair),
                 repository.needsReviewCount(),
                 ticker.dates(),
                 known,
                 filtering,
-            ) { transactions, needsReview, today, known, (keys, rowIds) ->
+            ) { (transactions, nextRows), needsReview, today, known, (keys, rowIds, upcomingOpen) ->
                 val filter = known.resolve(keys)
-                val shown = transactions.filter(filter::admits)
-                val selected = shown.filter { it.id in rowIds }
-                val days = shown.groupByLocalDay(filter)
+                val (typedAhead, happened) = transactions.filter(filter::admits).partition { it.localDate > today }
+                val ahead =
+                    (
+                        typedAhead.map(::UpcomingLine) +
+                            nextRows.filter(filter::admits).map { UpcomingLine(it, it.recurringId) }
+                    ).sortedBy { it.transaction.occurredAt }
+                val selected = happened.filter { it.id in rowIds }
+                val days = happened.groupByLocalDay(filter)
                 LedgerUiState(
                     days = days,
+                    upcoming = ahead,
+                    upcomingSummary = ahead.map { it.transaction }.summaryOf(filter),
+                    upcomingOpen = upcomingOpen,
                     today = today,
                     headline = days.headlineRows(filter, today).summaryOf(filter),
                     needsReview = needsReview,

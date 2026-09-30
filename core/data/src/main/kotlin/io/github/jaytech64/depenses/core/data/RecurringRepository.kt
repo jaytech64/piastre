@@ -7,16 +7,19 @@ import io.github.jaytech64.depenses.core.database.RecurringTransactionDao
 import io.github.jaytech64.depenses.core.database.RecurringTransactionEntity
 import io.github.jaytech64.depenses.core.database.RecurringWithNames
 import io.github.jaytech64.depenses.core.database.TransactionDao
+import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Recurrence
 import io.github.jaytech64.depenses.core.model.RecurringTransaction
 import io.github.jaytech64.depenses.core.model.Rhythm
+import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -40,6 +43,20 @@ class RecurringRepository
         /** Every schedule, the soonest next day first. One with no day left is removed as it ends. */
         fun all(): Flow<List<RecurringTransaction>> = recurring.allWithNames().map { rows -> rows.map(::toDomain) }
 
+        /**
+         * The row each schedule will write on its next day, as it will read once
+         * written: what the ledger shows above today, where it counts in nothing
+         * (ADR-0015). Its id is 0, since it does not exist yet; its
+         * [Transaction.recurringId] says which schedule it comes from.
+         */
+        fun nextRows(): Flow<List<Transaction>> =
+            recurring.allWithNames().map { rows ->
+                val zone = posting.zone()
+                rows.mapNotNull { row ->
+                    row.recurring.nextDueEpochDay?.let { row.nextRowOn(LocalDate.ofEpochDay(it.toLong()), zone) }
+                }
+            }
+
         /** How many schedules still have a day to come. */
         fun activeCount(): Flow<Int> = recurring.activeCount()
 
@@ -55,6 +72,10 @@ class RecurringRepository
          * like those the schedule writes, keyed on the schedule and its day, and
          * says so in the ledger. Nothing is read through afterwards: see
          * [RecurringTransactionEntity].
+         *
+         * A transaction dated after today is not kept as a row: the schedule takes
+         * its place, with that day as its next, and writes it on the day like every
+         * row after it (ADR-0015). A schedule never has a row dated ahead of today.
          *
          * Only a typed transaction can repeat, and only one that is not already a
          * schedule's: a captured one will be captured again next time, and a
@@ -75,6 +96,7 @@ class RecurringRepository
                     val first = LocalDate.ofEpochDay(row.localDateEpochDay.toLong())
                     val recurrence = Recurrence(rhythm, first, lastDate)
                     val uuid = UUID.randomUUID().toString()
+                    val startsLater = first > posting.today()
                     val id =
                         recurring.insert(
                             RecurringTransactionEntity(
@@ -91,9 +113,14 @@ class RecurringRepository
                                 rhythm = rhythm,
                                 firstEpochDay = first.toEpochDay().toInt(),
                                 lastEpochDay = lastDate?.toEpochDay()?.toInt(),
-                                nextDueEpochDay = recurrence.nextAfter(first)?.toEpochDay()?.toInt(),
+                                nextDueEpochDay =
+                                    (if (startsLater) first else recurrence.nextAfter(first))?.toEpochDay()?.toInt(),
                             ),
                         )
+                    if (startsLater) {
+                        transactions.deleteById(row.id)
+                        return@inTransaction id
+                    }
                     transactions.update(
                         row.copy(
                             recurringId = id,
@@ -181,12 +208,29 @@ internal fun RecurringTransactionEntity.recurrence(): Recurrence =
         lastDate = lastEpochDay?.let { LocalDate.ofEpochDay(it.toLong()) },
     )
 
+private fun RecurringWithNames.nextRowOn(
+    day: LocalDate,
+    zone: ZoneId,
+): Transaction =
+    toDomain(
+        TransactionWithMerchant(
+            transaction = recurring.occurrenceOn(day, zone),
+            merchantName = merchantName,
+            accountName = accountName,
+            accountType = accountType,
+            toAccountName = toAccountName,
+            toAccountType = toAccountType,
+            categoryName = categoryName,
+        ),
+    )
+
 private fun toDomain(row: RecurringWithNames): RecurringTransaction =
     with(row.recurring) {
         RecurringTransaction(
             id = id,
             amount = Money(amountMinor, currency),
             kind = kind,
+            merchantId = merchantId,
             merchantName = row.merchantName ?: merchantRaw,
             accountId = accountId,
             accountName = row.accountName,

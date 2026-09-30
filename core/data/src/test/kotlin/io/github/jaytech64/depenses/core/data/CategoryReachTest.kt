@@ -23,6 +23,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Provider
 
@@ -244,7 +245,7 @@ class CategoryReachTest {
                     loan,
                     categoryId =
                         accounts
-                            .all()
+                            .all(LocalDate.of(2026, 12, 31))
                             .first()
                             .single { it.id == loan }
                             .categoryId,

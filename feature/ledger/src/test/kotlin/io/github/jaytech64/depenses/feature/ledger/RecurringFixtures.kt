@@ -25,7 +25,7 @@ internal fun DepensesDatabase.recurringRepository(
             this,
             recurringTransactionDao(),
             transactionDao(),
-            LocalDateTicker(Provider { zone }),
+            LocalDateTicker(clock, Provider { zone }),
             clock,
             Provider { zone },
         ),

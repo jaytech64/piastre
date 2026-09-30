@@ -486,6 +486,8 @@ interface AccountDao {
      * the account: income adds, an expense takes away, and a transfer takes from the
      * account it left and adds to the one it reached. Only [currency] is summed, the
      * way reports keep to one currency, because dollars plus euros is not a balance.
+     * It stops at [throughDay]: what the account holds that day, never a row dated
+     * after it. The count does not stop, since a row still to come uses the account.
      */
     @Query(
         """
@@ -495,17 +497,22 @@ interface AccountDao {
             COALESCE(a.openingBalanceMinor, 0)
                 + COALESCE((SELECT SUM(CASE WHEN t.kind = 'INCOME' THEN t.amountMinor ELSE -t.amountMinor END)
                             FROM expense_transaction t
-                            WHERE t.accountId = a.id AND t.status = 'CONFIRMED' AND t.currency = :currency), 0)
+                            WHERE t.accountId = a.id AND t.status = 'CONFIRMED' AND t.currency = :currency
+                              AND t.localDateEpochDay <= :throughDay), 0)
                 + COALESCE((SELECT SUM(t.amountMinor)
                             FROM expense_transaction t
                             WHERE t.toAccountId = a.id AND t.kind = 'TRANSFER'
-                              AND t.status = 'CONFIRMED' AND t.currency = :currency), 0)
+                              AND t.status = 'CONFIRMED' AND t.currency = :currency
+                              AND t.localDateEpochDay <= :throughDay), 0)
                 AS balanceMinor
         FROM account a
         ORDER BY a.sortOrder, a.id
         """,
     )
-    fun allWithCounts(currency: String): Flow<List<AccountWithCount>>
+    fun allWithCounts(
+        currency: String,
+        throughDay: Int,
+    ): Flow<List<AccountWithCount>>
 
     @Query("SELECT * FROM account ORDER BY id")
     suspend fun allOnce(): List<AccountEntity>

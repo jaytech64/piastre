@@ -36,6 +36,10 @@ data class PeriodSpending(
  * Every query keys on one currency. That is not an oversight: converting needs a
  * rate, a rate needs a network, and this app has none. [otherCurrencyCount] is
  * how a screen says so out loud.
+ *
+ * Every figure counts a period up to today and no further: a transaction dated
+ * after today counts from its day, as it does in the ledger (ADR-0015), so each
+ * function takes today alongside the period.
  */
 @Singleton
 class ReportRepository
@@ -50,10 +54,11 @@ class ReportRepository
          */
         fun dailyTotals(
             period: ReportPeriod,
+            today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<Map<LocalDate, Money>> =
             reports
-                .dailyTotals(period.start.epochDay, period.endInclusive.epochDay, currency)
+                .dailyTotals(period.start.epochDay, period.lastDayThrough(today), currency)
                 .map { rows ->
                     rows.associate { LocalDate.ofEpochDay(it.day.toLong()) to Money(it.totalMinor, currency) }
                 }
@@ -67,10 +72,11 @@ class ReportRepository
          */
         fun spending(
             period: ReportPeriod,
+            today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<PeriodSpending> =
             reports
-                .dailyTotals(period.start.epochDay, period.endInclusive.epochDay, currency)
+                .dailyTotals(period.start.epochDay, period.lastDayThrough(today), currency)
                 .map { rows ->
                     PeriodSpending(
                         total = Money(rows.sumOf { it.totalMinor }, currency),
@@ -84,10 +90,11 @@ class ReportRepository
          */
         fun total(
             period: ReportPeriod,
+            today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<Money> =
             reports
-                .totalForRange(period.start.epochDay, period.endInclusive.epochDay, currency)
+                .totalForRange(period.start.epochDay, period.lastDayThrough(today), currency)
                 .map { Money(it ?: 0L, currency) }
 
         /**
@@ -97,10 +104,11 @@ class ReportRepository
          */
         fun income(
             period: ReportPeriod,
+            today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<Money> =
             reports
-                .incomeForRange(period.start.epochDay, period.endInclusive.epochDay, currency)
+                .incomeForRange(period.start.epochDay, period.lastDayThrough(today), currency)
                 .map { Money(it ?: 0L, currency) }
 
         /**
@@ -112,11 +120,12 @@ class ReportRepository
          */
         fun topMerchants(
             period: ReportPeriod,
+            today: LocalDate,
             limit: Int,
             currency: String = Money.CAD,
         ): Flow<List<MerchantSpending>> =
             reports
-                .topMerchants(period.start.epochDay, period.endInclusive.epochDay, currency, limit)
+                .topMerchants(period.start.epochDay, period.lastDayThrough(today), currency, limit)
                 .map { rows ->
                     rows.map {
                         MerchantSpending(
@@ -131,8 +140,9 @@ class ReportRepository
         /** Incomes and purchases in [period] that every other figure on this repository left out. */
         fun otherCurrencyCount(
             period: ReportPeriod,
+            today: LocalDate,
             currency: String = Money.CAD,
-        ): Flow<Int> = reports.otherCurrencyCount(period.start.epochDay, period.endInclusive.epochDay, currency)
+        ): Flow<Int> = reports.otherCurrencyCount(period.start.epochDay, period.lastDayThrough(today), currency)
     }
 
 /**
@@ -140,3 +150,6 @@ class ReportRepository
  * and an index over it is cheaper than one over a `Long`.
  */
 private val LocalDate.epochDay: Int get() = toEpochDay().toInt()
+
+/** The period's last day, or [today] while the period is still running. */
+private fun ReportPeriod.lastDayThrough(today: LocalDate): Int = minOf(endInclusive, today).epochDay

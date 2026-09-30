@@ -207,7 +207,9 @@ class ExpenseFormViewModel
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
         val knownAccounts: StateFlow<List<Account>> =
-            accounts.all().stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
+            accounts
+                .all(LocalDate.now(clock.withZone(zoneId.get())))
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
         /** How often it comes back, and until when. */
         val repeat = RepeatChoice(_uiState)

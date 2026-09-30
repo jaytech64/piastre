@@ -1,6 +1,6 @@
 # 13. A recurring transaction is written on its day, never projected
 
-- **Status:** Accepted, revised once — implemented.
+- **Status:** Accepted, revised twice — implemented.
 - **Decided:** 2026-09-27, while planning recurring transactions (`.lavish/recurring-transactions.html`, forks A, B, D and F).
 - **Touches:** `:core:model` (`Recurrence`), `:core:database` (`recurring_transaction`, schema 12), `:core:data` (`RecurringPosting`, `RecurringRepository`, export and import), `:feature:ledger`, `:feature:settings`, `:app`, `:capture:listener`.
 
@@ -50,6 +50,17 @@ Schema 13 does the same to the first rows of schedules made before it.
 A schedule with no day left to write stayed in the list in Settings for ever.
 It is now removed by the catch-up pass that finds it over, as *Stop repeating* would remove it: every row it wrote stays, and still reads as recurring.
 "Over" means nothing left to write, so an end date that falls before the next due day ends it even while that end date is still to come.
+
+## Revision — the next day is shown above today
+
+- **Decided:** 2026-09-30, with [ADR-0015](0015-a-transaction-counts-from-its-day.md).
+
+The ledger now shows each schedule's next day above today, counted in nothing, which reverses the first rejection above.
+What that rejection feared was a line that doesn't add up with the figures over it.
+The line is collapsed and set apart from the list, and says it's upcoming, so it isn't read as part of them.
+
+Nothing else here changes: rows are still written only on their day.
+A schedule that starts after today now waits for its first day too, rather than writing it on save.
 
 ## Consequences
 

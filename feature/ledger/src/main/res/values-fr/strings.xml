@@ -154,4 +154,11 @@
     <string name="recurring_stop_title">Arrêter %s ?</string>
     <string name="recurring_stop_body">Ce qui a déjà été ajouté reste dans vos dépenses.</string>
     <string name="ledger_recurring">récurrente</string>
+    <plurals name="ledger_upcoming">
+        <item quantity="one">%d à venir</item>
+        <item quantity="other">%d à venir</item>
+        <item quantity="many">%d à venir</item>
+    </plurals>
+    <string name="ledger_upcoming_show">Afficher ce qui est à venir</string>
+    <string name="ledger_upcoming_hide">Masquer ce qui est à venir</string>
 </resources>

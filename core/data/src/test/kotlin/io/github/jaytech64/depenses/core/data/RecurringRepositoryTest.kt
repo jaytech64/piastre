@@ -53,7 +53,7 @@ class RecurringRepositoryTest {
                 database,
                 database.recurringTransactionDao(),
                 database.transactionDao(),
-                LocalDateTicker(Provider { ZONE }),
+                LocalDateTicker(clock, Provider { ZONE }),
                 clock,
                 Provider { ZONE },
             )
@@ -148,7 +148,7 @@ class RecurringRepositoryTest {
     @Test
     fun `nothing is written for a day that has not come`() =
         runTest {
-            recurring.repeat(typed(on = LocalDate.of(2026, 9, 28)), Rhythm.WEEKLY, lastDate = null)
+            recurring.repeat(typed(on = TODAY), Rhythm.WEEKLY, lastDate = null)
 
             assertEquals(1, ledger().size)
         }
@@ -303,6 +303,38 @@ class RecurringRepositoryTest {
 
             assertNull(recurring.repeat(first, Rhythm.WEEKLY, lastDate = null))
             assertEquals(1, recurring.all().first().size)
+        }
+
+    @Test
+    fun `a bill set to start next month waits to be written on its day`() =
+        runTest {
+            val first = typed(on = LocalDate.of(2026, 10, 25))
+
+            recurring.repeat(first, Rhythm.MONTHLY, lastDate = null)
+
+            assertTrue(ledger().isEmpty())
+            assertEquals(
+                LocalDate.of(2026, 10, 25),
+                recurring
+                    .all()
+                    .first()
+                    .single()
+                    .nextDue,
+            )
+
+            posting.catchUp(LocalDate.of(2026, 10, 25))
+
+            val written = ledger().single()
+            assertEquals(LocalDate.of(2026, 10, 25), written.localDate)
+            assertEquals(TransactionSource.RECURRING, written.source)
+            assertEquals(
+                LocalDate.of(2026, 11, 25),
+                recurring
+                    .all()
+                    .first()
+                    .single()
+                    .nextDue,
+            )
         }
 
     private suspend fun typed(

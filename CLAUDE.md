@@ -194,6 +194,7 @@ A report's ranking, calendar and spending comparison count expenses alone ([ADR-
 
 The ledger header's figures always add up to the balance above them: income and expenses by kind, and a filtered account's transfers as a figure of their own, never folded into either ([ADR-0008](docs/adr/0008-the-ledger-header-says-what-the-balance-is-made-of.md), `BalanceSummary`).
 The headline is this month's, except under a filter with dates, where it is every row shown ([ADR-0014](docs/adr/0014-a-dated-filters-headline-is-the-balance-of-its-dates.md), `LedgerViewModel.headlineRows`).
+A row dated after today counts in no figure anywhere until its day — headline, day, selection, report, account balance — and waits in the line above today ([ADR-0015](docs/adr/0015-a-transaction-counts-from-its-day.md)); a new total must stop at today too.
 
 ### A category is written onto the row, never read through
 
@@ -202,7 +203,7 @@ Categorising rows in bulk must not stamp `reviewedAtUtcMillis`, which would lock
 
 ### A recurring transaction is written, never projected
 
-A day a schedule falls on becomes a row once it has come, and nothing counts it before; only a typed transaction can repeat, or a captured one would be counted twice ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md), `RecurringRepository.repeat`).
+A day a schedule falls on becomes a row once it has come, and nothing counts it before — its next day is only previewed above today; only a typed transaction can repeat, or a captured one would be counted twice ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md), `RecurringRepository.repeat`).
 Due days are caught up at process start, midnight and listener bind (`RecurringPosting`); never reach for WorkManager or an alarm to fire them, which would bring in a permission this app refuses.
 
 ### A parser fix repairs history

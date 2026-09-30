@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.feature.settings
 
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
@@ -24,6 +25,10 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Clock
+import java.time.LocalDate
+import java.time.ZoneId
+import javax.inject.Provider
 
 /** The Cards section's rules, against a real database. */
 @RunWith(RobolectricTestRunner::class)
@@ -37,7 +42,8 @@ class AccountsViewModelTest {
         Dispatchers.setMain(StandardTestDispatcher())
         database = inMemoryDatabase()
         repository = AccountRepository(database.accountDao())
-        viewModel = AccountsViewModel(repository)
+        viewModel =
+            AccountsViewModel(repository, LocalDateTicker(Clock.systemUTC(), Provider { ZoneId.systemDefault() }))
     }
 
     @After
@@ -185,7 +191,7 @@ class AccountsViewModelTest {
                 listOf("Chèques", "Visa Desrives"),
                 viewModel.accounts.first { it.first().name == "Chèques" }.map { it.name },
             )
-            assertEquals(listOf("Chèques", "Visa Desrives"), repository.all().first().map { it.name })
+            assertEquals(listOf("Chèques", "Visa Desrives"), repository.all(LocalDate.now()).first().map { it.name })
         }
 
     @Test
