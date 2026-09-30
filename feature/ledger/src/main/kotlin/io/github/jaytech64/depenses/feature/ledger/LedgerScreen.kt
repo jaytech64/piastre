@@ -126,7 +126,7 @@ fun LedgerScreen(
     }
 
     if (choosingFilters) {
-        FilterSheet(state, filterActions, onDismiss = { choosingFilters = false })
+        FilterPage(state, filterActions, onDismiss = { choosingFilters = false })
     }
     SelectionDialog(if (state.isSelecting) acting else SelectionAction.NONE, state, viewModel) { acting = it }
 }

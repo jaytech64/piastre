@@ -137,6 +137,9 @@ data class LedgerUiState(
     val isEmpty: Boolean get() = days.isEmpty() && !loading
 
     val isSelecting: Boolean get() = selected.isNotEmpty()
+
+    /** How many transactions the filters leave on the ledger. */
+    val shownCount: Int get() = days.sumOf { it.transactions.size }
 }
 
 @HiltViewModel

@@ -9,7 +9,13 @@
     <string name="ledger_filter">Filter</string>
     <string name="ledger_filters_title">Filters</string>
     <string name="ledger_filters_clear_all">Clear all</string>
-    <string name="ledger_filters_done">Done</string>
+    <string name="ledger_filters_close">Close</string>
+    <string name="ledger_filters_where">Where</string>
+    <plurals name="ledger_filters_show">
+        <item quantity="one">Show %d transaction</item>
+        <item quantity="other">Show %d transactions</item>
+    </plurals>
+    <string name="ledger_filters_show_none">Show no transactions</string>
     <string name="ledger_filter_account">Account</string>
     <string name="ledger_filter_category">Category</string>
     <string name="ledger_filter_merchant">Merchant</string>

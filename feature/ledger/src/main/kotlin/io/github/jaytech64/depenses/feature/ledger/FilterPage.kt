@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -10,13 +11,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -32,76 +37,139 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.jaytech64.depenses.core.designsystem.ButtonsRow
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import io.github.jaytech64.depenses.core.designsystem.Formatters
-import io.github.jaytech64.depenses.core.designsystem.LastButton
 import io.github.jaytech64.depenses.core.designsystem.accountLabel
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.containsTyped
-import kotlinx.coroutines.launch
 
 /**
- * Every filter in one place, each applied the moment it is picked, the way the
- * account menu always was — there is no *Apply* to forget.
+ * Every filter on a page of its own, each applied the moment it is picked, the
+ * way the account menu always was — there is no *Apply* to forget. The button
+ * at the foot says how many transactions the filters leave, since the page
+ * hides the list they narrow.
  *
- * The merchant list takes the whole sheet rather than a dropdown, because there
- * can be hundreds of merchants and finding one means typing.
+ * A page rather than a sheet because a typed field in a modal sheet fights the
+ * keyboard for the same half of the screen. The merchant list takes the whole
+ * page in turn, because there can be hundreds of merchants and finding one
+ * means typing.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun FilterSheet(
+internal fun FilterPage(
     state: LedgerUiState,
     actions: FilterActions,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
     var choosingMerchant by rememberSaveable { mutableStateOf(false) }
 
-    fun close() {
-        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
-    }
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(
-            Modifier
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            if (choosingMerchant) {
-                MerchantList(
-                    options = state.merchants,
-                    selected = state.filter.merchant,
-                    onPick = {
-                        actions.onMerchant(it)
-                        choosingMerchant = false
-                    },
-                    onBack = { choosingMerchant = false },
-                )
-            } else {
-                FilterFields(state, actions, onChooseMerchant = { choosingMerchant = true }, onDone = ::close)
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        SystemBarsReadOnSurface()
+        Surface(Modifier.fillMaxSize()) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                if (choosingMerchant) {
+                    BackHandler { choosingMerchant = false }
+                    Column(
+                        Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        MerchantList(
+                            options = state.merchants,
+                            selected = state.filter.merchant,
+                            onPick = {
+                                actions.onMerchant(it)
+                                choosingMerchant = false
+                            },
+                            onBack = { choosingMerchant = false },
+                        )
+                    }
+                } else {
+                    FilterTop(state.filter.isActive, actions.onClearAll, onClose = onDismiss)
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        FilterFields(state, actions, onChooseMerchant = { choosingMerchant = true })
+                    }
+                    ShowButton(state.shownCount, onClick = onDismiss)
+                }
             }
+        }
+    }
+}
+
+/**
+ * A dialog has a window of its own, which does not inherit the activity's
+ * choice of dark or light bar icons; without this they are drawn white on the
+ * page's light surface.
+ */
+@Composable
+private fun SystemBarsReadOnSurface() {
+    val view = LocalView.current
+    val lightSurface = MaterialTheme.colorScheme.surface.luminance() > HALF
+    SideEffect {
+        (view.parent as? DialogWindowProvider)?.window?.let { window ->
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = lightSurface
+                isAppearanceLightNavigationBars = lightSurface
+            }
+        }
+    }
+}
+
+private const val HALF = 0.5f
+
+@Composable
+private fun FilterTop(
+    isActive: Boolean,
+    onClearAll: () -> Unit,
+    onClose: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onClose) {
+            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.ledger_filters_close))
+        }
+        Text(
+            stringResource(R.string.ledger_filters_title),
+            Modifier.weight(1f).padding(start = 8.dp),
+            style = MaterialTheme.typography.titleLarge,
+        )
+        if (isActive) {
+            TextButton(onClick = onClearAll) { Text(stringResource(R.string.ledger_filters_clear_all)) }
         }
     }
 }
@@ -111,21 +179,42 @@ private fun FilterFields(
     state: LedgerUiState,
     actions: FilterActions,
     onChooseMerchant: () -> Unit,
-    onDone: () -> Unit,
 ) {
-    ButtonsRow(Modifier.fillMaxWidth(), last = if (state.filter.isActive) LastButton.FAR_END else LastButton.IN_LINE) {
-        Text(stringResource(R.string.ledger_filters_title), style = MaterialTheme.typography.titleLarge)
-        if (state.filter.isActive) {
-            TextButton(onClick = actions.onClearAll) { Text(stringResource(R.string.ledger_filters_clear_all)) }
-        }
-    }
-
+    SectionTitle(R.string.ledger_filters_where)
     AccountFilterField(state.accounts, state.filter.account, actions.onAccount)
     CategoryFilterField(state.categories, state.filter.category, actions.onCategory)
     MerchantFilterField(state.filter.merchant, onChooseMerchant)
+}
 
-    ButtonsRow(Modifier.fillMaxWidth(), last = LastButton.FAR_END) {
-        Button(onClick = onDone) { Text(stringResource(R.string.ledger_filters_done)) }
+@Composable
+private fun SectionTitle(text: Int) {
+    Text(
+        stringResource(text),
+        Modifier.padding(top = 8.dp),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+    )
+}
+
+/**
+ * Closes the page, and says what it will leave on the ledger. Outlined when that
+ * is nothing, so an empty result is noticed before it is shown.
+ */
+@Composable
+private fun ShowButton(
+    count: Int,
+    onClick: () -> Unit,
+) {
+    val modifier = Modifier.fillMaxWidth().padding(16.dp)
+    if (count == 0) {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier,
+        ) { Text(stringResource(R.string.ledger_filters_show_none)) }
+    } else {
+        Button(onClick = onClick, modifier = modifier) {
+            Text(pluralStringResource(R.plurals.ledger_filters_show, count, count))
+        }
     }
 }
 
