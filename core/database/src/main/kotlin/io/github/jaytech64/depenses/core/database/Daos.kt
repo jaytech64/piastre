@@ -746,7 +746,7 @@ interface RecurringTransactionDao {
     @Query("SELECT * FROM recurring_transaction WHERE uuid = :uuid")
     suspend fun byUuid(uuid: String): RecurringTransactionEntity?
 
-    /** Every schedule, the soonest next day first, and those that have ended last. */
+    /** Every schedule, the soonest next day first, and any that has ended last. */
     @Query(
         """
         SELECT r.*, m.displayName AS merchantName, a.name AS accountName, a.type AS accountType,
@@ -803,6 +803,24 @@ interface RecurringTransactionDao {
 
     @Query("UPDATE expense_transaction SET recurringId = NULL WHERE recurringId = :id")
     suspend fun releaseTransactions(id: Long)
+
+    /** [stop] for every schedule with no day left to come. */
+    @Transaction
+    suspend fun removeEnded() {
+        releaseEndedTransactions()
+        deleteEnded()
+    }
+
+    @Query(
+        """
+        UPDATE expense_transaction SET recurringId = NULL
+        WHERE recurringId IN (SELECT id FROM recurring_transaction WHERE nextDueEpochDay IS NULL)
+        """,
+    )
+    suspend fun releaseEndedTransactions()
+
+    @Query("DELETE FROM recurring_transaction WHERE nextDueEpochDay IS NULL")
+    suspend fun deleteEnded()
 
     @Query("DELETE FROM recurring_transaction WHERE id = :id")
     suspend fun deleteRow(id: Long)

@@ -37,7 +37,7 @@ class RecurringRepository
         private val merchants: MerchantRepository,
         private val posting: RecurringPosting,
     ) {
-        /** Every schedule, the soonest next day first, and those that have ended last. */
+        /** Every schedule, the soonest next day first. One with no day left is removed as it ends. */
         fun all(): Flow<List<RecurringTransaction>> = recurring.allWithNames().map { rows -> rows.map(::toDomain) }
 
         /** How many schedules still have a day to come. */

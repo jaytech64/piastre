@@ -64,11 +64,19 @@ class RecurringPosting
         /** Writes every day that has come by today, and returns how many rows that was. */
         suspend fun catchUp(): Int = catchUp(today())
 
-        /** Writes every day that has come by [today], and returns how many rows that was. */
-        suspend fun catchUp(today: LocalDate): Int =
-            recurring
-                .dueBy(today.toEpochDay().toInt())
-                .sumOf { writeDue(it.id, today) }
+        /**
+         * Writes every day that has come by [today], and returns how many rows that
+         * was. A schedule left with no day to come is then removed: it has nothing
+         * more to write, and every row it wrote stays.
+         */
+        suspend fun catchUp(today: LocalDate): Int {
+            val written =
+                recurring
+                    .dueBy(today.toEpochDay().toInt())
+                    .sumOf { writeDue(it.id, today) }
+            recurring.removeEnded()
+            return written
+        }
 
         /**
          * One schedule's due days and the cursor past them, in one database
