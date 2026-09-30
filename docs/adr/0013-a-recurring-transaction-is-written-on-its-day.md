@@ -1,6 +1,6 @@
 # 13. A recurring transaction is written on its day, never projected
 
-- **Status:** Accepted — implemented.
+- **Status:** Accepted, revised once — implemented.
 - **Decided:** 2026-09-27, while planning recurring transactions (`.lavish/recurring-transactions.html`, forks A, B, D and F).
 - **Touches:** `:core:model` (`Recurrence`), `:core:database` (`recurring_transaction`, schema 12), `:core:data` (`RecurringPosting`, `RecurringRepository`, export and import), `:feature:ledger`, `:feature:settings`, `:app`, `:capture:listener`.
 
@@ -38,6 +38,18 @@ Rejected: showing the days to come in the ledger, dimmed and counted nowhere.
 It answers "what is about to leave", and it is the first thing on screen that would not add up with the figures above it.
 Rejected: waiting for a captured purchase and giving it the schedule's category instead of writing a row.
 It suits a bill Wallet does report, but it is a guess by nearness in date and amount, which the parser rules exist to refuse; it would be its own plan.
+
+## Revision — the first day is a recurring row, and a schedule that is over goes
+
+- **Decided:** 2026-09-29, after using it on the phone.
+
+The transaction a schedule is made from had stayed a typed row, with its time, so the ledger said *recurring* under every day but the first.
+It now becomes the schedule's first row as soon as the schedule is made: a recurring row keyed on the schedule and its day, like the rest.
+Schema 13 does the same to the first rows of schedules made before it.
+
+A schedule with no day left to write stayed in the list in Settings for ever.
+It is now removed by the catch-up pass that finds it over, as *Stop repeating* would remove it: every row it wrote stays, and still reads as recurring.
+"Over" means nothing left to write, so an end date that falls before the next due day ends it even while that end date is still to come.
 
 ## Consequences
 
