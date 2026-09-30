@@ -132,9 +132,9 @@ object Formatters {
     ): String {
         val dayAndMonth =
             if (locale.language == Locale.FRENCH.language) {
-                dayOfMonth(date.dayOfMonth, locale) + " " + SHORT_MONTH.withLocale(locale).format(date)
+                dayOfMonth(date.dayOfMonth, locale) + NBSP + SHORT_MONTH.withLocale(locale).format(date)
             } else {
-                SHORT_MONTH.withLocale(locale).format(date) + " " + date.dayOfMonth
+                SHORT_MONTH.withLocale(locale).format(date) + NBSP + date.dayOfMonth
             }
         return withYearUnlessCurrent(dayAndMonth, date, today, locale)
     }
@@ -155,9 +155,9 @@ object Formatters {
         val month = SHORT_MONTH.withLocale(locale).format(from)
         val days =
             if (locale.language == Locale.FRENCH.language) {
-                dayOfMonth(from.dayOfMonth, locale) + SPAN + to.dayOfMonth + " " + month
+                dayOfMonth(from.dayOfMonth, locale) + SPAN + to.dayOfMonth + NBSP + month
             } else {
-                month + " " + from.dayOfMonth + SPAN + to.dayOfMonth
+                month + NBSP + from.dayOfMonth + SPAN + to.dayOfMonth
             }
         return withYearUnlessCurrent(days, from, today, locale)
     }
@@ -170,13 +170,16 @@ object Formatters {
     ): String =
         when {
             date.year == today.year -> text
-            locale.language == Locale.FRENCH.language -> text + " " + date.year
-            else -> text + ", " + date.year
+            locale.language == Locale.FRENCH.language -> text + NBSP + date.year
+            else -> text + "," + NBSP + date.year
         }
 
     private val SHORT_MONTH = DateTimeFormatter.ofPattern("MMM")
 
     private const val SPAN = " – "
+
+    /** Between the parts of one date, so a line never breaks a day from its month. */
+    private const val NBSP = "\u00A0"
 
     /** The day of the week, named: `Friday`, `vendredi`. */
     fun weekday(
