@@ -36,7 +36,7 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun recurringTransactionDao(): RecurringTransactionDao
 
     companion object {
-        const val VERSION: Int = 12
+        const val VERSION: Int = 13
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -55,6 +55,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_9_10,
                 MIGRATION_10_11,
                 MIGRATION_11_12,
+                MIGRATION_12_13,
             )
 
         const val NAME: String = "depenses.db"
@@ -407,6 +408,43 @@ private val MIGRATION_11_12 =
             db.execSQL(
                 "CREATE INDEX IF NOT EXISTS `index_expense_transaction_recurringId` " +
                     "ON `expense_transaction` (`recurringId`)",
+            )
+        }
+    }
+
+/**
+ * Schema 13 changes no table: it makes the typed transaction a schedule started
+ * from into that schedule's first row, the way every schedule made from now on
+ * starts. It becomes a recurring row keyed on the schedule and its day, as the
+ * rows the schedule writes are.
+ *
+ * The key is spelled out here rather than taken from the code that writes it
+ * today, so a later change to that code cannot reach back and change what this
+ * upgrade meant. A row whose new key another row already holds is left as it
+ * was rather than breaking the unique index, which would leave the app unable
+ * to open its own data.
+ */
+private val MIGRATION_12_13 =
+    object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                UPDATE expense_transaction
+                SET source = 'RECURRING',
+                    sourcePackage = 'recurring',
+                    sourceKey = (
+                        SELECT r.uuid FROM recurring_transaction r WHERE r.id = expense_transaction.recurringId
+                    ) || ':' || date(localDateEpochDay * 86400, 'unixepoch')
+                WHERE source = 'MANUAL'
+                  AND recurringId IN (SELECT id FROM recurring_transaction)
+                  AND NOT EXISTS (
+                      SELECT 1 FROM expense_transaction other
+                      WHERE other.sourcePackage = 'recurring'
+                        AND other.sourceKey = (
+                            SELECT r.uuid FROM recurring_transaction r WHERE r.id = expense_transaction.recurringId
+                        ) || ':' || date(expense_transaction.localDateEpochDay * 86400, 'unixepoch')
+                  )
+                """.trimIndent(),
             )
         }
     }

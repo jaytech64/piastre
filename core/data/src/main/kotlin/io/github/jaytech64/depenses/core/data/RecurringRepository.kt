@@ -37,7 +37,7 @@ class RecurringRepository
         private val merchants: MerchantRepository,
         private val posting: RecurringPosting,
     ) {
-        /** Every schedule, the soonest next day first, and those that have ended last. */
+        /** Every schedule, the soonest next day first. One with no day left is removed as it ends. */
         fun all(): Flow<List<RecurringTransaction>> = recurring.allWithNames().map { rows -> rows.map(::toDomain) }
 
         /** How many schedules still have a day to come. */
@@ -51,8 +51,10 @@ class RecurringRepository
          * returns the schedule's id.
          *
          * The schedule copies the transaction as it stands, category included, and
-         * the transaction becomes its first row. Nothing is read through
-         * afterwards: see [RecurringTransactionEntity].
+         * the transaction becomes its first row: from then on it is a recurring row
+         * like those the schedule writes, keyed on the schedule and its day, and
+         * says so in the ledger. Nothing is read through afterwards: see
+         * [RecurringTransactionEntity].
          *
          * Only a typed transaction can repeat, and only one that is not already a
          * schedule's: a captured one will be captured again next time, and a
@@ -72,10 +74,11 @@ class RecurringRepository
                             ?: return@inTransaction null
                     val first = LocalDate.ofEpochDay(row.localDateEpochDay.toLong())
                     val recurrence = Recurrence(rhythm, first, lastDate)
+                    val uuid = UUID.randomUUID().toString()
                     val id =
                         recurring.insert(
                             RecurringTransactionEntity(
-                                uuid = UUID.randomUUID().toString(),
+                                uuid = uuid,
                                 amountMinor = row.amountMinor,
                                 currency = row.currency,
                                 kind = row.kind,
@@ -91,7 +94,14 @@ class RecurringRepository
                                 nextDueEpochDay = recurrence.nextAfter(first)?.toEpochDay()?.toInt(),
                             ),
                         )
-                    transactions.update(row.copy(recurringId = id))
+                    transactions.update(
+                        row.copy(
+                            recurringId = id,
+                            source = TransactionSource.RECURRING,
+                            sourcePackage = RECURRING_SOURCE,
+                            sourceKey = recurringSourceKey(uuid, first),
+                        ),
+                    )
                     id
                 }
             posting.catchUp()

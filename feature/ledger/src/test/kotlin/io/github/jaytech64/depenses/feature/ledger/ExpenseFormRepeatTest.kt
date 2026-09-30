@@ -164,6 +164,7 @@ class ExpenseFormRepeatTest {
 
             val schedule = recurring.all().first().single()
             assertEquals(schedule.id, transactions.byId(typed)?.recurringId)
+            assertEquals(TransactionSource.RECURRING, transactions.byId(typed)?.source)
             assertEquals(LocalDate.of(2026, 10, 25), schedule.nextDue)
         }
 
@@ -172,7 +173,7 @@ class ExpenseFormRepeatTest {
         runTest {
             val typed = typedOn(LocalDate.of(2026, 8, 25))
             recurring.repeat(typed, Rhythm.MONTHLY, lastDate = null)
-            val written = transactions.confirmed().first().single { it.source == TransactionSource.RECURRING }
+            val written = transactions.confirmed().first().single { it.id != typed }
 
             val first = open(editing = typed).uiState.first { !it.loading }
             val second = open(editing = written.id).uiState.first { !it.loading }

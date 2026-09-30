@@ -64,11 +64,19 @@ class RecurringPosting
         /** Writes every day that has come by today, and returns how many rows that was. */
         suspend fun catchUp(): Int = catchUp(today())
 
-        /** Writes every day that has come by [today], and returns how many rows that was. */
-        suspend fun catchUp(today: LocalDate): Int =
-            recurring
-                .dueBy(today.toEpochDay().toInt())
-                .sumOf { writeDue(it.id, today) }
+        /**
+         * Writes every day that has come by [today], and returns how many rows that
+         * was. A schedule left with no day to come is then removed: it has nothing
+         * more to write, and every row it wrote stays.
+         */
+        suspend fun catchUp(today: LocalDate): Int {
+            val written =
+                recurring
+                    .dueBy(today.toEpochDay().toInt())
+                    .sumOf { writeDue(it.id, today) }
+            recurring.removeEnded()
+            return written
+        }
 
         /**
          * One schedule's due days and the cursor past them, in one database
@@ -117,6 +125,12 @@ class RecurringPosting
 /** Not a package name, and deliberately not one: no parser can claim it. */
 internal const val RECURRING_SOURCE = "recurring"
 
+/** The identity of a schedule's row for [day]: the schedule and the day, the one thing that makes two rows the same. */
+internal fun recurringSourceKey(
+    uuid: String,
+    day: LocalDate,
+): String = "$uuid:$day"
+
 /**
  * The row a schedule writes for [day].
  *
@@ -125,8 +139,7 @@ internal const val RECURRING_SOURCE = "recurring"
  * rather than one worked out from that instant, so the ledger files it on its
  * due day whatever zone it is later read from.
  *
- * The source key is the schedule and the day: the one thing that makes two rows
- * the same occurrence.
+ * Its source key is [recurringSourceKey].
  */
 internal fun RecurringTransactionEntity.occurrenceOn(
     day: LocalDate,
@@ -155,7 +168,7 @@ internal fun RecurringTransactionEntity.occurrenceOn(
         parserId = null,
         parserVersion = null,
         sourcePackage = RECURRING_SOURCE,
-        sourceKey = "$uuid:$day",
+        sourceKey = recurringSourceKey(uuid, day),
         cardLabel = null,
         cardLast4 = null,
         note = note,

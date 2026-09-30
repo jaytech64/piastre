@@ -154,7 +154,7 @@ class RecurringRepositoryTest {
         }
 
     @Test
-    fun `nothing is written after the end date`() =
+    fun `nothing is written after the end date, and the schedule goes once it is over`() =
         runTest {
             recurring.repeat(
                 typed(on = LocalDate.of(2026, 6, 15)),
@@ -164,13 +164,52 @@ class RecurringRepositoryTest {
             posting.catchUp(LocalDate.of(2027, 1, 1))
 
             assertEquals(listOf(LocalDate.of(2026, 6, 15), LocalDate.of(2026, 7, 15)), ledger().map { it.localDate })
-            assertNull(
+            assertTrue(ledger().all { it.source == TransactionSource.RECURRING && it.recurringId == null })
+            assertTrue(recurring.all().first().isEmpty())
+        }
+
+    @Test
+    fun `a schedule with a day still to come stays, even past its last written day`() =
+        runTest {
+            recurring.repeat(
+                typed(on = LocalDate.of(2026, 8, 15)),
+                Rhythm.MONTHLY,
+                lastDate = LocalDate.of(2026, 10, 15),
+            )
+
+            assertEquals(
+                LocalDate.of(2026, 10, 15),
                 recurring
                     .all()
                     .first()
                     .single()
                     .nextDue,
             )
+        }
+
+    @Test
+    fun `the transaction a schedule starts from reads as recurring, like the rows it writes`() =
+        runTest {
+            val first = typed(on = LocalDate.of(2026, 8, 1))
+
+            recurring.repeat(first, Rhythm.MONTHLY, lastDate = null)
+
+            val schedule = recurring.all().first().single()
+            assertEquals(listOf(TransactionSource.RECURRING, TransactionSource.RECURRING), ledger().map { it.source })
+            assertEquals(schedule.id, transactions.byId(first)?.recurringId)
+        }
+
+    @Test
+    fun `the first day is never written a second time`() =
+        runTest {
+            val first = typed(on = LocalDate.of(2026, 8, 1))
+            recurring.repeat(first, Rhythm.MONTHLY, lastDate = null)
+            val schedule = recurring.all().first().single()
+
+            database.recurringTransactionDao().moveNextDue(schedule.id, LocalDate.of(2026, 8, 1).toEpochDay().toInt())
+            posting.catchUp()
+
+            assertEquals(2, ledger().size)
         }
 
     @Test
