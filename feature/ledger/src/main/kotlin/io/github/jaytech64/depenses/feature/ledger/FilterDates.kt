@@ -13,9 +13,6 @@ import androidx.compose.ui.res.stringResource
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import java.time.LocalDate
 
-/** Which end of the filter's dates is being picked. */
-internal enum class DateEnd { FROM, TO }
-
 /**
  * *From* and *To*, each of which can be left as any day: only *From* is
  * "after", only *To* is "before", and both is "between", with no mode to pick

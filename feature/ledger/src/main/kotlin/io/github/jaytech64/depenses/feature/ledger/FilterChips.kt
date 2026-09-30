@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -138,6 +139,25 @@ private fun RemovableChip(
             )
         },
     )
+}
+
+/**
+ * The period the balance is of — this month, or the filter's dates (ADR-0014) —
+ * then how many other filters narrow it. The chips
+ * right below name each one, so naming them here too only made the label
+ * run to several lines.
+ */
+@Composable
+internal fun balanceLabel(
+    filter: LedgerFilter,
+    today: LocalDate?,
+): String {
+    if (!filter.isActive || today == null) return stringResource(R.string.ledger_balance_month)
+    val others = filter.countBesideDates
+    return listOfNotNull(
+        datesLabel(filter, today) ?: stringResource(R.string.ledger_period_this_month),
+        pluralStringResource(R.plurals.ledger_filter_count, others, others).takeIf { others > 0 },
+    ).joinToString(" · ")
 }
 
 /** What the filter's dates say — `Since Sep 1`, `Sep 1 – 30` — or null while it has none. */

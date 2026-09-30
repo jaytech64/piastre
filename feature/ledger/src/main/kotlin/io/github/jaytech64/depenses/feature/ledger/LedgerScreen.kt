@@ -77,15 +77,15 @@ fun LedgerScreen(
     val filterActions =
         remember(viewModel) {
             FilterActions(
-                onAccount = viewModel::onAccountSelected,
-                onCategory = viewModel::onCategorySelected,
-                onMerchant = viewModel::onMerchantSelected,
-                onFrom = viewModel::onFromSelected,
-                onTo = viewModel::onToSelected,
-                onAtLeast = viewModel::onAtLeastTyped,
-                onAtMost = viewModel::onAtMostTyped,
-                onNote = viewModel::onNoteTyped,
-                onClearAll = viewModel::onFiltersCleared,
+                onAccount = viewModel.filters::onAccountSelected,
+                onCategory = viewModel.filters::onCategorySelected,
+                onMerchant = viewModel.filters::onMerchantSelected,
+                onFrom = viewModel.filters::onFromSelected,
+                onTo = viewModel.filters::onToSelected,
+                onAtLeast = viewModel.filters::onAtLeastTyped,
+                onAtMost = viewModel.filters::onAtMostTyped,
+                onNote = viewModel.filters::onNoteTyped,
+                onClearAll = viewModel.filters::onFiltersCleared,
             )
         }
 
@@ -320,25 +320,6 @@ private fun BalanceRow(
             )
         }
     }
-}
-
-/**
- * The period the balance is of — this month, or the filter's dates (ADR-0014) —
- * then how many other filters narrow it. The chips
- * right below name each one, so naming them here too only made the label
- * run to several lines.
- */
-@Composable
-private fun balanceLabel(
-    filter: LedgerFilter,
-    today: LocalDate?,
-): String {
-    if (!filter.isActive || today == null) return stringResource(R.string.ledger_balance_month)
-    val others = filter.countBesideDates
-    return listOfNotNull(
-        datesLabel(filter, today) ?: stringResource(R.string.ledger_period_this_month),
-        pluralStringResource(R.plurals.ledger_filter_count, others, others).takeIf { others > 0 },
-    ).joinToString(" · ")
 }
 
 @Composable

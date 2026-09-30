@@ -41,7 +41,7 @@ class LedgerSelectionTest : LedgerTest() {
             val hidden = insert(amountMinor = 6_000, day = TODAY)
             savedState["selectedRowIds"] = longArrayOf(shown, hidden)
 
-            viewModel.onCategorySelected(CategoryChoice.Named(Category(internet, "Internet")))
+            viewModel.filters.onCategorySelected(CategoryChoice.Named(Category(internet, "Internet")))
 
             assertEquals(setOf(shown), viewModel.uiState.first { it.filter.category != null }.selected)
         }
@@ -209,7 +209,7 @@ class LedgerSelectionTest : LedgerTest() {
                     .balance,
             )
 
-            viewModel.onAccountSelected(desrives)
+            viewModel.filters.onAccountSelected(desrives)
             val onDesrives = viewModel.uiState.first { it.filter.account != null }.selectionSummary!!
 
             assertEquals(Money(-50_000, Money.CAD), onDesrives.transfers)
@@ -237,7 +237,7 @@ class LedgerSelectionTest : LedgerTest() {
             val hidden = insert(amountMinor = 6_000, day = TODAY)
             select(shown, hidden)
 
-            viewModel.onCategorySelected(CategoryChoice.Named(Category(internet, "Internet")))
+            viewModel.filters.onCategorySelected(CategoryChoice.Named(Category(internet, "Internet")))
             val summary = viewModel.uiState.first { it.filter.category != null }.selectionSummary!!
 
             assertEquals(Money(8_500, Money.CAD), summary.expenses)

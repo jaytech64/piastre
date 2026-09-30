@@ -256,7 +256,7 @@ class LedgerViewModelTest : LedgerTest() {
                 toAccountId = visa,
             )
 
-            viewModel.onAccountSelected(visa)
+            viewModel.filters.onAccountSelected(visa)
             val month = settled().headline
 
             assertEquals(Money(0, Money.CAD), month.income)
@@ -264,7 +264,7 @@ class LedgerViewModelTest : LedgerTest() {
             assertEquals(Money(90_000, Money.CAD), month.transfers)
             assertEquals(Money(-31_480, Money.CAD), month.balance)
 
-            viewModel.onAccountSelected(desrives)
+            viewModel.filters.onAccountSelected(desrives)
             assertEquals(
                 Money(-90_000, Money.CAD),
                 viewModel.uiState
@@ -291,7 +291,7 @@ class LedgerViewModelTest : LedgerTest() {
             insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
             insert(amountMinor = 4_820, day = TODAY, accountId = visa)
 
-            viewModel.onAccountSelected(desrives)
+            viewModel.filters.onAccountSelected(desrives)
             val state = settled()
 
             assertEquals("Desrives", state.filter.account?.name)
@@ -313,7 +313,7 @@ class LedgerViewModelTest : LedgerTest() {
             insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
             insert(amountMinor = 2_000, day = TODAY, accountId = null)
 
-            viewModel.onAccountSelected(desrives)
+            viewModel.filters.onAccountSelected(desrives)
 
             assertEquals(Money(-1_075, Money.CAD), settled().headline.balance)
         }
@@ -331,7 +331,7 @@ class LedgerViewModelTest : LedgerTest() {
                 toAccountId = cash,
             )
 
-            viewModel.onAccountSelected(desrives)
+            viewModel.filters.onAccountSelected(desrives)
             assertEquals(
                 1,
                 settled()
@@ -340,7 +340,7 @@ class LedgerViewModelTest : LedgerTest() {
                     .transactions.size,
             )
 
-            viewModel.onAccountSelected(cash)
+            viewModel.filters.onAccountSelected(cash)
             assertEquals(
                 1,
                 viewModel.uiState
@@ -371,10 +371,10 @@ class LedgerViewModelTest : LedgerTest() {
                 toAccountId = cash,
             )
 
-            viewModel.onAccountSelected(desrives)
+            viewModel.filters.onAccountSelected(desrives)
             assertEquals(Money(-6_575, Money.CAD), settled().headline.balance)
 
-            viewModel.onAccountSelected(cash)
+            viewModel.filters.onAccountSelected(cash)
             assertEquals(
                 Money(6_000, Money.CAD),
                 viewModel.uiState
@@ -409,7 +409,7 @@ class LedgerViewModelTest : LedgerTest() {
             val epargne = account("Épargne")
             insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
 
-            viewModel.onAccountSelected(epargne)
+            viewModel.filters.onAccountSelected(epargne)
             val state = viewModel.uiState.first { it.filter.account?.id == epargne }
 
             assertTrue(state.isEmpty)
@@ -425,7 +425,7 @@ class LedgerViewModelTest : LedgerTest() {
         runTest {
             val desrives = account("Desrives")
             insert(amountMinor = 1_075, day = TODAY, accountId = desrives)
-            viewModel.onAccountSelected(desrives)
+            viewModel.filters.onAccountSelected(desrives)
             settled()
 
             val rebuilt = ledgerViewModel(savedState)
@@ -445,7 +445,7 @@ class LedgerViewModelTest : LedgerTest() {
         runTest {
             val desrives = account("Desrives")
             insert(amountMinor = 1_075, day = TODAY, accountId = null)
-            viewModel.onAccountSelected(desrives)
+            viewModel.filters.onAccountSelected(desrives)
             assertEquals("Desrives", settled().filter.account?.name)
 
             database.accountDao().deleteIfUnused(desrives)

@@ -188,33 +188,8 @@ class LedgerViewModel
         ticker: LocalDateTicker,
         private val savedState: SavedStateHandle,
     ) : ViewModel() {
-        /**
-         * The filter lives in saved state rather than in a field, because the bottom
-         * bar navigates with `popUpTo(saveState = true)`: that clears the view model
-         * scoped to the ledger entry, so a field would drop the filter on the way to
-         * Reports and back. The saved-state bundle survives that and a rotation,
-         * while a cold launch starts without one — which is the lifetime the filter
-         * was asked for.
-         */
-        private val filterKeys: Flow<FilterKeys> =
-            combine(
-                combine(
-                    savedState.getStateFlow<Long?>(SELECTED_ACCOUNT_ID, null),
-                    savedState.getStateFlow<Long?>(SELECTED_CATEGORY_ID, null),
-                    savedState.getStateFlow(UNCATEGORISED_ONLY, false),
-                    savedState.getStateFlow<Long?>(SELECTED_MERCHANT_ID, null),
-                    ::WhereKeys,
-                ),
-                savedState.getStateFlow<Long?>(FROM_EPOCH_DAY, null),
-                savedState.getStateFlow<Long?>(TO_EPOCH_DAY, null),
-                combine(
-                    savedState.getStateFlow(AT_LEAST_TYPED, ""),
-                    savedState.getStateFlow(AT_MOST_TYPED, ""),
-                    ::AmountKeys,
-                ),
-                savedState.getStateFlow(NOTE_TYPED, ""),
-                ::FilterKeys,
-            )
+        /** What the ledger is narrowed to, as the filter controls last set it. */
+        val filters = LedgerFilters(savedState)
 
         /** The rows picked by a long press, and what can be done to them. */
         val selection =
@@ -224,7 +199,7 @@ class LedgerViewModel
 
         private val known: Flow<Known> = combine(accounts.all(), categories.all(), merchants.all(), ::Known)
 
-        private val filtering: Flow<Pair<FilterKeys, Set<Long>>> = combine(filterKeys, selection.rowIds, ::Pair)
+        private val filtering: Flow<Pair<FilterKeys, Set<Long>>> = combine(filters.keys, selection.rowIds, ::Pair)
 
         /**
          * The current day is a source of truth in its own right, not a value read
@@ -266,59 +241,6 @@ class LedgerViewModel
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
                 initialValue = LedgerUiState(),
             )
-
-        /** Null shows every account again. */
-        fun onAccountSelected(id: Long?) {
-            savedState[SELECTED_ACCOUNT_ID] = id
-        }
-
-        /** Null shows every category again. */
-        fun onCategorySelected(choice: CategoryChoice?) {
-            savedState[UNCATEGORISED_ONLY] = choice == CategoryChoice.Uncategorised
-            savedState[SELECTED_CATEGORY_ID] = (choice as? CategoryChoice.Named)?.category?.id
-        }
-
-        /** Null shows every merchant again. */
-        fun onMerchantSelected(id: Long?) {
-            savedState[SELECTED_MERCHANT_ID] = id
-        }
-
-        /** Null shows every day up to [LedgerFilter.to] again. */
-        fun onFromSelected(date: LocalDate?) {
-            savedState[FROM_EPOCH_DAY] = date?.toEpochDay()
-        }
-
-        /** Null shows every day from [LedgerFilter.from] on again. */
-        fun onToSelected(date: LocalDate?) {
-            savedState[TO_EPOCH_DAY] = date?.toEpochDay()
-        }
-
-        /** What was typed in *At least*; blank shows every amount up to [LedgerFilter.atMost] again. */
-        fun onAtLeastTyped(text: String) {
-            savedState[AT_LEAST_TYPED] = text
-        }
-
-        /** What was typed in *At most*; blank shows every amount from [LedgerFilter.atLeast] on again. */
-        fun onAtMostTyped(text: String) {
-            savedState[AT_MOST_TYPED] = text
-        }
-
-        /** What was typed in *Note contains*; blank shows every note again, and rows with none. */
-        fun onNoteTyped(text: String) {
-            savedState[NOTE_TYPED] = text
-        }
-
-        /** Every filter off at once. */
-        fun onFiltersCleared() {
-            onAccountSelected(null)
-            onCategorySelected(null)
-            onMerchantSelected(null)
-            onFromSelected(null)
-            onToSelected(null)
-            onAtLeastTyped("")
-            onAtMostTyped("")
-            onNoteTyped("")
-        }
 
         /**
          * Rows with no category first, since finding them is most of why the choice
@@ -375,41 +297,6 @@ class LedgerViewModel
             return filter { filter.hasDates || YearMonth.from(it.date) == month }.flatMap { it.transactions }
         }
 
-        /** The filter's saved-state keys, read together. */
-        private data class FilterKeys(
-            val where: WhereKeys,
-            val fromEpochDay: Long?,
-            val toEpochDay: Long?,
-            val amounts: AmountKeys,
-            val note: String,
-        )
-
-        /**
-         * The amounts as typed. They are kept as text rather than as amounts, so
-         * the fields hold what was typed — `12,` on the way to `12,50` — across
-         * the page closing and the screen being rebuilt.
-         */
-        private data class AmountKeys(
-            val atLeast: String,
-            val atMost: String,
-        ) {
-            val low: Money? = atLeast.asAmount()
-            val high: Money? = atMost.asAmount()
-            val crossed: Boolean = low != null && high != null && low.minor > high.minor
-
-            /** Read as [Formatters.parseMoney] reads the form's amount, and as a size whichever sign was typed. */
-            private fun String.asAmount(): Money? =
-                Formatters.parseMoney(this)?.let { Money(abs(it.minor), it.currency) }
-        }
-
-        /** The keys of the filters that narrow by where the money went. */
-        private data class WhereKeys(
-            val accountId: Long?,
-            val categoryId: Long?,
-            val uncategorisedOnly: Boolean,
-            val merchantId: Long?,
-        )
-
         /** What exists to be filtered to. */
         private data class Known(
             val accounts: List<Account>,
@@ -444,15 +331,6 @@ class LedgerViewModel
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L
-            const val SELECTED_ACCOUNT_ID = "selectedAccountId"
-            const val SELECTED_CATEGORY_ID = "selectedCategoryId"
-            const val UNCATEGORISED_ONLY = "uncategorisedOnly"
-            const val SELECTED_MERCHANT_ID = "selectedMerchantId"
-            const val FROM_EPOCH_DAY = "fromEpochDay"
-            const val TO_EPOCH_DAY = "toEpochDay"
-            const val AT_LEAST_TYPED = "atLeastTyped"
-            const val AT_MOST_TYPED = "atMostTyped"
-            const val NOTE_TYPED = "noteTyped"
         }
     }
 
