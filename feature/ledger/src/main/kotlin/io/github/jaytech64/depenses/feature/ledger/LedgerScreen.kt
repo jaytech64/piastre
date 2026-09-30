@@ -77,10 +77,15 @@ fun LedgerScreen(
     val filterActions =
         remember(viewModel) {
             FilterActions(
-                onAccount = viewModel::onAccountSelected,
-                onCategory = viewModel::onCategorySelected,
-                onMerchant = viewModel::onMerchantSelected,
-                onClearAll = viewModel::onFiltersCleared,
+                onAccount = viewModel.filters::onAccountSelected,
+                onCategory = viewModel.filters::onCategorySelected,
+                onMerchant = viewModel.filters::onMerchantSelected,
+                onFrom = viewModel.filters::onFromSelected,
+                onTo = viewModel.filters::onToSelected,
+                onAtLeast = viewModel.filters::onAtLeastTyped,
+                onAtMost = viewModel.filters::onAtMostTyped,
+                onNote = viewModel.filters::onNoteTyped,
+                onClearAll = viewModel.filters::onFiltersCleared,
             )
         }
 
@@ -95,8 +100,8 @@ fun LedgerScreen(
                 onFiltersClick = { choosingFilters = true },
                 onReviewClick = onReviewClick,
             )
-            if (state.filter.isActive) {
-                FilterChips(state.filter, filterActions, enabled = !state.isSelecting)
+            if (state.filter.isActive && today != null) {
+                FilterChips(state.filter, today, filterActions, enabled = !state.isSelecting)
             }
 
             when {
@@ -126,7 +131,7 @@ fun LedgerScreen(
     }
 
     if (choosingFilters) {
-        FilterSheet(state, filterActions, onDismiss = { choosingFilters = false })
+        FilterPage(state, filterActions, onDismiss = { choosingFilters = false })
     }
     SelectionDialog(if (state.isSelecting) acting else SelectionAction.NONE, state, viewModel) { acting = it }
 }
@@ -255,7 +260,7 @@ private fun MonthHeader(
             BalanceRow(state, locale, onFiltersClick)
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-            SummaryFigures(state.thisMonth, locale)
+            SummaryFigures(state.headline, locale)
 
             // Shown only when there is something to say. Totals exclude unreviewed
             // purchases, so without this a low number would be a silent lie — and
@@ -290,21 +295,15 @@ private fun BalanceRow(
     locale: Locale,
     onFiltersClick: () -> Unit,
 ) {
-    val names = filterNames(state.filter)
-
     Row(verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                if (names.isEmpty()) {
-                    stringResource(R.string.ledger_balance_month)
-                } else {
-                    stringResource(R.string.ledger_balance_month_filtered, names.joinToString(" · "))
-                },
+                balanceLabel(state.filter, state.today),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                Formatters.signedMoney(state.thisMonth.balance, locale),
+                Formatters.signedMoney(state.headline.balance, locale),
                 style = MaterialTheme.typography.displaySmall,
             )
         }

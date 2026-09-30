@@ -227,4 +227,43 @@ class FormattersTest {
         assertEquals("vendredi", Formatters.weekday(friday, Locale.CANADA_FRENCH))
         assertEquals("Friday", Formatters.weekday(friday, Locale.CANADA))
     }
+
+    @Test
+    fun `a chip's date leaves out this year`() {
+        val today = LocalDate.of(2026, 9, 29)
+
+        assertEquals("Sep.\u00A01", Formatters.shortDate(LocalDate.of(2026, 9, 1), today, Locale.CANADA))
+        assertEquals("1er\u00A0sept.", Formatters.shortDate(LocalDate.of(2026, 9, 1), today, Locale.CANADA_FRENCH))
+    }
+
+    @Test
+    fun `a chip's date from another year says which`() {
+        val today = LocalDate.of(2026, 9, 29)
+
+        assertEquals("Dec.\u00A024,\u00A02025", Formatters.shortDate(LocalDate.of(2025, 12, 24), today, Locale.CANADA))
+        assertEquals(
+            "24\u00A0déc.\u00A02025",
+            Formatters.shortDate(LocalDate.of(2025, 12, 24), today, Locale.CANADA_FRENCH),
+        )
+    }
+
+    @Test
+    fun `a span within one month names the month once`() {
+        val today = LocalDate.of(2026, 9, 29)
+        val from = LocalDate.of(2026, 9, 1)
+        val to = LocalDate.of(2026, 9, 30)
+
+        assertEquals("Sep.\u00A01 – 30", Formatters.dateSpan(from, to, today, Locale.CANADA))
+        assertEquals("1er – 30\u00A0sept.", Formatters.dateSpan(from, to, today, Locale.CANADA_FRENCH))
+    }
+
+    @Test
+    fun `a span across two months names both`() {
+        val today = LocalDate.of(2026, 9, 29)
+        val from = LocalDate.of(2026, 9, 28)
+        val to = LocalDate.of(2026, 10, 3)
+
+        assertEquals("Sep.\u00A028 – Oct.\u00A03", Formatters.dateSpan(from, to, today, Locale.CANADA))
+        assertEquals("28\u00A0sept. – 3\u00A0oct.", Formatters.dateSpan(from, to, today, Locale.CANADA_FRENCH))
+    }
 }

@@ -5,9 +5,11 @@ package io.github.jaytech64.depenses.feature.ledger
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
@@ -136,18 +138,27 @@ private fun DateDialog(
 /** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
 internal enum class Picking { NOTHING, DATE, LAST_DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION, ADD_CATEGORY }
 
+/**
+ * A calendar for one day. [onNone], when given, is a button beside *Cancel* that
+ * takes the day away again, named [noneLabel]; [selectable] greys out the days
+ * that cannot be picked.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DatePickerSheet(
+internal fun DatePickerSheet(
     date: LocalDate,
     onPicked: (LocalDate) -> Unit,
     onCancel: () -> Unit,
     onNone: (() -> Unit)? = null,
+    noneLabel: String = stringResource(R.string.repeat_never),
+    confirmLabel: String = stringResource(R.string.manual_save),
+    selectable: SelectableDates = DatePickerDefaults.AllDates,
 ) {
     // The picker speaks UTC millis; the date is held as a plain LocalDate, so the
     // conversion is pinned to UTC at both ends rather than to a zone that would
     // shift the day by one either side of midnight.
-    val pickerState = rememberDatePickerState(initialSelectedDateMillis = date.toUtcMillis())
+    val pickerState =
+        rememberDatePickerState(initialSelectedDateMillis = date.toUtcMillis(), selectableDates = selectable)
 
     // DatePickerDialog rather than AlertDialog: the latter's content slot is
     // narrower than the calendar grid, which clips the last weekday column.
@@ -157,12 +168,12 @@ private fun DatePickerSheet(
             TextButton(
                 onClick = { pickerState.selectedDateMillis?.let { onPicked(it.toUtcLocalDate()) } },
             ) {
-                Text(stringResource(R.string.manual_save))
+                Text(confirmLabel)
             }
         },
         dismissButton = {
-            // An end date can be taken away again, which the calendar alone cannot say.
-            onNone?.let { TextButton(onClick = it) { Text(stringResource(R.string.repeat_never)) } }
+            // A day can be taken away again, which the calendar alone cannot say.
+            onNone?.let { TextButton(onClick = it) { Text(noneLabel) } }
             TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) }
         },
     ) {
@@ -266,4 +277,4 @@ private fun ExpenseFormUiState.stoppingName(): String? {
 
 private fun LocalDate.toUtcMillis(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 
-private fun Long.toUtcLocalDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
+internal fun Long.toUtcLocalDate(): LocalDate = Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()

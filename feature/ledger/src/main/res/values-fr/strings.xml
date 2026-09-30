@@ -9,7 +9,29 @@
     <string name="ledger_filter">Filtrer</string>
     <string name="ledger_filters_title">Filtres</string>
     <string name="ledger_filters_clear_all">Tout retirer</string>
-    <string name="ledger_filters_done">OK</string>
+    <string name="ledger_filters_close">Fermer</string>
+    <string name="ledger_filters_where">Où</string>
+    <string name="ledger_filters_when">Quand</string>
+    <string name="ledger_filter_from">Du</string>
+    <string name="ledger_filter_to">Au</string>
+    <string name="ledger_filter_any_day">N\'importe quel jour</string>
+    <string name="ledger_filter_since">Depuis le %s</string>
+    <string name="ledger_filter_until">Jusqu\'au %s</string>
+    <string name="ledger_filters_how_much">Combien</string>
+    <string name="ledger_filter_at_least">Au moins</string>
+    <string name="ledger_filter_at_most">Au plus</string>
+    <string name="ledger_filter_amounts_crossed">Doit être inférieur ou égal au maximum</string>
+    <string name="ledger_filter_at_least_chip">%s et plus</string>
+    <string name="ledger_filter_at_most_chip">Jusqu\'à %s</string>
+    <string name="ledger_filters_note">Note</string>
+    <string name="ledger_filter_note">La note contient</string>
+    <string name="ledger_filter_note_chip">« %s »</string>
+    <plurals name="ledger_filters_show">
+        <item quantity="one">Voir %d\u00A0transaction</item>
+        <item quantity="many">Voir %d\u00A0de transactions</item>
+        <item quantity="other">Voir %d\u00A0transactions</item>
+    </plurals>
+    <string name="ledger_filters_show_none">Aucune transaction</string>
     <string name="ledger_filter_account">Compte</string>
     <string name="ledger_filter_category">Catégorie</string>
     <string name="ledger_filter_merchant">Marchand</string>
@@ -20,7 +42,12 @@
     <string name="ledger_filter_merchant_search">Chercher un marchand</string>
     <string name="ledger_filter_back">Retour</string>
     <string name="ledger_filter_clear">Retirer %s</string>
-    <string name="ledger_balance_month_filtered">%s · ce mois-ci</string>
+    <string name="ledger_period_this_month">Ce mois-ci</string>
+    <plurals name="ledger_filter_count">
+        <item quantity="one">%d\u00A0filtre</item>
+        <item quantity="many">%d\u00A0de filtres</item>
+        <item quantity="other">%d\u00A0filtres</item>
+    </plurals>
     <string name="ledger_empty_filtered">Rien ne correspond à ces filtres</string>
     <string name="ledger_transfer">Virement</string>
     <string name="ledger_account">Compte</string>

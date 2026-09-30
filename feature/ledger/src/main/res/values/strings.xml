@@ -9,7 +9,28 @@
     <string name="ledger_filter">Filter</string>
     <string name="ledger_filters_title">Filters</string>
     <string name="ledger_filters_clear_all">Clear all</string>
-    <string name="ledger_filters_done">Done</string>
+    <string name="ledger_filters_close">Close</string>
+    <string name="ledger_filters_where">Where</string>
+    <string name="ledger_filters_when">When</string>
+    <string name="ledger_filter_from">From</string>
+    <string name="ledger_filter_to">To</string>
+    <string name="ledger_filter_any_day">Any day</string>
+    <string name="ledger_filter_since">Since %s</string>
+    <string name="ledger_filter_until">Until %s</string>
+    <string name="ledger_filters_how_much">How much</string>
+    <string name="ledger_filter_at_least">At least</string>
+    <string name="ledger_filter_at_most">At most</string>
+    <string name="ledger_filter_amounts_crossed">Must be at most the maximum</string>
+    <string name="ledger_filter_at_least_chip">%s or more</string>
+    <string name="ledger_filter_at_most_chip">Up to %s</string>
+    <string name="ledger_filters_note">Note</string>
+    <string name="ledger_filter_note">Note contains</string>
+    <string name="ledger_filter_note_chip">“%s”</string>
+    <plurals name="ledger_filters_show">
+        <item quantity="one">Show %d\u00A0transaction</item>
+        <item quantity="other">Show %d\u00A0transactions</item>
+    </plurals>
+    <string name="ledger_filters_show_none">Show no transactions</string>
     <string name="ledger_filter_account">Account</string>
     <string name="ledger_filter_category">Category</string>
     <string name="ledger_filter_merchant">Merchant</string>
@@ -20,7 +41,11 @@
     <string name="ledger_filter_merchant_search">Search merchants</string>
     <string name="ledger_filter_back">Back</string>
     <string name="ledger_filter_clear">Remove %s</string>
-    <string name="ledger_balance_month_filtered">%s · this month</string>
+    <string name="ledger_period_this_month">This month</string>
+    <plurals name="ledger_filter_count">
+        <item quantity="one">%d\u00A0filter</item>
+        <item quantity="other">%d\u00A0filters</item>
+    </plurals>
     <string name="ledger_empty_filtered">Nothing matches these filters</string>
     <string name="ledger_transfer">Transfer</string>
     <string name="ledger_account">Account</string>

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -47,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,15 +60,7 @@ import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.containsTyped
 import kotlinx.coroutines.launch
-
-/** The name of each filter that is on, in the order account, category, merchant. */
-@Composable
-internal fun filterNames(filter: LedgerFilter): List<String> =
-    listOfNotNull(
-        filter.account?.let { accountLabel(it) },
-        filter.category?.let { categoryLabel(it) },
-        filter.merchant?.displayName,
-    )
+import java.time.LocalDate
 
 /**
  * The filters that are on, a removable chip each, in one line that scrolls
@@ -78,10 +72,18 @@ internal fun filterNames(filter: LedgerFilter): List<String> =
 @Composable
 internal fun FilterChips(
     filter: LedgerFilter,
+    today: LocalDate,
     actions: FilterActions,
     enabled: Boolean,
 ) {
+    val dates = datesLabel(filter, today)
+    val amounts = amountsLabel(filter)
+    // A row keeps whichever chip it last started with in view, so a chip added
+    // ahead of it would open scrolled out of sight.
+    val scroll = rememberLazyListState()
+    LaunchedEffect(filter) { scroll.scrollToItem(0) }
     LazyRow(
+        state = scroll,
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -93,6 +95,27 @@ internal fun FilterChips(
         }
         filter.merchant?.let { merchant ->
             item(key = "merchant") { RemovableChip(merchant.displayName, enabled) { actions.onMerchant(null) } }
+        }
+        dates?.let {
+            item(key = "dates") {
+                RemovableChip(it, enabled) {
+                    actions.onFrom(null)
+                    actions.onTo(null)
+                }
+            }
+        }
+        amounts?.let {
+            item(key = "amounts") {
+                RemovableChip(it, enabled) {
+                    actions.onAtLeast("")
+                    actions.onAtMost("")
+                }
+            }
+        }
+        filter.note?.let { note ->
+            item(key = "note") {
+                RemovableChip(stringResource(R.string.ledger_filter_note_chip, note), enabled) { actions.onNote("") }
+            }
         }
     }
 }
@@ -116,6 +139,56 @@ private fun RemovableChip(
             )
         },
     )
+}
+
+/**
+ * The period the balance is of — this month, or the filter's dates (ADR-0014) —
+ * then how many other filters narrow it. The chips
+ * right below name each one, so naming them here too only made the label
+ * run to several lines.
+ */
+@Composable
+internal fun balanceLabel(
+    filter: LedgerFilter,
+    today: LocalDate?,
+): String {
+    if (!filter.isActive || today == null) return stringResource(R.string.ledger_balance_month)
+    val others = filter.countBesideDates
+    return listOfNotNull(
+        datesLabel(filter, today) ?: stringResource(R.string.ledger_period_this_month),
+        pluralStringResource(R.plurals.ledger_filter_count, others, others).takeIf { others > 0 },
+    ).joinToString(" · ")
+}
+
+/** What the filter's dates say — `Since Sep 1`, `Sep 1 – 30` — or null while it has none. */
+@Composable
+internal fun datesLabel(
+    filter: LedgerFilter,
+    today: LocalDate,
+): String? {
+    val locale = currentLocale()
+    val from = filter.from
+    val to = filter.to
+    return when {
+        from != null && to != null -> Formatters.dateSpan(from, to, today, locale)
+        from != null -> stringResource(R.string.ledger_filter_since, Formatters.shortDate(from, today, locale))
+        to != null -> stringResource(R.string.ledger_filter_until, Formatters.shortDate(to, today, locale))
+        else -> null
+    }
+}
+
+/** What the filter's amounts say — `$20.00 or more`, `$20.00 – $50.00` — or null while it has none. */
+@Composable
+private fun amountsLabel(filter: LedgerFilter): String? {
+    val locale = currentLocale()
+    val low = filter.atLeast?.let { Formatters.money(it, locale) }
+    val high = filter.atMost?.let { Formatters.money(it, locale) }
+    return when {
+        low != null && high != null -> "$low – $high"
+        low != null -> stringResource(R.string.ledger_filter_at_least_chip, low)
+        high != null -> stringResource(R.string.ledger_filter_at_most_chip, high)
+        else -> null
+    }
 }
 
 @Composable

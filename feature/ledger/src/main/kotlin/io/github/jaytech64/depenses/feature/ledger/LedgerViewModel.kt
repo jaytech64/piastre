@@ -12,6 +12,7 @@ import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
+import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Category
 import io.github.jaytech64.depenses.core.model.CategoryUsage
@@ -19,6 +20,7 @@ import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.containsTyped
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
+import kotlin.math.abs
 
 /** One local day, with its balance: what came in minus what went out. */
 data class LedgerDay(
@@ -82,13 +85,37 @@ data class LedgerFilter(
     val category: CategoryChoice? = null,
     /** Matched by id, so every spelling Wallet has used for one merchant matches it. */
     val merchant: Merchant? = null,
+    /** The first day shown, itself included. */
+    val from: LocalDate? = null,
+    /** The last day shown, itself included. */
+    val to: LocalDate? = null,
+    /**
+     * The smallest amount shown, itself included. Compared with the number each
+     * row shows, in its own currency: converting would need a rate, and a rate
+     * needs the network.
+     */
+    val atLeast: Money? = null,
+    /** The largest amount shown, itself included; compared as [atLeast] is. */
+    val atMost: Money? = null,
+    /** Words a row's note contains, whatever their case and accents. */
+    val note: String? = null,
 ) {
-    val isActive: Boolean get() = account != null || category != null || merchant != null
+    val hasDates: Boolean get() = from != null || to != null
+
+    /** How many slots other than the dates are set; the dates are the period, which is said on its own. */
+    val countBesideDates: Int get() = listOfNotNull(account, category, merchant, atLeast ?: atMost, note).size
+
+    val isActive: Boolean get() = hasDates || countBesideDates > 0
 
     fun admits(transaction: Transaction): Boolean =
         transaction.isOn(account) &&
             transaction.isIn(category) &&
-            (merchant == null || transaction.merchantId == merchant.id)
+            (merchant == null || transaction.merchantId == merchant.id) &&
+            (from == null || transaction.localDate >= from) &&
+            (to == null || transaction.localDate <= to) &&
+            (atLeast == null || transaction.amount.minor >= atLeast.minor) &&
+            (atMost == null || transaction.amount.minor <= atMost.minor) &&
+            (note == null || transaction.note?.containsTyped(note) == true)
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
@@ -117,7 +144,8 @@ data class LedgerUiState(
     val days: List<LedgerDay> = emptyList(),
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
-    val thisMonth: BalanceSummary = BalanceSummary(),
+    /** This month's rows, or the filter's days once it has some. */
+    val headline: BalanceSummary = BalanceSummary(),
     val needsReview: Int = 0,
     /** Every account, including ones nothing has ever been spent from. */
     val accounts: List<Account> = emptyList(),
@@ -126,6 +154,12 @@ data class LedgerUiState(
     /** Likewise only merchants some confirmed row names. */
     val merchants: List<FilterOption<Merchant>> = emptyList(),
     val filter: LedgerFilter = LedgerFilter(),
+    /** The amounts as typed, which the filter's own can no longer say once they are read. */
+    val typedAtLeast: String = "",
+    val typedAtMost: String = "",
+    val typedNote: String = "",
+    /** *At least* is above *At most*, so neither narrows anything until one is changed. */
+    val amountsCrossed: Boolean = false,
     /** The rows picked by a long press, and only those still on screen. */
     val selected: Set<Long> = emptySet(),
     /** What the selected rows add up to, counted as the day and month totals are; null while nothing is selected. */
@@ -137,6 +171,9 @@ data class LedgerUiState(
     val isEmpty: Boolean get() = days.isEmpty() && !loading
 
     val isSelecting: Boolean get() = selected.isNotEmpty()
+
+    /** How many transactions the filters leave on the ledger. */
+    val shownCount: Int get() = days.sumOf { it.transactions.size }
 }
 
 @HiltViewModel
@@ -151,22 +188,8 @@ class LedgerViewModel
         ticker: LocalDateTicker,
         private val savedState: SavedStateHandle,
     ) : ViewModel() {
-        /**
-         * The filter lives in saved state rather than in a field, because the bottom
-         * bar navigates with `popUpTo(saveState = true)`: that clears the view model
-         * scoped to the ledger entry, so a field would drop the filter on the way to
-         * Reports and back. The saved-state bundle survives that and a rotation,
-         * while a cold launch starts without one — which is the lifetime the filter
-         * was asked for.
-         */
-        private val filterKeys: Flow<FilterKeys> =
-            combine(
-                savedState.getStateFlow<Long?>(SELECTED_ACCOUNT_ID, null),
-                savedState.getStateFlow<Long?>(SELECTED_CATEGORY_ID, null),
-                savedState.getStateFlow(UNCATEGORISED_ONLY, false),
-                savedState.getStateFlow<Long?>(SELECTED_MERCHANT_ID, null),
-                ::FilterKeys,
-            )
+        /** What the ledger is narrowed to, as the filter controls last set it. */
+        val filters = LedgerFilters(savedState)
 
         /** The rows picked by a long press, and what can be done to them. */
         val selection =
@@ -176,7 +199,7 @@ class LedgerViewModel
 
         private val known: Flow<Known> = combine(accounts.all(), categories.all(), merchants.all(), ::Known)
 
-        private val filtering: Flow<Pair<FilterKeys, Set<Long>>> = combine(filterKeys, selection.rowIds, ::Pair)
+        private val filtering: Flow<Pair<FilterKeys, Set<Long>>> = combine(filters.keys, selection.rowIds, ::Pair)
 
         /**
          * The current day is a source of truth in its own right, not a value read
@@ -198,12 +221,16 @@ class LedgerViewModel
                 LedgerUiState(
                     days = days,
                     today = today,
-                    thisMonth = days.monthOf(YearMonth.from(today)).summaryOf(filter),
+                    headline = days.headlineRows(filter, today).summaryOf(filter),
                     needsReview = needsReview,
                     accounts = known.accounts,
                     categories = transactions.categoryOptions(today),
                     merchants = transactions.merchantOptions(today, known.merchants),
                     filter = filter,
+                    typedAtLeast = keys.amounts.atLeast,
+                    typedAtMost = keys.amounts.atMost,
+                    typedNote = keys.note,
+                    amountsCrossed = keys.amounts.crossed,
                     selected = selected.mapTo(mutableSetOf()) { it.id },
                     selectionSummary = selected.takeIf { it.isNotEmpty() }?.summaryOf(filter),
                     selectionCategories = transactions.categoriesFor(selected, known.categories, today),
@@ -214,29 +241,6 @@ class LedgerViewModel
                 started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
                 initialValue = LedgerUiState(),
             )
-
-        /** Null shows every account again. */
-        fun onAccountSelected(id: Long?) {
-            savedState[SELECTED_ACCOUNT_ID] = id
-        }
-
-        /** Null shows every category again. */
-        fun onCategorySelected(choice: CategoryChoice?) {
-            savedState[UNCATEGORISED_ONLY] = choice == CategoryChoice.Uncategorised
-            savedState[SELECTED_CATEGORY_ID] = (choice as? CategoryChoice.Named)?.category?.id
-        }
-
-        /** Null shows every merchant again. */
-        fun onMerchantSelected(id: Long?) {
-            savedState[SELECTED_MERCHANT_ID] = id
-        }
-
-        /** Every filter off at once. */
-        fun onFiltersCleared() {
-            onAccountSelected(null)
-            onCategorySelected(null)
-            onMerchantSelected(null)
-        }
 
         /**
          * Rows with no category first, since finding them is most of why the choice
@@ -279,20 +283,19 @@ class LedgerViewModel
                 }.sortedByDescending { it.date }
 
         /**
-         * Every day of the calendar month counts, including one dated ahead of
-         * today: a purchase the list shows is a purchase the headline above it has
-         * counted.
+         * The rows the headline adds up. Under a filter with dates, every row
+         * shown: the dates are the period, so the headline and the list below it
+         * are one set of rows (ADR-0014). Otherwise this month's — every day of
+         * the calendar month, including one dated ahead of today, since a purchase
+         * the list shows is a purchase the headline above it has counted.
          */
-        private fun List<LedgerDay>.monthOf(month: YearMonth): List<Transaction> =
-            filter { YearMonth.from(it.date) == month }.flatMap { it.transactions }
-
-        /** The filter's saved-state keys, read together. */
-        private data class FilterKeys(
-            val accountId: Long?,
-            val categoryId: Long?,
-            val uncategorisedOnly: Boolean,
-            val merchantId: Long?,
-        )
+        private fun List<LedgerDay>.headlineRows(
+            filter: LedgerFilter,
+            today: LocalDate,
+        ): List<Transaction> {
+            val month = YearMonth.from(today)
+            return filter { filter.hasDates || YearMonth.from(it.date) == month }.flatMap { it.transactions }
+        }
 
         /** What exists to be filtered to. */
         private data class Known(
@@ -308,25 +311,26 @@ class LedgerViewModel
              */
             fun resolve(selection: FilterKeys) =
                 LedgerFilter(
-                    account = accounts.firstOrNull { it.id == selection.accountId },
+                    account = accounts.firstOrNull { it.id == selection.where.accountId },
                     category =
-                        if (selection.uncategorisedOnly) {
+                        if (selection.where.uncategorisedOnly) {
                             CategoryChoice.Uncategorised
                         } else {
                             categories
-                                .firstOrNull { it.category.id == selection.categoryId }
+                                .firstOrNull { it.category.id == selection.where.categoryId }
                                 ?.let { CategoryChoice.Named(it.category) }
                         },
-                    merchant = merchants.firstOrNull { it.id == selection.merchantId },
+                    merchant = merchants.firstOrNull { it.id == selection.where.merchantId },
+                    from = selection.fromEpochDay?.let(LocalDate::ofEpochDay),
+                    to = selection.toEpochDay?.let(LocalDate::ofEpochDay),
+                    atLeast = selection.amounts.low.takeUnless { selection.amounts.crossed },
+                    atMost = selection.amounts.high.takeUnless { selection.amounts.crossed },
+                    note = selection.note.trim().ifEmpty { null },
                 )
         }
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L
-            const val SELECTED_ACCOUNT_ID = "selectedAccountId"
-            const val SELECTED_CATEGORY_ID = "selectedCategoryId"
-            const val UNCATEGORISED_ONLY = "uncategorisedOnly"
-            const val SELECTED_MERCHANT_ID = "selectedMerchantId"
         }
     }
 
