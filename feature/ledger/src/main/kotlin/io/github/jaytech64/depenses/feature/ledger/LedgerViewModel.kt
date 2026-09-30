@@ -143,7 +143,13 @@ data class SelectionCategory(
 )
 
 data class LedgerUiState(
+    /** What has happened, day by day: nothing dated after today. */
     val days: List<LedgerDay> = emptyList(),
+    /** What is dated after today, the soonest first; it counts in nothing above it (ADR-0015). */
+    val upcoming: List<UpcomingLine> = emptyList(),
+    /** What [upcoming] comes to, counted as a day is. */
+    val upcomingSummary: BalanceSummary = BalanceSummary(),
+    val upcomingOpen: Boolean = false,
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
     /** This month's rows, or the filter's days once it has some. */
@@ -170,12 +176,12 @@ data class LedgerUiState(
     val selectionCategories: List<SelectionCategory> = emptyList(),
     val loading: Boolean = true,
 ) {
-    val isEmpty: Boolean get() = days.isEmpty() && !loading
+    val isEmpty: Boolean get() = days.isEmpty() && upcoming.isEmpty() && !loading
 
     val isSelecting: Boolean get() = selected.isNotEmpty()
 
     /** How many transactions the filters leave on the ledger. */
-    val shownCount: Int get() = days.sumOf { it.transactions.size }
+    val shownCount: Int get() = days.sumOf { it.transactions.size } + upcoming.size
 }
 
 @HiltViewModel
@@ -206,7 +212,11 @@ class LedgerViewModel
                 combine(accounts.all(today), categories.all(), merchants.all(), ::Known)
             }
 
-        private val filtering: Flow<Pair<FilterKeys, Set<Long>>> = combine(filters.keys, selection.rowIds, ::Pair)
+        /** Whether what is dated after today is shown open or as its one line. */
+        val upcoming = UpcomingGroup(savedState)
+
+        private val filtering: Flow<Triple<FilterKeys, Set<Long>, Boolean>> =
+            combine(filters.keys, selection.rowIds, upcoming.open, ::Triple)
 
         /**
          * The current day is a source of truth in its own right, not a value read
@@ -220,13 +230,16 @@ class LedgerViewModel
                 ticker.dates(),
                 known,
                 filtering,
-            ) { transactions, needsReview, today, known, (keys, rowIds) ->
+            ) { transactions, needsReview, today, known, (keys, rowIds, upcomingOpen) ->
                 val filter = known.resolve(keys)
-                val shown = transactions.filter(filter::admits)
-                val selected = shown.filter { it.id in rowIds }
-                val days = shown.groupByLocalDay(filter)
+                val (ahead, happened) = transactions.filter(filter::admits).partition { it.localDate > today }
+                val selected = happened.filter { it.id in rowIds }
+                val days = happened.groupByLocalDay(filter)
                 LedgerUiState(
                     days = days,
+                    upcoming = ahead.sortedBy { it.occurredAt }.map(::UpcomingLine),
+                    upcomingSummary = ahead.summaryOf(filter),
+                    upcomingOpen = upcomingOpen,
                     today = today,
                     headline = days.headlineRows(filter, today).summaryOf(filter),
                     needsReview = needsReview,

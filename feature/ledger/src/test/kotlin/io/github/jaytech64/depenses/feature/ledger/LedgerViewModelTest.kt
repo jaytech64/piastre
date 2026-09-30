@@ -121,14 +121,17 @@ class LedgerViewModelTest : LedgerTest() {
             assertFalse(state.isEmpty)
         }
 
-    /** A purchase dated ahead of today is still this month's spending. */
+    /** A purchase dated ahead of today counts from its day, not before (ADR-0015). */
     @Test
-    fun `an entry dated later this month counts toward the headline`() =
+    fun `an entry dated later this month waits above today and counts nowhere yet`() =
         runTest {
             insert(amountMinor = 1_075, day = TODAY)
             insert(amountMinor = 2_000, day = TODAY.withDayOfMonth(TODAY.lengthOfMonth()))
+            val state = settled()
 
-            assertEquals(Money(-3_075, Money.CAD), settled().headline.balance)
+            assertEquals(Money(-1_075, Money.CAD), state.headline.balance)
+            assertEquals(listOf(TODAY), state.days.map { it.date })
+            assertEquals(listOf(2_000L), state.upcoming.map { it.transaction.amount.minor })
         }
 
     /**

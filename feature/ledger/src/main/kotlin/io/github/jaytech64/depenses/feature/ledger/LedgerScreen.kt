@@ -111,13 +111,14 @@ fun LedgerScreen(
 
                 today != null -> {
                     DayList(
-                        days = state.days,
+                        state = state,
                         today = today,
-                        selected = state.selected,
                         onClick = { id ->
                             if (state.isSelecting) viewModel.selection.toggle(id) else onTransactionClick(id)
                         },
                         onLongClick = viewModel.selection::toggle,
+                        onToggleUpcoming = viewModel.upcoming::toggle,
+                        onOpenUpcoming = { line -> onTransactionClick(line.transaction.id) },
                     )
                 }
             }
@@ -324,12 +325,14 @@ private fun BalanceRow(
 
 @Composable
 private fun DayList(
-    days: List<LedgerDay>,
+    state: LedgerUiState,
     today: LocalDate,
-    selected: Set<Long>,
     onClick: (Long) -> Unit,
     onLongClick: (Long) -> Unit,
+    onToggleUpcoming: () -> Unit,
+    onOpenUpcoming: (UpcomingLine) -> Unit,
 ) {
+    val selected = state.selected
     val locale = currentLocale()
     val labels =
         Formatters.RelativeDayLabels(
@@ -338,7 +341,8 @@ private fun DayList(
         )
 
     LazyColumn(contentPadding = PaddingValues(bottom = ADD_BUTTON_CLEARANCE)) {
-        days.forEach { day ->
+        upcomingGroup(state, today, labels, onToggleUpcoming, onOpenUpcoming)
+        state.days.forEach { day ->
             item(key = day.date.toEpochDay()) {
                 DayHeader(
                     label = Formatters.dayHeader(day.date, today, labels, locale),
