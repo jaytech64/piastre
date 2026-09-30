@@ -56,6 +56,10 @@ class RecurringRepository
          * says so in the ledger. Nothing is read through afterwards: see
          * [RecurringTransactionEntity].
          *
+         * A transaction dated after today is not kept as a row: the schedule takes
+         * its place, with that day as its next, and writes it on the day like every
+         * row after it (ADR-0015). A schedule never has a row dated ahead of today.
+         *
          * Only a typed transaction can repeat, and only one that is not already a
          * schedule's: a captured one will be captured again next time, and a
          * second schedule would write every day twice. Returns null for either.
@@ -75,6 +79,7 @@ class RecurringRepository
                     val first = LocalDate.ofEpochDay(row.localDateEpochDay.toLong())
                     val recurrence = Recurrence(rhythm, first, lastDate)
                     val uuid = UUID.randomUUID().toString()
+                    val startsLater = first > posting.today()
                     val id =
                         recurring.insert(
                             RecurringTransactionEntity(
@@ -91,9 +96,14 @@ class RecurringRepository
                                 rhythm = rhythm,
                                 firstEpochDay = first.toEpochDay().toInt(),
                                 lastEpochDay = lastDate?.toEpochDay()?.toInt(),
-                                nextDueEpochDay = recurrence.nextAfter(first)?.toEpochDay()?.toInt(),
+                                nextDueEpochDay =
+                                    (if (startsLater) first else recurrence.nextAfter(first))?.toEpochDay()?.toInt(),
                             ),
                         )
+                    if (startsLater) {
+                        transactions.deleteById(row.id)
+                        return@inTransaction id
+                    }
                     transactions.update(
                         row.copy(
                             recurringId = id,
