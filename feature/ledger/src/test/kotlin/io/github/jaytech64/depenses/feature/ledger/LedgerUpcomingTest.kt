@@ -4,7 +4,9 @@ package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionSource
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
@@ -17,6 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 
 /** What is dated after today: kept above it, counted nowhere, and let into the list on its day. */
@@ -111,6 +114,77 @@ class LedgerUpcomingTest : LedgerTest() {
             viewModel = ledgerViewModel(SavedStateHandle())
             assertFalse(settled().upcomingOpen)
         }
+
+    @Test
+    fun `a recurring transaction's next day waits above today once, and counts in nothing`() =
+        runTest {
+            repeatMonthly(amountMinor = 145_000, from = YESTERDAY)
+            val state = settled()
+
+            val next = state.upcoming.single()
+            assertEquals(YESTERDAY.plusMonths(1), next.transaction.localDate)
+            assertEquals(TransactionSource.RECURRING, next.transaction.source)
+            assertEquals(
+                recurringRepository()
+                    .all()
+                    .first()
+                    .single()
+                    .id,
+                next.scheduleId,
+            )
+            assertEquals(Money(-145_000, Money.CAD), state.headline.balance)
+            assertEquals(Money(-145_000, Money.CAD), state.upcomingSummary.balance)
+        }
+
+    @Test
+    fun `a recurring transaction starting next week shows its first day and writes nothing`() =
+        runTest {
+            repeatMonthly(amountMinor = 8_500, from = TODAY.plusWeeks(1))
+            val state = settled()
+
+            assertTrue(state.days.isEmpty())
+            assertEquals(listOf(TODAY.plusWeeks(1)), state.upcoming.map { it.transaction.localDate })
+        }
+
+    @Test
+    fun `a filter narrows the next days too`() =
+        runTest {
+            val chequing = account("Chèques")
+            repeatMonthly(amountMinor = 145_000, from = TODAY.plusDays(3), accountId = chequing)
+            repeatMonthly(amountMinor = 8_500, from = TODAY.plusDays(3))
+
+            viewModel.filters.onAccountSelected(chequing)
+
+            assertEquals(
+                listOf(145_000L),
+                viewModel.uiState
+                    .first { it.filter.account != null }
+                    .upcoming
+                    .map { it.transaction.amount.minor },
+            )
+        }
+
+    private fun recurringRepository() = database.recurringRepository(clock, ZONE)
+
+    private suspend fun repeatMonthly(
+        amountMinor: Long,
+        from: LocalDate,
+        accountId: Long? = null,
+    ) {
+        val id =
+            transactionRepository().addManual(
+                amount = Money(amountMinor, Money.CAD),
+                merchantName = "Loyer",
+                occurredAt = from.atTime(NOON, 0).atZone(ZONE).toInstant(),
+                note = null,
+                kind = TransactionKind.EXPENSE,
+                accountId = accountId,
+                toAccountId = null,
+                categoryId = null,
+                reach = null,
+            )
+        recurringRepository().repeat(id, Rhythm.MONTHLY, lastDate = null)
+    }
 
     /** A clock a test moves by hand, so the ticker can be walked across midnight. */
     private class MovingClock(

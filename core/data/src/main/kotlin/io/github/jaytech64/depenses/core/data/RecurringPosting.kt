@@ -115,6 +115,9 @@ class RecurringPosting
             }
         }
 
+        /** The zone the phone is in now, which a row written today is dated in. */
+        internal fun zone(): ZoneId = zoneId.get()
+
         /** Today where the phone is now: the day due days are counted up to. */
         internal fun today(): LocalDate = LocalDate.now(clock.withZone(zoneId.get()))
 

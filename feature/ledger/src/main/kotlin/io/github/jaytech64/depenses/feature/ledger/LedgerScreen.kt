@@ -68,26 +68,14 @@ fun LedgerScreen(
     onReviewClick: () -> Unit,
     onAddClick: () -> Unit,
     onTransactionClick: (Long) -> Unit,
+    onRecurringClick: (Long) -> Unit,
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val today = state.today
     var choosingFilters by rememberSaveable { mutableStateOf(false) }
     var acting by rememberSaveable { mutableStateOf(SelectionAction.NONE) }
-    val filterActions =
-        remember(viewModel) {
-            FilterActions(
-                onAccount = viewModel.filters::onAccountSelected,
-                onCategory = viewModel.filters::onCategorySelected,
-                onMerchant = viewModel.filters::onMerchantSelected,
-                onFrom = viewModel.filters::onFromSelected,
-                onTo = viewModel.filters::onToSelected,
-                onAtLeast = viewModel.filters::onAtLeastTyped,
-                onAtMost = viewModel.filters::onAtMostTyped,
-                onNote = viewModel.filters::onNoteTyped,
-                onClearAll = viewModel.filters::onFiltersCleared,
-            )
-        }
+    val filterActions = rememberFilterActions(viewModel.filters)
 
     BackHandler(enabled = state.isSelecting, onBack = viewModel.selection::end)
 
@@ -118,7 +106,9 @@ fun LedgerScreen(
                         },
                         onLongClick = viewModel.selection::toggle,
                         onToggleUpcoming = viewModel.upcoming::toggle,
-                        onOpenUpcoming = { line -> onTransactionClick(line.transaction.id) },
+                        onOpenUpcoming = { line ->
+                            line.scheduleId?.let(onRecurringClick) ?: onTransactionClick(line.transaction.id)
+                        },
                     )
                 }
             }

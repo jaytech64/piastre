@@ -57,7 +57,7 @@ internal fun LazyListScope.upcomingGroup(
         )
     }
     if (!state.upcomingOpen) return
-    itemsIndexed(state.upcoming, key = { _, line -> "$UPCOMING_KEY-${line.transaction.id}" }) { index, line ->
+    itemsIndexed(state.upcoming, key = { _, line -> "$UPCOMING_KEY-${line.key}" }) { index, line ->
         val locale = currentLocale()
         // Joined to the line above as one card, so what is to come never reads as
         // the first rows of the list.

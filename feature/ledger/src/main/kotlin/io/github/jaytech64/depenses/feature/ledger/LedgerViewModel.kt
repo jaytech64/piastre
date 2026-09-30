@@ -10,6 +10,7 @@ import io.github.jaytech64.depenses.core.data.AccountRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
+import io.github.jaytech64.depenses.core.data.RecurringRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.designsystem.Formatters
@@ -193,6 +194,7 @@ class LedgerViewModel
         categories: CategoryRepository,
         merchants: MerchantRepository,
         editor: TransactionEditor,
+        recurring: RecurringRepository,
         ticker: LocalDateTicker,
         private val savedState: SavedStateHandle,
     ) : ViewModel() {
@@ -225,20 +227,25 @@ class LedgerViewModel
          */
         val uiState: StateFlow<LedgerUiState> =
             combine(
-                repository.confirmed(),
+                combine(repository.confirmed(), recurring.nextRows(), ::Pair),
                 repository.needsReviewCount(),
                 ticker.dates(),
                 known,
                 filtering,
-            ) { transactions, needsReview, today, known, (keys, rowIds, upcomingOpen) ->
+            ) { (transactions, nextRows), needsReview, today, known, (keys, rowIds, upcomingOpen) ->
                 val filter = known.resolve(keys)
-                val (ahead, happened) = transactions.filter(filter::admits).partition { it.localDate > today }
+                val (typedAhead, happened) = transactions.filter(filter::admits).partition { it.localDate > today }
+                val ahead =
+                    (
+                        typedAhead.map(::UpcomingLine) +
+                            nextRows.filter(filter::admits).map { UpcomingLine(it, it.recurringId) }
+                    ).sortedBy { it.transaction.occurredAt }
                 val selected = happened.filter { it.id in rowIds }
                 val days = happened.groupByLocalDay(filter)
                 LedgerUiState(
                     days = days,
-                    upcoming = ahead.sortedBy { it.occurredAt }.map(::UpcomingLine),
-                    upcomingSummary = ahead.summaryOf(filter),
+                    upcoming = ahead,
+                    upcomingSummary = ahead.map { it.transaction }.summaryOf(filter),
                     upcomingOpen = upcomingOpen,
                     today = today,
                     headline = days.headlineRows(filter, today).summaryOf(filter),

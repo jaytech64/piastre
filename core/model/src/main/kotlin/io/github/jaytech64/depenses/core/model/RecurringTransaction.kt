@@ -15,6 +15,7 @@ data class RecurringTransaction(
     val id: Long,
     val amount: Money,
     val kind: TransactionKind,
+    val merchantId: Long?,
     val merchantName: String?,
     val accountId: Long?,
     val accountName: String?,

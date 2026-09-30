@@ -7,12 +7,18 @@ import io.github.jaytech64.depenses.core.model.Transaction
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * A line in the group above today: a transaction dated after today, which
- * counts nowhere until its day (ADR-0015).
+ * A line in the group above today, which counts nowhere until its day
+ * (ADR-0015): a transaction dated after today, or — with a [scheduleId] — the
+ * row a recurring transaction will write on its next day, which does not exist
+ * until then.
  */
 data class UpcomingLine(
     val transaction: Transaction,
-)
+    val scheduleId: Long? = null,
+) {
+    /** Unique among the ledger's lines: a row that does not exist yet has no id of its own. */
+    val key: String get() = scheduleId?.let { "next-$it" } ?: "row-${transaction.id}"
+}
 
 /**
  * Whether the group above today is open. Kept in saved state, as the filter is,

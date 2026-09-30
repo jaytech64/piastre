@@ -73,6 +73,7 @@ abstract class LedgerTest {
                     categoryRepository(),
                     Clock.systemUTC(),
                 ),
+            recurring = database.recurringRepository(clock, ZONE),
             ticker = LocalDateTicker(clock, Provider { ZONE }),
             savedState = state,
         )
