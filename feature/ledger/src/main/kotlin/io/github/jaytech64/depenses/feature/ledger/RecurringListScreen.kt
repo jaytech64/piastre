@@ -98,9 +98,12 @@ private fun RecurringRow(
     }
 }
 
-/** Named as a ledger row would name what it writes. */
+/** Named as a ledger row names what it writes: its category, else its place. */
 @Composable
-private fun RecurringTransaction.title(): String =
+private fun RecurringTransaction.title(): String = categoryName ?: place()
+
+@Composable
+private fun RecurringTransaction.place(): String =
     when (kind) {
         TransactionKind.TRANSFER -> {
             accountLabel(accountName, accountType, null) + " $ARROW " + accountLabel(toAccountName, toAccountType, null)
@@ -112,7 +115,8 @@ private fun RecurringTransaction.title(): String =
     }
 
 /**
- * Its rhythm, its category, and when it is next written — or when it ends. The
+ * Its rhythm, its merchant when the category has taken the title, and when it
+ * is next written — or when it ends. The
  * lines are allowed to wrap: at a large font size the next day is the part that
  * matters most, and it comes last.
  */
@@ -120,6 +124,7 @@ private fun RecurringTransaction.title(): String =
 private fun RecurringTransaction.subtitle(locale: Locale): String {
     val next = nextDue?.let { stringResource(R.string.recurring_list_next, Formatters.date(it, locale)) }
     val ends = recurrence.lastDate?.let { stringResource(R.string.recurring_list_ends, Formatters.date(it, locale)) }
-    return listOfNotNull(rhythmLabel(recurrence.rhythm, recurrence.firstDate), categoryName, next, ends)
+    val placeUnderCategory = categoryName?.let { place() }
+    return listOfNotNull(rhythmLabel(recurrence.rhythm, recurrence.firstDate), placeUnderCategory, next, ends)
         .joinToString(SEPARATOR)
 }
