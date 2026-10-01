@@ -1,0 +1,49 @@
+// SPDX-FileCopyrightText: 2026 Jérémy Mailhot
+// SPDX-License-Identifier: GPL-3.0-or-later
+package io.github.jaytech64.depenses.feature.ledger
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.model.AccountType
+import io.github.jaytech64.depenses.core.model.Transaction
+import io.github.jaytech64.depenses.core.model.TransactionKind
+
+/**
+ * What the row is for leads: its category, so two bills from one merchant read
+ * apart at a glance. A row nobody has given a category leads with its place.
+ */
+@Composable
+internal fun Transaction.title(): String = categoryName ?: place()
+
+/** The place under the category, when the category has taken the title; nothing more to say otherwise. */
+@Composable
+internal fun Transaction.placeUnderCategory(): String? = categoryName?.let { place() }
+
+/** The initials a row without a category shows: its merchant's, or an arrow for a transfer. */
+internal fun Transaction.placeInitials(): String? = if (kind == TransactionKind.TRANSFER) ARROW else displayMerchant
+
+/** Where the money went: the merchant, or — on a transfer — the two accounts of yours it moved between. */
+@Composable
+private fun Transaction.place(): String =
+    when (kind) {
+        TransactionKind.TRANSFER -> {
+            accountLabel(accountName, accountType, cardLast4) + " $ARROW " +
+                accountLabel(toAccountName, toAccountType, toAccountLast4)
+        }
+
+        else -> {
+            displayMerchant ?: stringResource(R.string.ledger_unknown_merchant)
+        }
+    }
+
+/** An account as a row names it: your name for it, else its digits, else what kind it is. */
+@Composable
+internal fun accountLabel(
+    name: String?,
+    type: AccountType?,
+    last4: String?,
+): String =
+    name
+        ?: Formatters.cardMask(last4)
+        ?: stringResource(if (type == AccountType.CASH) R.string.ledger_cash else R.string.ledger_account)

@@ -137,6 +137,16 @@ class LedgerUpcomingTest : LedgerTest() {
         }
 
     @Test
+    fun `a recurring transaction due today is never shown as upcoming, even before it is written`() =
+        runTest {
+            repeatMonthly(amountMinor = 8_500, from = TODAY.plusDays(2))
+            val schedule = recurringRepository().all().first().single()
+            database.recurringTransactionDao().moveNextDue(schedule.id, TODAY.toEpochDay().toInt())
+
+            assertTrue(settled().upcoming.isEmpty())
+        }
+
+    @Test
     fun `a recurring transaction starting next week shows its first day and writes nothing`() =
         runTest {
             repeatMonthly(amountMinor = 8_500, from = TODAY.plusWeeks(1))

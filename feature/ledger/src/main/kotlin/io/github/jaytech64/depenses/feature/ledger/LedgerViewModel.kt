@@ -238,7 +238,9 @@ class LedgerViewModel
                 val ahead =
                     (
                         typedAhead.map(::UpcomingLine) +
-                            nextRows.filter(filter::admits).map { UpcomingLine(it, it.recurringId) }
+                            nextRows
+                                .filter { it.localDate > today && filter.admits(it) }
+                                .map { UpcomingLine(it, it.recurringId) }
                     ).sortedBy { it.transaction.occurredAt }
                 val selected = happened.filter { it.id in rowIds }
                 val days = happened.groupByLocalDay(filter)

@@ -29,7 +29,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.Formatters
-import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
@@ -70,7 +69,7 @@ internal fun TransactionRow(
         if (selected) {
             SelectedMark()
         } else {
-            MerchantInitials(if (transaction.kind == TransactionKind.TRANSFER) ARROW else transaction.displayMerchant)
+            TitleInitials(transaction.categoryName ?: transaction.placeInitials())
         }
 
         Column(Modifier.weight(1f)) {
@@ -130,38 +129,13 @@ internal fun KindAmount(
     }
 }
 
-/** A transfer is between two accounts of yours, and that pair is the only thing worth reading. */
-@Composable
-private fun Transaction.title(): String =
-    when (kind) {
-        TransactionKind.TRANSFER -> {
-            accountLabel(accountName, accountType, cardLast4) + " $ARROW " +
-                accountLabel(toAccountName, toAccountType, toAccountLast4)
-        }
-
-        else -> {
-            displayMerchant ?: stringResource(R.string.ledger_unknown_merchant)
-        }
-    }
-
-/** An account as a row names it: your name for it, else its digits, else what kind it is. */
-@Composable
-internal fun accountLabel(
-    name: String?,
-    type: AccountType?,
-    last4: String?,
-): String =
-    name
-        ?: Formatters.cardMask(last4)
-        ?: stringResource(if (type == AccountType.CASH) R.string.ledger_cash else R.string.ledger_account)
-
 /**
- * The time, or that it recurs, the category when there is one, then what the row is: a transfer,
- * the account the money came from or went into, or failing both that it was
- * typed by hand. Income is not named here: its plus sign and colour already say
- * so. Enough to tell two purchases at one merchant apart without a detail screen.
+ * The time, or that it recurs, the merchant when the category has taken the
+ * title, then what the row is: a transfer, the account the money came from or
+ * went into, or failing both that it was typed by hand. Income is not named
+ * here: its plus sign and colour already say so.
  *
- * The category comes before the account so that at a large font size, where the
+ * The merchant comes before the account so that at a large font size, where the
  * line runs out of room, it is the account that is cut short.
  */
 @Composable
@@ -173,12 +147,13 @@ private fun Transaction.subtitle(locale: Locale): String {
             source == TransactionSource.MANUAL -> stringResource(R.string.ledger_manual_entry)
             else -> Formatters.cardMask(cardLast4)
         }
-    return listOfNotNull(whenLabel(locale), categoryName, what).joinToString(SEPARATOR)
+    return listOfNotNull(whenLabel(locale), placeUnderCategory(), what).joinToString(SEPARATOR)
 }
 
 /**
  * For a line above today: its day where the time would be, since there is no day
- * heading over it, then the category, then that it recurs or where it is paid from.
+ * heading over it, then the merchant when the category has taken the title, then
+ * that it recurs or where it is paid from.
  */
 @Composable
 private fun Transaction.upcomingSubtitle(dayLabel: String): String {
@@ -189,7 +164,7 @@ private fun Transaction.upcomingSubtitle(dayLabel: String): String {
             accountId != null -> accountLabel(accountName, accountType, cardLast4)
             else -> stringResource(R.string.ledger_manual_entry)
         }
-    return listOfNotNull(dayLabel, categoryName, what).joinToString(SEPARATOR)
+    return listOfNotNull(dayLabel, placeUnderCategory(), what).joinToString(SEPARATOR)
 }
 
 /**
@@ -205,7 +180,7 @@ private fun Transaction.whenLabel(locale: Locale): String =
     }
 
 @Composable
-private fun MerchantInitials(merchant: String?) {
+private fun TitleInitials(title: String?) {
     Surface(
         Modifier.size(36.dp),
         shape = CircleShape,
@@ -217,7 +192,7 @@ private fun MerchantInitials(merchant: String?) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                merchant.initials(),
+                title.initials(),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
