@@ -60,6 +60,20 @@ class TransactionRepository
         fun count(): Flow<Int> = transactions.count()
 
         /**
+         * The account you last paid each merchant from — or, for [kind] income, were
+         * paid into — keyed on the merchant's normalised name. A Wallet capture
+         * counts as much as a typed row, and a row dated after [today] does not
+         * count yet (ADR-0015).
+         */
+        fun lastAccountAtEachMerchant(
+            kind: TransactionKind,
+            today: LocalDate,
+        ): Flow<Map<String, Long>> =
+            transactions
+                .lastAccountAtEachMerchant(kind, today.toEpochDay().toInt())
+                .map { rows -> rows.associate { it.normalisedName to it.accountId } }
+
+        /**
          * Records a transaction no notification will ever describe — cash, Interac,
          * a card this phone does not carry, or money coming in.
          *
