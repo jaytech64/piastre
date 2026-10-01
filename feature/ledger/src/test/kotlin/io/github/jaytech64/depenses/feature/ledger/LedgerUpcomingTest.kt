@@ -137,6 +137,18 @@ class LedgerUpcomingTest : LedgerTest() {
         }
 
     @Test
+    fun `what recurs is the first of its day, under everything spent that day`() =
+        runTest {
+            insert(amountMinor = 316, day = TODAY, hour = 8)
+            insert(amountMinor = 4_250, day = TODAY, hour = 18)
+            repeatMonthly(amountMinor = 145_000, from = TODAY)
+
+            val day = settled().days.single()
+
+            assertEquals(listOf(4_250L, 316L, 145_000L), day.transactions.map { it.amount.minor })
+        }
+
+    @Test
     fun `a recurring transaction due today is never shown as upcoming, even before it is written`() =
         runTest {
             repeatMonthly(amountMinor = 8_500, from = TODAY.plusDays(2))

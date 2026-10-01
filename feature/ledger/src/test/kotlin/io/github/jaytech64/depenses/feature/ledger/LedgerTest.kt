@@ -121,6 +121,7 @@ abstract class LedgerTest {
         categoryId: Long? = null,
         currency: String = Money.CAD,
         note: String? = null,
+        hour: Int = NOON,
     ) = database.transactionDao().insertOrUpdate(
         ExpenseTransactionEntity(
             rawEventId = null,
@@ -128,7 +129,7 @@ abstract class LedgerTest {
             currency = currency,
             occurredAtUtcMillis =
                 day
-                    .atTime(NOON, 0)
+                    .atTime(hour, 0)
                     .atZone(ZONE)
                     .toInstant()
                     .toEpochMilli(),

@@ -21,6 +21,7 @@ import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.containsTyped
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -300,6 +301,11 @@ class LedgerViewModel
          * already in memory — this is the one screen that wants every transaction,
          * so a second query would re-read what the first one just returned. The
          * filter rides along for the same reason.
+         *
+         * What recurs is the day's first transaction: it fell due as the day began,
+         * before anything was spent, so in a list read newest first it sits at the
+         * bottom of its day. A recurring row has a day but no hour, so its place
+         * among the times would otherwise be wherever noon happens to fall.
          */
         private fun List<Transaction>.groupByLocalDay(filter: LedgerFilter): List<LedgerDay> =
             groupBy { it.localDate }
@@ -307,7 +313,7 @@ class LedgerViewModel
                     LedgerDay(
                         date = date,
                         total = forDay.summaryOf(filter).balance,
-                        transactions = forDay,
+                        transactions = forDay.sortedBy { it.source == TransactionSource.RECURRING },
                     )
                 }.sortedByDescending { it.date }
 
