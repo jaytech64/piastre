@@ -32,8 +32,10 @@ import javax.inject.Singleton
  * this app refuses to ship (see [CaptureCatchUp]), and an alarm that survives a
  * reboot needs the boot permission ADR-0004 declined. So due days are caught up
  * rather than fired: whenever the process starts — the app launching, or Android
- * binding the listener — at every midnight while it lives, and whenever the
- * listener rebinds. Each row is dated on its own due day however late it is
+ * binding the listener — whenever the app comes back on screen, at every midnight
+ * while the process lives, and whenever the listener rebinds. The midnight timer
+ * alone is not enough: its clock stops while the phone sleeps, so it can wake
+ * hours late. Each row is dated on its own due day however late it is
  * written, so the ledger is right whenever it is read.
  *
  * See `docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md`.
