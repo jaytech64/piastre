@@ -245,6 +245,32 @@ interface TransactionDao {
     fun withMerchantByStatus(status: TransactionStatus): Flow<List<TransactionWithMerchant>>
 
     /**
+     * The account of each merchant's latest confirmed [kind] row up to
+     * [untilEpochDay] that names one. Rows with no account are passed over rather
+     * than read as "none", and the id breaks a tie on the same instant so the
+     * answer never depends on how SQLite happens to scan.
+     */
+    @Query(
+        """
+        SELECT normalisedName, accountId FROM (
+            SELECT m.normalisedName, t.accountId,
+                ROW_NUMBER() OVER (
+                    PARTITION BY t.merchantId ORDER BY t.occurredAtUtcMillis DESC, t.id DESC
+                ) AS recency
+            FROM expense_transaction t
+            JOIN merchant m ON m.id = t.merchantId
+            WHERE t.kind = :kind AND t.status = 'CONFIRMED' AND t.accountId IS NOT NULL
+                AND t.localDateEpochDay <= :untilEpochDay
+        )
+        WHERE recency = 1
+        """,
+    )
+    fun lastAccountAtEachMerchant(
+        kind: TransactionKind,
+        untilEpochDay: Int,
+    ): Flow<List<MerchantLastAccount>>
+
+    /**
      * The review queue, carrying the notification the row was read from.
      *
      * The raw title and text ride along because the inbox shows them verbatim:
@@ -871,6 +897,12 @@ data class TransactionWithMerchant(
     val toAccountLast4: String? = null,
     val toAccountType: AccountType? = null,
     val categoryName: String? = null,
+)
+
+/** The account last used at a merchant, keyed on the name the normaliser gives it. */
+data class MerchantLastAccount(
+    val normalisedName: String,
+    val accountId: Long,
 )
 
 /** An account with how many confirmed transactions it carries, transfers included, and what it holds now. */

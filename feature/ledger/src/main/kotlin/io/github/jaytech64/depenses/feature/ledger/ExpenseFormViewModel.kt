@@ -16,6 +16,7 @@ import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Merchant
+import io.github.jaytech64.depenses.core.model.MerchantNormaliser
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Recurrence
 import io.github.jaytech64.depenses.core.model.RecurringTransaction
@@ -69,6 +70,12 @@ data class ExpenseFormUiState(
      * Null when nothing was said. Kept across a change of kind: every kind has one.
      */
     val accountId: Long? = null,
+    /**
+     * True once the account is yours: picked from the list, or whatever the
+     * transaction or schedule being edited already had. Until then, naming a
+     * merchant fills in the account you last used there.
+     */
+    val accountChosen: Boolean = false,
     /** Where a transfer lands. Null on anything else. */
     val toAccountId: Long? = null,
     val categoryId: Long? = null,
@@ -211,6 +218,22 @@ class ExpenseFormViewModel
                 .all(LocalDate.now(clock.withZone(zoneId.get())))
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
+        /**
+         * The account last used at each merchant for the kind being entered, held
+         * with that kind so a list still loading for the previous kind is never
+         * read as this one's.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private val lastAccounts: StateFlow<LastAccounts?> =
+            _uiState
+                .map { it.kind }
+                .distinctUntilChanged()
+                .flatMapLatest { kind ->
+                    transactions
+                        .lastAccountAtEachMerchant(kind, LocalDate.now(clock.withZone(zoneId.get())))
+                        .map { LastAccounts(kind, it) }
+                }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
         /** How often it comes back, and until when. */
         val repeat = RepeatChoice(_uiState)
 
@@ -247,11 +270,15 @@ class ExpenseFormViewModel
                     }
                 }
             }
+            viewModelScope.launch { lastAccounts.collect { last -> _uiState.update { it.withLastAccount(last) } } }
         }
 
         fun onAmountChange(text: String) = _uiState.update { it.copy(amountText = text) }
 
-        fun onMerchantChange(text: String) = _uiState.update { category.following(it.copy(merchantText = text)) }
+        fun onMerchantChange(text: String) =
+            _uiState.update {
+                category.following(it.copy(merchantText = text).withLastAccount(lastAccounts.value))
+            }
 
         fun onNoteChange(text: String) = _uiState.update { it.copy(note = text) }
 
@@ -259,13 +286,16 @@ class ExpenseFormViewModel
 
         fun onTimeChange(time: LocalTime) = _uiState.update { it.copy(time = time) }
 
-        fun onKindChange(kind: TransactionKind) = _uiState.update { category.following(it.copy(kind = kind)) }
+        fun onKindChange(kind: TransactionKind) =
+            _uiState.update {
+                category.following(it.copy(kind = kind).withLastAccount(lastAccounts.value))
+            }
 
         fun onAccountChange(
             slot: AccountSlot,
             id: Long?,
         ) = when (slot) {
-            AccountSlot.SOURCE -> _uiState.update { it.copy(accountId = id) }
+            AccountSlot.SOURCE -> _uiState.update { it.copy(accountId = id, accountChosen = true) }
             AccountSlot.DESTINATION -> _uiState.update { category.following(it.copy(toAccountId = id)) }
         }
 
@@ -327,6 +357,24 @@ class ExpenseFormViewModel
         }
     }
 
+/** [byMerchant] as [TransactionRepository.lastAccountAtEachMerchant] gives it for [kind]. */
+internal data class LastAccounts(
+    val kind: TransactionKind,
+    val byMerchant: Map<String, Long>,
+)
+
+/**
+ * The form with the account last used at the merchant it names, while the account
+ * is not yours yet — none, when that merchant has no account to go by. A transfer
+ * names no merchant, so its account stays as it is, and so does every account
+ * while [last] is still loading or was read for another kind.
+ */
+internal fun ExpenseFormUiState.withLastAccount(last: LastAccounts?): ExpenseFormUiState {
+    if (accountChosen || kind == TransactionKind.TRANSFER || last?.kind != kind) return this
+    val merchant = MerchantNormaliser.normalise(merchantText)?.normalisedName
+    return copy(accountId = merchant?.let(last.byMerchant::get))
+}
+
 /** A recurring transaction as the form found it, which is what its rhythm keeps counting from. */
 data class ScheduleAsStored(
     val recurrence: Recurrence,
@@ -348,6 +396,7 @@ private fun ExpenseFormUiState.filledFrom(
         note = schedule.note.orEmpty(),
         kind = schedule.kind,
         accountId = schedule.accountId,
+        accountChosen = true,
         toAccountId = schedule.toAccountId,
         categoryId = schedule.categoryId,
         categoryChosen = true,
@@ -372,6 +421,7 @@ private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseForm
         note = transaction.note.orEmpty(),
         kind = transaction.kind,
         accountId = transaction.accountId,
+        accountChosen = true,
         toAccountId = transaction.toAccountId,
         categoryId = transaction.categoryId,
         categoryChosen = transaction.categoryId != null,
