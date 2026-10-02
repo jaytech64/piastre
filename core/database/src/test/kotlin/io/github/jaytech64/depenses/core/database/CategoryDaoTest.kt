@@ -195,8 +195,41 @@ class CategoryDaoTest {
             assertEquals(1, counted.accountCount)
         }
 
+    @Test
+    fun `deleting a group leaves its categories in none, and every transaction keeps its category`() =
+        runTest {
+            val home = group("Maison")
+            val power = category("Électricité")
+            val elsewhere = group("Auto")
+            val fuel = category("Essence")
+            categories.moveToGroup(power, home)
+            categories.moveToGroup(fuel, elsewhere)
+            val id = transactions.insert(row(categoryId = power))
+
+            categories.deleteGroup(home)
+
+            assertNull(categories.allOnce().first { it.id == power }.groupId)
+            assertEquals(elsewhere, categories.allOnce().first { it.id == fuel }.groupId)
+            assertEquals(power, transactions.byId(id)?.categoryId)
+            assertEquals(listOf("Auto"), categories.allGroupsOnce().map { it.name })
+        }
+
+    @Test
+    fun `a group rename onto a name already taken changes nothing`() =
+        runTest {
+            val home = group("Maison")
+            group("Auto")
+
+            assertEquals(0, categories.renameGroup(home, "auto", "AUTO"))
+            assertEquals(1, categories.renameGroup(home, "Logement", "LOGEMENT"))
+            assertEquals("Logement", categories.allGroupsOnce().first { it.id == home }.name)
+        }
+
     private suspend fun category(name: String): Long =
         categories.insert(CategoryEntity(name = name, normalisedName = name.uppercase()))
+
+    private suspend fun group(name: String): Long =
+        categories.insertGroup(CategoryGroupEntity(name = name, normalisedName = name.uppercase()))
 
     private suspend fun merchant(name: String): Long =
         database.merchantDao().insert(MerchantEntity(displayName = name, normalisedName = name))

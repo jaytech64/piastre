@@ -759,6 +759,49 @@ interface CategoryDao {
 
     @Query("DELETE FROM category WHERE id = :id")
     suspend fun deleteRow(id: Long)
+
+    /** Null takes the category out of any group. */
+    @Query("UPDATE category SET groupId = :groupId WHERE id = :id")
+    suspend fun moveToGroup(
+        id: Long,
+        groupId: Long?,
+    )
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertGroup(group: CategoryGroupEntity): Long
+
+    @Query("SELECT * FROM category_group WHERE normalisedName = :normalisedName")
+    suspend fun groupByNormalisedName(normalisedName: String): CategoryGroupEntity?
+
+    @Query("SELECT * FROM category_group ORDER BY id")
+    suspend fun allGroupsOnce(): List<CategoryGroupEntity>
+
+    @Query("SELECT * FROM category_group ORDER BY normalisedName")
+    fun allGroups(): Flow<List<CategoryGroupEntity>>
+
+    /** [rename] for a group: 0, changing nothing, when another group already answers to the new name. */
+    @Query("UPDATE OR IGNORE category_group SET name = :name, normalisedName = :normalisedName WHERE id = :id")
+    suspend fun renameGroup(
+        id: Long,
+        name: String,
+        normalisedName: String,
+    ): Int
+
+    /**
+     * Removes a group and leaves its categories in none. Every transaction keeps
+     * its category, since a group only arranges them.
+     */
+    @Transaction
+    suspend fun deleteGroup(id: Long) {
+        ungroup(id)
+        deleteGroupRow(id)
+    }
+
+    @Query("UPDATE category SET groupId = NULL WHERE groupId = :id")
+    suspend fun ungroup(id: Long)
+
+    @Query("DELETE FROM category_group WHERE id = :id")
+    suspend fun deleteGroupRow(id: Long)
 }
 
 @Dao

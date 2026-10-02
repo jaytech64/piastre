@@ -339,6 +339,21 @@ class DepensesDatabaseMigrationTest {
         assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE source = 'MANUAL'"))
     }
 
+    @Test
+    fun `migrating to schema 14 leaves every category in no group`() {
+        helper.createDatabase(NAME, 13).use { database ->
+            database.execSQL("INSERT INTO category (name, normalisedName) VALUES ('Épicerie', 'EPICERIE')")
+            database.insertTransaction()
+            database.execSQL("UPDATE expense_transaction SET categoryId = (SELECT id FROM category)")
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 14, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(0, migrated.count("category_group"))
+        assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM category WHERE groupId IS NULL"))
+        assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE categoryId IS NOT NULL"))
+    }
+
     private fun SupportSQLiteDatabase.singleString(sql: String): String =
         query(sql).use { cursor ->
             cursor.moveToFirst()
