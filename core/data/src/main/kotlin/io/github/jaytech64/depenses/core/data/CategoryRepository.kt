@@ -5,14 +5,18 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.AccountDao
 import io.github.jaytech64.depenses.core.database.CategoryDao
 import io.github.jaytech64.depenses.core.database.CategoryEntity
+import io.github.jaytech64.depenses.core.database.CategoryGroupEntity
 import io.github.jaytech64.depenses.core.database.CategoryWithCounts
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.model.Category
+import io.github.jaytech64.depenses.core.model.CategoryGroup
+import io.github.jaytech64.depenses.core.model.CategoryGroupUsage
 import io.github.jaytech64.depenses.core.model.CategoryName
 import io.github.jaytech64.depenses.core.model.CategoryUsage
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import javax.inject.Inject
@@ -72,17 +76,78 @@ class CategoryRepository
                 rows.map(CategoryWithCounts::toDomain)
             }
 
+        /** The categories in [groupId], or in none when it is null, for a group's page. */
+        fun inGroup(groupId: Long?): Flow<List<CategoryUsage>> =
+            all().map { usages -> usages.filter { it.category.groupId == groupId } }
+
+        /** Every group, A to Z by its folded name, for a field that picks one. */
+        fun groups(): Flow<List<CategoryGroup>> =
+            categories.allGroups().map { rows -> rows.map(CategoryGroupEntity::toDomain) }
+
         /**
-         * The category a typed name belongs to, created when there is none yet;
-         * null for a name with nothing in it. Typing `epicerie` picks the Épicerie
-         * you already have and keeps its spelling.
+         * Every group with what it holds, and last the categories in none, while
+         * there are any. A group's transactions are its categories' added up, so the
+         * two figures can never disagree.
          */
-        suspend fun named(typed: String): Long? {
+        fun groupUsage(): Flow<List<CategoryGroupUsage>> =
+            combine(groups(), all()) { groups, usages ->
+                val byGroup = usages.groupBy { it.category.groupId }
+                val ungrouped = byGroup[null].orEmpty()
+                groups.map { usageOf(it, byGroup[it.id].orEmpty()) } +
+                    listOfNotNull(usageOf(null, ungrouped).takeIf { ungrouped.isNotEmpty() })
+            }
+
+        /**
+         * The category a typed name belongs to, created in [groupId] when there is
+         * none yet; null for a name with nothing in it. Typing `epicerie` picks the
+         * Épicerie you already have, keeps its spelling, and leaves it in its group.
+         */
+        suspend fun named(
+            typed: String,
+            groupId: Long? = null,
+        ): Long? {
             val name = CategoryName.of(typed) ?: return null
             categories.byNormalisedName(name.normalisedName)?.let { return it.id }
-            categories.insert(CategoryEntity(name = name.displayName, normalisedName = name.normalisedName))
+            categories.insert(
+                CategoryEntity(name = name.displayName, normalisedName = name.normalisedName, groupId = groupId),
+            )
             return categories.byNormalisedName(name.normalisedName)?.id
         }
+
+        /** Null takes the category out of any group. */
+        suspend fun moveToGroup(
+            categoryId: Long,
+            groupId: Long?,
+        ) = categories.moveToGroup(categoryId, groupId)
+
+        /**
+         * The group a typed name belongs to, created when there is none yet; null
+         * for a name with nothing in it. A group's name folds as a category's does.
+         */
+        suspend fun namedGroup(typed: String): Long? {
+            val name = CategoryName.of(typed) ?: return null
+            categories.groupByNormalisedName(name.normalisedName)?.let { return it.id }
+            categories.insertGroup(CategoryGroupEntity(name = name.displayName, normalisedName = name.normalisedName))
+            return categories.groupByNormalisedName(name.normalisedName)?.id
+        }
+
+        /** False, changing nothing, when the name is blank or another group already answers to it. */
+        suspend fun renameGroup(
+            id: Long,
+            typed: String,
+        ): Boolean {
+            val name = CategoryName.of(typed) ?: return false
+            return categories.renameGroup(id, name.displayName, name.normalisedName) == 1
+        }
+
+        /** For an import: puts the category in [groupId] only while it is in none (ADR-0005). */
+        internal suspend fun groupIfNone(
+            categoryId: Long,
+            groupId: Long,
+        ) = categories.groupIfNone(categoryId, groupId)
+
+        /** Its categories are left in none, and every transaction keeps its category. */
+        suspend fun deleteGroup(id: Long) = categories.deleteGroup(id)
 
         /** False, changing nothing, when the name is blank or another category already answers to it. */
         suspend fun rename(
@@ -183,7 +248,14 @@ fun anchorFor(
         TransactionKind.EXPENSE, TransactionKind.INCOME -> merchantId?.let(CategoryAnchor::AtMerchant)
     }
 
-private fun CategoryEntity.toDomain() = Category(id = id, name = name)
+private fun CategoryEntity.toDomain() = Category(id = id, name = name, groupId = groupId)
+
+private fun CategoryGroupEntity.toDomain() = CategoryGroup(id = id, name = name)
+
+private fun usageOf(
+    group: CategoryGroup?,
+    usages: List<CategoryUsage>,
+) = CategoryGroupUsage(group, categoryCount = usages.size, transactionCount = usages.sumOf { it.transactionCount })
 
 private fun CategoryWithCounts.toDomain() =
     CategoryUsage(

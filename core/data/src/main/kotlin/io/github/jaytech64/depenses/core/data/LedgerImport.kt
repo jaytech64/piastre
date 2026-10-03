@@ -160,7 +160,7 @@ class LedgerImport
             document.aliases.forEach { alias ->
                 merchantIds[alias.merchantId]?.let { merchantRows.insertAlias(alias.toEntity(it)) }
             }
-            val categoryIds = document.categories.associate { it.id to categories.named(it.name) }
+            val categoryIds = categoryIdsFor(document)
             giveDefaults(document, accountIds, merchantIds, categoryIds)
             val recurringIds =
                 document.recurring.associate { it.id to recurringIdFor(it, accountIds, merchantIds, categoryIds) }
@@ -182,6 +182,21 @@ class LedgerImport
         ): Long =
             recurring.byUuid(file.uuid)?.id
                 ?: recurring.insert(file.toEntity(accountIds, merchantIds, categoryIds))
+
+        /**
+         * Each category in the file, found by name or added, in the group the file
+         * puts it in. A category of yours already in a group stays there: merging
+         * never replaces what you chose (ADR-0005).
+         */
+        private suspend fun categoryIdsFor(document: ExportDocument): Map<Long, Long?> {
+            val groupIds = document.categoryGroups.associate { it.id to categories.namedGroup(it.name) }
+            return document.categories.associate { file ->
+                val groupId = file.groupId?.let { groupIds[it] }
+                val id = categories.named(file.name, groupId)
+                if (id != null && groupId != null) categories.groupIfNone(id, groupId)
+                file.id to id
+            }
+        }
 
         /**
          * The category a merchant or account in the file gives what arrives there,

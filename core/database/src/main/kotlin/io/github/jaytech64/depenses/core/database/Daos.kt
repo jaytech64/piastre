@@ -767,6 +767,13 @@ interface CategoryDao {
         groupId: Long?,
     )
 
+    /** [moveToGroup] for a category in none; one already in a group stays where it is. */
+    @Query("UPDATE category SET groupId = :groupId WHERE id = :id AND groupId IS NULL")
+    suspend fun groupIfNone(
+        id: Long,
+        groupId: Long,
+    )
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertGroup(group: CategoryGroupEntity): Long
 

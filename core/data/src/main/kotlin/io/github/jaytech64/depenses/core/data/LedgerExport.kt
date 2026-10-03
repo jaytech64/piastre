@@ -52,10 +52,26 @@ data class CsvLabels(
     val account: String,
     val toAccount: String,
     val category: String,
+    val categoryGroup: String,
 ) {
     /** Columns added since the first export come last, so every earlier column keeps its position. */
     internal fun headerRow(): List<String> =
-        listOf(date, time, merchant, amount, currency, source, status, card, note, type, account, toAccount, category)
+        listOf(
+            date,
+            time,
+            merchant,
+            amount,
+            currency,
+            source,
+            status,
+            card,
+            note,
+            type,
+            account,
+            toAccount,
+            category,
+            categoryGroup,
+        )
 }
 
 /**
@@ -85,7 +101,7 @@ class LedgerExport
         ): Int {
             val rows = transactions.allWithMerchant()
             when (format) {
-                ExportFormat.CSV -> writeCsv(out, rows, labels)
+                ExportFormat.CSV -> writeCsv(out, rows, labels, groupNamesByCategory())
                 ExportFormat.JSON -> writeJson(out, rows)
             }
             return rows.size
@@ -104,17 +120,27 @@ class LedgerExport
             out: OutputStream,
             rows: List<TransactionWithMerchant>,
             labels: CsvLabels,
+            groupNames: Map<Long, String>,
         ) {
             val writer = out.bufferedWriter(Charsets.UTF_8)
             writer.write(BYTE_ORDER_MARK)
             writer.appendLine(labels.headerRow().joinToString(FIELD_SEPARATOR))
             rows.forEach { row ->
-                writer.appendLine(row.csvFields().joinToString(FIELD_SEPARATOR, transform = ::quote))
+                writer.appendLine(row.csvFields(groupNames).joinToString(FIELD_SEPARATOR, transform = ::quote))
             }
             writer.flush()
         }
 
-        private fun TransactionWithMerchant.csvFields(): List<String> {
+        /** The name of each grouped category's group, by category id; a category in none is absent. */
+        private suspend fun groupNamesByCategory(): Map<Long, String> {
+            val groups = categories.allGroupsOnce().associate { it.id to it.name }
+            return categories
+                .allOnce()
+                .mapNotNull { category -> category.groupId?.let(groups::get)?.let { category.id to it } }
+                .toMap()
+        }
+
+        private fun TransactionWithMerchant.csvFields(groupNames: Map<Long, String>): List<String> {
             val zone = ZoneId.of(transaction.zoneId)
             val moment = Instant.ofEpochMilli(transaction.occurredAtUtcMillis).atZone(zone)
             return listOf(
@@ -131,6 +157,7 @@ class LedgerExport
                 accountLabel(),
                 toAccountName.orEmpty(),
                 categoryName.orEmpty(),
+                transaction.categoryId?.let(groupNames::get).orEmpty(),
             )
         }
 
@@ -203,7 +230,8 @@ class LedgerExport
                             )
                         },
                     transactions = rows.map { it.toExported() },
-                    categories = categories.allOnce().map { ExportedCategory(it.id, it.name) },
+                    categories = categories.allOnce().map { ExportedCategory(it.id, it.name, it.groupId) },
+                    categoryGroups = categories.allGroupsOnce().map { ExportedCategoryGroup(it.id, it.name) },
                     recurring = recurring.allWithNames().first().map { it.toExported() },
                 )
             out.bufferedWriter(Charsets.UTF_8).apply {

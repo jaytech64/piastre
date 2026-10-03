@@ -154,6 +154,7 @@
     <string name="export_column_type">type</string>
     <string name="export_column_account">account</string>
     <string name="export_column_category">category</string>
+    <string name="export_column_category_group">group</string>
     <string name="export_column_to_account">to account</string>
     <string name="settings_recurring">Recurring transactions</string>
     <plurals name="settings_recurring_active">
