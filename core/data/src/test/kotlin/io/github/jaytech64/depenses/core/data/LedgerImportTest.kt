@@ -265,10 +265,10 @@ class LedgerImportTest {
     fun `groups come back with an import, each holding its categories`() =
         runTest {
             val categories = source.categoryRepository()
-            val home = categories.namedGroup("Maison")!!
+            val home = source.categoryGroupRepository().named("Maison")!!
             val power = categories.named("Électricité", home)!!
             categories.named("Assurance", home)
-            categories.namedGroup("Auto")
+            source.categoryGroupRepository().named("Auto")
             categories.named("Logement")
             source.enter(84_10, TransactionKind.EXPENSE, merchant = "Hydro-Québec", categoryId = power)
 
@@ -281,11 +281,11 @@ class LedgerImportTest {
     @Test
     fun `a category of yours already in a group stays there, and one in none joins the file's`() =
         runTest {
-            val home = source.categoryRepository().namedGroup("Maison")!!
+            val home = source.categoryGroupRepository().named("Maison")!!
             source.categoryRepository().named("Assurance", home)
             source.categoryRepository().named("Électricité", home)
             val mine = target.categoryRepository()
-            mine.named("assurance", mine.namedGroup("Auto"))
+            mine.named("assurance", target.categoryGroupRepository().named("Auto"))
             mine.named("electricite")
 
             target.importing(source.export())
@@ -402,7 +402,7 @@ class LedgerImportTest {
 
     /** Each category with its group's name, null for one in none. */
     private suspend fun DepensesDatabase.grouped(): Set<Pair<String?, String>> {
-        val groups = categoryDao().allGroupsOnce().associate { it.id to it.name }
+        val groups = categoryGroupDao().allOnce().associate { it.id to it.name }
         return categoryDao().allOnce().map { it.groupId?.let(groups::get) to it.name }.toSet()
     }
 
@@ -435,6 +435,7 @@ class LedgerImportTest {
             merchantRows = merchantDao(),
             accounts = accountDao(),
             categories = categoryRepository(),
+            categoryGroups = categoryGroupRepository(),
             recurring = recurringTransactionDao(),
             posting = posting(),
         )
@@ -473,6 +474,7 @@ class LedgerImportTest {
             merchantDao(),
             accountDao(),
             categoryDao(),
+            categoryGroupDao(),
             recurringTransactionDao(),
             Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
         ).write(bytes, ExportFormat.JSON, LABELS)

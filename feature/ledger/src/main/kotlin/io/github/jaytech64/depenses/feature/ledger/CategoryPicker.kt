@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Category
@@ -34,6 +35,7 @@ class CategoryPicker internal constructor(
     private val merchants: StateFlow<List<Merchant>>,
     private val accounts: StateFlow<List<Account>>,
     private val categories: CategoryRepository,
+    categoryGroups: CategoryGroupRepository,
     editingId: Long?,
     today: () -> LocalDate,
     private val scope: CoroutineScope,
@@ -56,7 +58,7 @@ class CategoryPicker internal constructor(
             .stateIn(scope, sharing, emptyList())
 
     /** What the rest of the list is arranged under, and what a category added here can go in. */
-    val groups: StateFlow<List<CategoryGroup>> = categories.groups().stateIn(scope, sharing, emptyList())
+    val groups: StateFlow<List<CategoryGroup>> = categoryGroups.all().stateIn(scope, sharing, emptyList())
 
     private val place =
         combine(form, merchants, accounts) { state, merchants, accounts -> state.place(merchants, accounts) }

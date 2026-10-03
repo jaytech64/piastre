@@ -128,7 +128,7 @@ class LedgerFilterTest : LedgerTest() {
     @Test
     fun `a group shows every category in it, and adds up to them`() =
         runTest {
-            val home = categoryRepository().namedGroup("Maison")!!
+            val home = categoryGroupRepository().named("Maison")!!
             val power = categoryRepository().named("Électricité", home)!!
             val insurance = categoryRepository().named("Assurance", home)!!
             val desrives = account("Desrives")
@@ -162,8 +162,8 @@ class LedgerFilterTest : LedgerTest() {
     @Test
     fun `the filter offers each group some row's category is in, counting all its rows`() =
         runTest {
-            val home = categoryRepository().namedGroup("Maison")!!
-            categoryRepository().namedGroup("Auto")
+            val home = categoryGroupRepository().named("Maison")!!
+            categoryGroupRepository().named("Auto")
             insert(amountMinor = 8_410, day = TODAY, categoryId = categoryRepository().named("Électricité", home))
             insert(amountMinor = 6_000, day = TODAY, categoryId = categoryRepository().named("Assurance", home))
 

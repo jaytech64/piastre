@@ -6,6 +6,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.model.CategoryGroup
 import io.github.jaytech64.depenses.core.model.CategoryUsage
@@ -54,22 +55,23 @@ class CategoryGroupViewModel
     constructor(
         savedState: SavedStateHandle,
         private val repository: CategoryRepository,
+        private val categoryGroups: CategoryGroupRepository,
     ) : ViewModel() {
         /** Null on the page of categories in no group. */
         val groupId: Long? = savedState.get<Long>(CATEGORY_GROUP_ID_ARG)
 
         /** Sorted by the screen, in its own language's order. */
         val categories: StateFlow<List<CategoryUsage>> =
-            repository.inGroup(groupId).stateIn(viewModelScope, SHARING, emptyList())
+            categoryGroups.categoriesIn(groupId).stateIn(viewModelScope, SHARING, emptyList())
 
         /** Every group, for the field that moves a category to another. */
         val groups: StateFlow<List<CategoryGroup>> =
-            repository.groups().stateIn(viewModelScope, SHARING, emptyList())
+            categoryGroups.all().stateIn(viewModelScope, SHARING, emptyList())
 
         /** This page's group; null on the ungrouped page, and once the group is deleted. */
         val group: StateFlow<CategoryGroup?> =
-            repository
-                .groups()
+            categoryGroups
+                .all()
                 .map { groups -> groups.firstOrNull { it.id == groupId } }
                 .stateIn(viewModelScope, SHARING, null)
 
@@ -101,7 +103,7 @@ class CategoryGroupViewModel
                     is CategoryEdit.Existing -> {
                         val category = edit.usage.category
                         if (repository.rename(category.id, name)) {
-                            if (toGroupId != category.groupId) repository.moveToGroup(category.id, toGroupId)
+                            if (toGroupId != category.groupId) categoryGroups.move(category.id, toGroupId)
                             editingState.value = null
                         } else {
                             editingState.value = edit.copy(refused = true)
@@ -134,7 +136,7 @@ class CategoryGroupViewModel
             val id = groupId ?: return
             viewModelScope.launch {
                 editingState.value =
-                    if (repository.renameGroup(id, name)) null else CategoryEdit.RenameGroup(refused = true)
+                    if (categoryGroups.rename(id, name)) null else CategoryEdit.RenameGroup(refused = true)
             }
         }
 
@@ -142,7 +144,7 @@ class CategoryGroupViewModel
             val id = groupId ?: return
             editingState.value = null
             viewModelScope.launch {
-                repository.deleteGroup(id)
+                categoryGroups.delete(id)
                 deletedState.value = true
             }
         }

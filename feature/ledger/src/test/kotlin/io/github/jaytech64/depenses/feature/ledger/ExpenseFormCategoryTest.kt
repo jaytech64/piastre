@@ -277,13 +277,20 @@ class ExpenseFormCategoryTest {
     @Test
     fun `a category added from the form goes into the group chosen with it`() =
         runTest {
-            val home = categories.namedGroup("Maison")!!
+            val home = database.categoryGroupRepository().named("Maison")!!
             open()
 
             viewModel.category.add("Électricité", home)
 
             val picked = viewModel.uiState.first { it.categoryId != null }.categoryId
-            assertEquals(listOf(picked), categories.inGroup(home).first().map { it.category.id })
+            assertEquals(
+                listOf(picked),
+                database
+                    .categoryGroupRepository()
+                    .categoriesIn(home)
+                    .first()
+                    .map { it.category.id },
+            )
         }
 
     @Test
@@ -322,6 +329,7 @@ class ExpenseFormCategoryTest {
                 merchants = MerchantRepository(database.merchantDao()),
                 accounts = accounts,
                 categories = categories,
+                categoryGroups = database.categoryGroupRepository(),
                 recurring = database.recurringRepository(Clock.systemUTC(), ZONE),
                 clock = Clock.systemUTC(),
                 zoneId = Provider { ZONE },

@@ -5,7 +5,7 @@ package io.github.jaytech64.depenses.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jaytech64.depenses.core.data.CategoryRepository
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.model.CategoryGroupUsage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,12 +20,12 @@ import javax.inject.Inject
 class CategoriesViewModel
     @Inject
     constructor(
-        private val repository: CategoryRepository,
+        private val repository: CategoryGroupRepository,
     ) : ViewModel() {
         /** Sorted by the screen, in its own language's order; the categories in no group come last. */
         val groups: StateFlow<List<CategoryGroupUsage>> =
             repository
-                .groupUsage()
+                .usage()
                 .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
         private val addingState = MutableStateFlow(false)
@@ -38,7 +38,7 @@ class CategoriesViewModel
         /** Typing the name of a group you already have adds nothing, so the dialog simply closes. */
         fun save(name: String) {
             addingState.value = false
-            viewModelScope.launch { repository.namedGroup(name) }
+            viewModelScope.launch { repository.named(name) }
         }
 
         private companion object {

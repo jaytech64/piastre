@@ -102,6 +102,7 @@ class ExpenseFormViewModelTest {
                 database.merchantDao(),
                 database.accountDao(),
             ),
+        categoryGroups = database.categoryGroupRepository(),
         recurring = database.recurringRepository(clock, ZONE),
         clock = clock,
         zoneId = Provider { ZONE },

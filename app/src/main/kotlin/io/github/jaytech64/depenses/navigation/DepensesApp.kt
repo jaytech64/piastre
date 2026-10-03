@@ -27,6 +27,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -127,35 +129,40 @@ private fun MainShell() {
                 }
                 composable(Destination.REPORTS.route) { ReportsScreen() }
                 composable(Destination.REVIEW.route) { ReviewScreen() }
-                composable(Destination.SETTINGS.route) {
-                    SettingsScreen(
-                        onOpenCategories = { navController.navigate(CATEGORIES_ROUTE) },
-                        onOpenRecurring = { navController.navigate(RECURRING_LIST_ROUTE) },
-                    )
-                }
-                composable(CATEGORIES_ROUTE) {
-                    CategoriesScreen(onOpen = { id -> navController.navigate(categoryGroupRoute(id)) })
-                }
-                composable(
-                    CATEGORY_GROUP_ROUTE,
-                    arguments = listOf(navArgument(CATEGORY_GROUP_ID_ARG) { type = NavType.LongType }),
-                ) {
-                    CategoryGroupScreen(onClose = { navController.popBackStack() })
-                }
-                composable(UNGROUPED_CATEGORIES_ROUTE) {
-                    CategoryGroupScreen(onClose = { navController.popBackStack() })
-                }
-                composable(RECURRING_LIST_ROUTE) {
-                    RecurringListScreen(onOpen = { id -> navController.navigate(editRecurringRoute(id)) })
-                }
-                composable(
-                    EDIT_RECURRING_ROUTE,
-                    arguments = listOf(navArgument(RECURRING_ID_ARG) { type = NavType.LongType }),
-                ) {
-                    ExpenseFormScreen(onDone = { navController.popBackStack() })
-                }
+                settingsPages(navController)
             }
         }
+    }
+}
+
+/** Settings, and the pages reached from it that return to it. */
+private fun NavGraphBuilder.settingsPages(navController: NavHostController) {
+    composable(Destination.SETTINGS.route) {
+        SettingsScreen(
+            onOpenCategories = { navController.navigate(CATEGORIES_ROUTE) },
+            onOpenRecurring = { navController.navigate(RECURRING_LIST_ROUTE) },
+        )
+    }
+    composable(CATEGORIES_ROUTE) {
+        CategoriesScreen(onOpen = { id -> navController.navigate(categoryGroupRoute(id)) })
+    }
+    composable(
+        CATEGORY_GROUP_ROUTE,
+        arguments = listOf(navArgument(CATEGORY_GROUP_ID_ARG) { type = NavType.LongType }),
+    ) {
+        CategoryGroupScreen(onClose = { navController.popBackStack() })
+    }
+    composable(UNGROUPED_CATEGORIES_ROUTE) {
+        CategoryGroupScreen(onClose = { navController.popBackStack() })
+    }
+    composable(RECURRING_LIST_ROUTE) {
+        RecurringListScreen(onOpen = { id -> navController.navigate(editRecurringRoute(id)) })
+    }
+    composable(
+        EDIT_RECURRING_ROUTE,
+        arguments = listOf(navArgument(RECURRING_ID_ARG) { type = NavType.LongType }),
+    ) {
+        ExpenseFormScreen(onDone = { navController.popBackStack() })
     }
 }
 

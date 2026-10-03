@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.model.CategoryGroup
@@ -25,6 +26,7 @@ class LedgerSelection internal constructor(
     private val savedState: SavedStateHandle,
     private val editor: TransactionEditor,
     private val categories: CategoryRepository,
+    categoryGroups: CategoryGroupRepository,
     private val scope: CoroutineScope,
     private val shown: () -> Set<Long>,
 ) {
@@ -48,7 +50,7 @@ class LedgerSelection internal constructor(
     }
 
     /** What a category added for the selection can go in. */
-    val groups: Flow<List<CategoryGroup>> = categories.groups()
+    val groups: Flow<List<CategoryGroup>> = categoryGroups.all()
 
     /** Adds the category missing from the list, in [groupId], and gives it to the selection. */
     fun categoriseAsNew(

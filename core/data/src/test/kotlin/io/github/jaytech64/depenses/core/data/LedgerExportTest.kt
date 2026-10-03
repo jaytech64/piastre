@@ -50,6 +50,7 @@ class LedgerExportTest {
                 merchants = database.merchantDao(),
                 accounts = database.accountDao(),
                 categories = database.categoryDao(),
+                categoryGroups = database.categoryGroupDao(),
                 recurring = database.recurringTransactionDao(),
                 clock = Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
             )
@@ -106,7 +107,7 @@ class LedgerExportTest {
     fun `the csv names each category's group in a column of its own, after the category`() =
         runTest {
             val categories = database.categoryRepository()
-            val power = categories.named("Électricité", categories.namedGroup("Maison"))!!
+            val power = categories.named("Électricité", database.categoryGroupRepository().named("Maison"))!!
             val loose = categories.named("Logement")!!
             store(merchantName = "HYDRO QUEBEC", amountMinor = 84_10)
             store(merchantName = "PROPRIO", amountMinor = 1_200_00, sourceKey = "rent")

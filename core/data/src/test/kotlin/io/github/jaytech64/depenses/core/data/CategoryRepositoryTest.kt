@@ -24,11 +24,13 @@ import org.robolectric.RobolectricTestRunner
 class CategoryRepositoryTest {
     private lateinit var database: DepensesDatabase
     private lateinit var categories: CategoryRepository
+    private lateinit var groups: CategoryGroupRepository
 
     @Before
     fun open() {
         database = inMemoryDatabase()
         categories = database.categoryRepository()
+        groups = database.categoryGroupRepository()
     }
 
     @After
@@ -85,10 +87,10 @@ class CategoryRepositoryTest {
     @Test
     fun `a group counts its categories and the transactions they carry, and the ungrouped come last`() =
         runTest {
-            val home = categories.namedGroup("Maison")!!
+            val home = groups.named("Maison")!!
             val power = categories.named("Électricité", home)!!
             val insurance = categories.named("Assurance", home)!!
-            categories.namedGroup("Auto")
+            groups.named("Auto")
             val loose = categories.named("Logement")!!
             record("a", power)
             record("b", power)
@@ -96,7 +98,7 @@ class CategoryRepositoryTest {
             record("d", insurance, TransactionStatus.NEEDS_REVIEW)
             record("e", loose)
 
-            val usage = categories.groupUsage().first()
+            val usage = groups.usage().first()
 
             assertEquals(
                 listOf("Auto" to (0 to 0), "Maison" to (2 to 3), null to (1 to 1)),
@@ -107,55 +109,55 @@ class CategoryRepositoryTest {
     @Test
     fun `with every category in a group, no ungrouped entry is shown`() =
         runTest {
-            categories.named("Électricité", categories.namedGroup("Maison"))
+            categories.named("Électricité", groups.named("Maison"))
 
-            assertEquals(listOf<String?>("Maison"), categories.groupUsage().first().map { it.group?.name })
+            assertEquals(listOf<String?>("Maison"), groups.usage().first().map { it.group?.name })
         }
 
     @Test
     fun `typing a category you already have leaves it in its group`() =
         runTest {
-            val home = categories.namedGroup("Maison")!!
+            val home = groups.named("Maison")!!
             val power = categories.named("Électricité", home)!!
 
-            assertEquals(power, categories.named("electricite", categories.namedGroup("Auto")))
-            assertEquals(listOf("Électricité"), categories.inGroup(home).first().map { it.category.name })
+            assertEquals(power, categories.named("electricite", groups.named("Auto")))
+            assertEquals(listOf("Électricité"), groups.categoriesIn(home).first().map { it.category.name })
         }
 
     @Test
     fun `moving a category takes it out of one group and into another`() =
         runTest {
-            val home = categories.namedGroup("Maison")!!
-            val car = categories.namedGroup("Auto")!!
+            val home = groups.named("Maison")!!
+            val car = groups.named("Auto")!!
             val insurance = categories.named("Assurance", home)!!
 
-            categories.moveToGroup(insurance, car)
+            groups.move(insurance, car)
 
-            assertEquals(emptyList<String>(), categories.inGroup(home).first().map { it.category.name })
-            assertEquals(listOf("Assurance"), categories.inGroup(car).first().map { it.category.name })
+            assertEquals(emptyList<String>(), groups.categoriesIn(home).first().map { it.category.name })
+            assertEquals(listOf("Assurance"), groups.categoriesIn(car).first().map { it.category.name })
         }
 
     @Test
     fun `deleting a group leaves its categories in none`() =
         runTest {
-            val home = categories.namedGroup("Maison")!!
+            val home = groups.named("Maison")!!
             categories.named("Assurance", home)
 
-            categories.deleteGroup(home)
+            groups.delete(home)
 
-            assertEquals(listOf("Assurance"), categories.inGroup(null).first().map { it.category.name })
-            assertEquals(emptyList<String>(), categories.groups().first().map { it.name })
+            assertEquals(listOf("Assurance"), groups.categoriesIn(null).first().map { it.category.name })
+            assertEquals(emptyList<String>(), groups.all().first().map { it.name })
         }
 
     @Test
     fun `a group rename onto another group's name is refused`() =
         runTest {
-            val home = categories.namedGroup("Maison")!!
-            categories.namedGroup("Auto")
+            val home = groups.named("Maison")!!
+            groups.named("Auto")
 
-            assertFalse(categories.renameGroup(home, "auto"))
-            assertTrue(categories.renameGroup(home, "Logement"))
-            assertEquals(home, categories.namedGroup("LOGEMENT"))
+            assertFalse(groups.rename(home, "auto"))
+            assertTrue(groups.rename(home, "Logement"))
+            assertEquals(home, groups.named("LOGEMENT"))
         }
 
     private suspend fun record(
@@ -194,3 +196,6 @@ class CategoryRepositoryTest {
 
 /** The repository as the app's graph builds it, over [this] database. */
 internal fun DepensesDatabase.categoryRepository() = CategoryRepository(categoryDao(), merchantDao(), accountDao())
+
+/** The group repository as the app's graph builds it, over [this] database. */
+internal fun DepensesDatabase.categoryGroupRepository() = CategoryGroupRepository(categoryGroupDao(), categoryDao())

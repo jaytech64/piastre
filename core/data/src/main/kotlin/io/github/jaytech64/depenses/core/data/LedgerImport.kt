@@ -37,6 +37,7 @@ class LedgerImport
         private val merchantRows: MerchantDao,
         private val accounts: AccountDao,
         private val categories: CategoryRepository,
+        private val categoryGroups: CategoryGroupRepository,
         private val recurring: RecurringTransactionDao,
         private val posting: RecurringPosting,
     ) {
@@ -189,11 +190,11 @@ class LedgerImport
          * never replaces what you chose (ADR-0005).
          */
         private suspend fun categoryIdsFor(document: ExportDocument): Map<Long, Long?> {
-            val groupIds = document.categoryGroups.associate { it.id to categories.namedGroup(it.name) }
+            val groupIds = document.categoryGroups.associate { it.id to categoryGroups.named(it.name) }
             return document.categories.associate { file ->
                 val groupId = file.groupId?.let { groupIds[it] }
                 val id = categories.named(file.name, groupId)
-                if (id != null && groupId != null) categories.groupIfNone(id, groupId)
+                if (id != null && groupId != null) categoryGroups.groupIfNone(id, groupId)
                 file.id to id
             }
         }

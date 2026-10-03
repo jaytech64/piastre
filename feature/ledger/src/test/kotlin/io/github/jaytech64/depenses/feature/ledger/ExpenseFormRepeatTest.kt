@@ -285,6 +285,7 @@ class ExpenseFormRepeatTest {
             merchants = merchants,
             accounts = AccountRepository(database.accountDao()),
             categories = categories,
+            categoryGroups = database.categoryGroupRepository(),
             recurring = recurring,
             clock = CLOCK,
             zoneId = Provider { ZONE },

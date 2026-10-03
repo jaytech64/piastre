@@ -9,7 +9,7 @@ import org.junit.Test
 import java.text.Collator
 import java.util.Locale
 
-class CategorySectionsTest {
+class CategorySectionTest {
     private val collator = Collator.getInstance(Locale.CANADA_FRENCH)
 
     @Test

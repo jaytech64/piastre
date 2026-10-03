@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.feature.settings
 
 import androidx.lifecycle.SavedStateHandle
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -25,6 +26,7 @@ import org.robolectric.RobolectricTestRunner
 class CategoryGroupViewModelTest {
     private lateinit var database: DepensesDatabase
     private lateinit var repository: CategoryRepository
+    private lateinit var groups: CategoryGroupRepository
     private lateinit var viewModel: CategoryGroupViewModel
 
     @Before
@@ -32,6 +34,7 @@ class CategoryGroupViewModelTest {
         Dispatchers.setMain(StandardTestDispatcher())
         database = inMemoryDatabase()
         repository = CategoryRepository(database.categoryDao(), database.merchantDao(), database.accountDao())
+        groups = CategoryGroupRepository(database.categoryGroupDao(), database.categoryDao())
         viewModel = page(groupId = null)
     }
 
@@ -107,21 +110,21 @@ class CategoryGroupViewModelTest {
     @Test
     fun `a category added on a group's page is in that group`() =
         runTest {
-            val home = repository.namedGroup("Maison")!!
+            val home = groups.named("Maison")!!
             val page = page(home)
 
             page.edit(CategoryEdit.New)
             page.save("Électricité", home)
 
             assertEquals(listOf("Électricité"), page.categories.first { it.isNotEmpty() }.map { it.category.name })
-            assertEquals(emptyList<Any>(), repository.inGroup(null).first())
+            assertEquals(emptyList<Any>(), groups.categoriesIn(null).first())
         }
 
     @Test
     fun `moving a category takes it off this page`() =
         runTest {
-            val home = repository.namedGroup("Maison")!!
-            val car = repository.namedGroup("Auto")!!
+            val home = groups.named("Maison")!!
+            val car = groups.named("Auto")!!
             repository.named("Assurance", home)
             val page = page(home)
             val insurance = page.categories.first { it.isNotEmpty() }.single()
@@ -130,14 +133,14 @@ class CategoryGroupViewModelTest {
             page.save("Assurance", car)
 
             assertEquals(emptyList<Any>(), page.categories.first { it.isEmpty() })
-            assertEquals(listOf("Assurance"), repository.inGroup(car).first().map { it.category.name })
+            assertEquals(listOf("Assurance"), groups.categoriesIn(car).first().map { it.category.name })
         }
 
     @Test
     fun `a refused rename moves nothing`() =
         runTest {
-            val home = repository.namedGroup("Maison")!!
-            val car = repository.namedGroup("Auto")!!
+            val home = groups.named("Maison")!!
+            val car = groups.named("Auto")!!
             repository.named("Assurance", home)
             repository.named("Essence", car)
             val page = page(home)
@@ -147,14 +150,14 @@ class CategoryGroupViewModelTest {
             page.save("essence", car)
 
             page.editing.first { (it as? CategoryEdit.Existing)?.refused == true }
-            assertEquals(listOf("Assurance"), repository.inGroup(home).first().map { it.category.name })
+            assertEquals(listOf("Assurance"), groups.categoriesIn(home).first().map { it.category.name })
         }
 
     @Test
     fun `a group rename onto another group's name keeps the dialog open and says so`() =
         runTest {
-            val home = repository.namedGroup("Maison")!!
-            repository.namedGroup("Auto")
+            val home = groups.named("Maison")!!
+            groups.named("Auto")
             val page = page(home)
 
             page.edit(CategoryEdit.RenameGroup())
@@ -171,7 +174,7 @@ class CategoryGroupViewModelTest {
     @Test
     fun `deleting the group closes its page and leaves its categories in none`() =
         runTest {
-            val home = repository.namedGroup("Maison")!!
+            val home = groups.named("Maison")!!
             repository.named("Assurance", home)
             val page = page(home)
 
@@ -185,5 +188,6 @@ class CategoryGroupViewModelTest {
         CategoryGroupViewModel(
             SavedStateHandle(groupId?.let { mapOf(CATEGORY_GROUP_ID_ARG to it) }.orEmpty()),
             repository,
+            groups,
         )
 }

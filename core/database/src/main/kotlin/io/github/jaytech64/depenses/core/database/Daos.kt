@@ -795,22 +795,29 @@ interface CategoryDao {
         id: Long,
         groupId: Long,
     )
+}
 
+/** The groups categories are arranged under. */
+@Dao
+interface CategoryGroupDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insertGroup(group: CategoryGroupEntity): Long
+    suspend fun insert(group: CategoryGroupEntity): Long
 
     @Query("SELECT * FROM category_group WHERE normalisedName = :normalisedName")
-    suspend fun groupByNormalisedName(normalisedName: String): CategoryGroupEntity?
+    suspend fun byNormalisedName(normalisedName: String): CategoryGroupEntity?
 
     @Query("SELECT * FROM category_group ORDER BY id")
-    suspend fun allGroupsOnce(): List<CategoryGroupEntity>
+    suspend fun allOnce(): List<CategoryGroupEntity>
 
     @Query("SELECT * FROM category_group ORDER BY normalisedName")
-    fun allGroups(): Flow<List<CategoryGroupEntity>>
+    fun all(): Flow<List<CategoryGroupEntity>>
 
-    /** [rename] for a group: 0, changing nothing, when another group already answers to the new name. */
+    /**
+     * Returns 0 and changes nothing when another group already answers to the new
+     * name, as [CategoryDao.rename] does for a category.
+     */
     @Query("UPDATE OR IGNORE category_group SET name = :name, normalisedName = :normalisedName WHERE id = :id")
-    suspend fun renameGroup(
+    suspend fun rename(
         id: Long,
         name: String,
         normalisedName: String,
@@ -821,16 +828,16 @@ interface CategoryDao {
      * its category, since a group only arranges them.
      */
     @Transaction
-    suspend fun deleteGroup(id: Long) {
+    suspend fun delete(id: Long) {
         ungroup(id)
-        deleteGroupRow(id)
+        deleteRow(id)
     }
 
     @Query("UPDATE category SET groupId = NULL WHERE groupId = :id")
     suspend fun ungroup(id: Long)
 
     @Query("DELETE FROM category_group WHERE id = :id")
-    suspend fun deleteGroupRow(id: Long)
+    suspend fun deleteRow(id: Long)
 }
 
 @Dao

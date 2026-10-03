@@ -34,6 +34,8 @@ abstract class DepensesDatabase : RoomDatabase() {
 
     abstract fun categoryDao(): CategoryDao
 
+    abstract fun categoryGroupDao(): CategoryGroupDao
+
     abstract fun recurringTransactionDao(): RecurringTransactionDao
 
     companion object {

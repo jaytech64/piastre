@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.CategoryDialog
+import io.github.jaytech64.depenses.core.model.CategoryGroup
 import io.github.jaytech64.depenses.core.model.CategoryUsage
 import java.text.Collator
 
@@ -90,6 +91,18 @@ fun CategoryGroupScreen(
         }
     }
 
+    CategoryGroupDialogs(editing, viewModel, groups, group, categories.size)
+}
+
+/** Whichever dialog [editing] says is open over the page, if any. */
+@Composable
+private fun CategoryGroupDialogs(
+    editing: CategoryEdit?,
+    viewModel: CategoryGroupViewModel,
+    groups: List<CategoryGroup>,
+    group: CategoryGroup?,
+    categoryCount: Int,
+) {
     when (val edit = editing) {
         CategoryEdit.New -> {
             CategoryDialog(
@@ -133,7 +146,7 @@ fun CategoryGroupScreen(
         CategoryEdit.ConfirmDeleteGroup -> {
             ConfirmDeleteGroupDialog(
                 name = group?.name.orEmpty(),
-                categoryCount = categories.size,
+                categoryCount = categoryCount,
                 onConfirm = viewModel::deleteGroup,
                 onCancel = { viewModel.edit(null) },
             )

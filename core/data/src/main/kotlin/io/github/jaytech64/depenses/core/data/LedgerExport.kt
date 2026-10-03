@@ -4,6 +4,7 @@ package io.github.jaytech64.depenses.core.data
 
 import io.github.jaytech64.depenses.core.database.AccountDao
 import io.github.jaytech64.depenses.core.database.CategoryDao
+import io.github.jaytech64.depenses.core.database.CategoryGroupDao
 import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.RecurringTransactionDao
 import io.github.jaytech64.depenses.core.database.RecurringWithNames
@@ -90,6 +91,7 @@ class LedgerExport
         private val merchants: MerchantDao,
         private val accounts: AccountDao,
         private val categories: CategoryDao,
+        private val categoryGroups: CategoryGroupDao,
         private val recurring: RecurringTransactionDao,
         private val clock: Clock,
     ) {
@@ -101,7 +103,7 @@ class LedgerExport
         ): Int {
             val rows = transactions.allWithMerchant()
             when (format) {
-                ExportFormat.CSV -> writeCsv(out, rows, labels, groupNamesByCategory())
+                ExportFormat.CSV -> writeCsv(out, rows, labels, groupNamesByCategory(categories, categoryGroups))
                 ExportFormat.JSON -> writeJson(out, rows)
             }
             return rows.size
@@ -129,15 +131,6 @@ class LedgerExport
                 writer.appendLine(row.csvFields(groupNames).joinToString(FIELD_SEPARATOR, transform = ::quote))
             }
             writer.flush()
-        }
-
-        /** The name of each grouped category's group, by category id; a category in none is absent. */
-        private suspend fun groupNamesByCategory(): Map<Long, String> {
-            val groups = categories.allGroupsOnce().associate { it.id to it.name }
-            return categories
-                .allOnce()
-                .mapNotNull { category -> category.groupId?.let(groups::get)?.let { category.id to it } }
-                .toMap()
         }
 
         private fun TransactionWithMerchant.csvFields(groupNames: Map<Long, String>): List<String> {
@@ -231,7 +224,7 @@ class LedgerExport
                         },
                     transactions = rows.map { it.toExported() },
                     categories = categories.allOnce().map { ExportedCategory(it.id, it.name, it.groupId) },
-                    categoryGroups = categories.allGroupsOnce().map { ExportedCategoryGroup(it.id, it.name) },
+                    categoryGroups = categoryGroups.allOnce().map { ExportedCategoryGroup(it.id, it.name) },
                     recurring = recurring.allWithNames().first().map { it.toExported() },
                 )
             out.bufferedWriter(Charsets.UTF_8).apply {
@@ -309,3 +302,15 @@ class LedgerExport
                 }
         }
     }
+
+/** The name of each grouped category's group, by category id; a category in none is absent. */
+private suspend fun groupNamesByCategory(
+    categories: CategoryDao,
+    groups: CategoryGroupDao,
+): Map<Long, String> {
+    val names = groups.allOnce().associate { it.id to it.name }
+    return categories
+        .allOnce()
+        .mapNotNull { category -> category.groupId?.let(names::get)?.let { category.id to it } }
+        .toMap()
+}

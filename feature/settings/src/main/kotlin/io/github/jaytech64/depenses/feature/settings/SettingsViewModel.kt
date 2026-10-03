@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.CsvLabels
 import io.github.jaytech64.depenses.core.data.DataErasure
@@ -73,6 +74,7 @@ class SettingsViewModel
         rawEvents: RawEventRepository,
         recurring: RecurringRepository,
         categories: CategoryRepository,
+        categoryGroups: CategoryGroupRepository,
     ) : ViewModel() {
         val uiState: StateFlow<SettingsUiState> =
             combine(
@@ -80,7 +82,7 @@ class SettingsViewModel
                 rawEvents.count(),
                 recurring.activeCount(),
                 categories.all(),
-                categories.groups(),
+                categoryGroups.all(),
             ) { enabled, count, active, categoryList, groupList ->
                 SettingsUiState(
                     captureEnabled = enabled,

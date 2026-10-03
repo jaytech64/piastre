@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
@@ -203,6 +204,7 @@ class LedgerViewModel
         repository: TransactionRepository,
         accounts: AccountRepository,
         categories: CategoryRepository,
+        categoryGroups: CategoryGroupRepository,
         merchants: MerchantRepository,
         editor: TransactionEditor,
         recurring: RecurringRepository,
@@ -214,7 +216,7 @@ class LedgerViewModel
 
         /** The rows picked by a long press, and what can be done to them. */
         val selection =
-            LedgerSelection(savedState, editor, categories, viewModelScope) {
+            LedgerSelection(savedState, editor, categories, categoryGroups, viewModelScope) {
                 uiState.value.days.flatMapTo(mutableSetOf()) { day -> day.transactions.map { it.id } }
             }
 
@@ -222,7 +224,7 @@ class LedgerViewModel
         @OptIn(ExperimentalCoroutinesApi::class)
         private val known: Flow<Known> =
             ticker.dates().flatMapLatest { today ->
-                combine(accounts.all(today), categories.all(), categories.groups(), merchants.all(), ::Known)
+                combine(accounts.all(today), categories.all(), categoryGroups.all(), merchants.all(), ::Known)
             }
 
         /** Whether what is dated after today is shown open or as its one line. */
@@ -513,7 +515,8 @@ private fun List<Transaction>.categoriesFor(
  * Under a category, with no account, a transfer is money that left for what the
  * category names (ADR-0011): the mortgage payment is what *Hypothèque* cost you
  * this month. A group is its categories together, so the same transfer is
- * money that left under the group too, and a group adds up to its categories. *No category* is not a place money goes, so an uncategorised
+ * money that left under the group too, and a group adds up to its categories.
+ * *No category* is not a place money goes, so an uncategorised
  * transfer — a card payment, most often — keeps the whole ledger's zero rather
  * than charging you a second time for the purchases it settles.
  */
@@ -522,7 +525,8 @@ private fun Transaction.balanceMovedOn(filter: LedgerFilter): Money {
     return when {
         kind != TransactionKind.TRANSFER -> signedAmount
         account != null -> if (accountId == account.id) -amount else amount
-        filter.category is CategoryChoice.Named || filter.category is CategoryChoice.InGroup -> -amount
+        filter.category is CategoryChoice.Named -> -amount
+        filter.category is CategoryChoice.InGroup -> -amount
         else -> signedAmount
     }
 }

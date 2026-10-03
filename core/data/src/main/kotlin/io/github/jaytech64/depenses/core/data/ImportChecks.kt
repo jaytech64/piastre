@@ -55,7 +55,6 @@ internal fun ExportDocument.check() {
     if (accountIds.size != accounts.size) inconsistent("two accounts share an id")
     if (merchantIds.size != merchants.size) inconsistent("two merchants share an id")
     if (categoryIds.size != categories.size) inconsistent("two categories share an id")
-    checkCategoryGroups()
     accounts.forEach { it.checkCodes() }
     checkCategoryReferences(categoryIds)
     val recurringIds = checkRecurring(accountIds, merchantIds)
@@ -73,8 +72,18 @@ internal fun ExportDocument.check() {
     }
 }
 
-/** Every category a transaction, merchant or account names is one the file lists. */
+/**
+ * Every category a transaction, merchant or account names is one the file lists,
+ * and so is every group a category is in.
+ */
 private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
+    val groupIds = categoryGroups.map { it.id }.toSet()
+    if (groupIds.size != categoryGroups.size) inconsistent("two category groups share an id")
+    categories.forEach { category ->
+        if (category.groupId != null && category.groupId !in groupIds) {
+            inconsistent("category ${category.id} is in a group not in the file")
+        }
+    }
     val named =
         transactions.map { it.categoryId to "transaction ${it.sourceKey}" } +
             merchants.map { it.categoryId to "merchant ${it.id}" } +
@@ -82,17 +91,6 @@ private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
             recurring.map { it.categoryId to "recurring transaction ${it.id}" }
     named.forEach { (id, owner) ->
         if (id != null && id !in categoryIds) inconsistent("$owner has a category not in the file")
-    }
-}
-
-/** Every group a category names is one the file lists, and no two groups share an id. */
-private fun ExportDocument.checkCategoryGroups() {
-    val groupIds = categoryGroups.map { it.id }.toSet()
-    if (groupIds.size != categoryGroups.size) inconsistent("two category groups share an id")
-    categories.forEach { category ->
-        if (category.groupId != null && category.groupId !in groupIds) {
-            inconsistent("category ${category.id} is in a group not in the file")
-        }
     }
 }
 
