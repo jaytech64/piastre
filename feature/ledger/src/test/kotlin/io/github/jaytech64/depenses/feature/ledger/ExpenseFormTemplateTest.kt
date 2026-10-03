@@ -4,6 +4,7 @@ package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.CategoryReach
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.TemplateRepository
@@ -14,10 +15,12 @@ import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TemplateContent
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -34,6 +37,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Provider
 
@@ -172,11 +177,153 @@ class ExpenseFormTemplateTest {
             assertTrue(form.uiState.value.done)
         }
 
-    private fun TestScope.open(template: Long? = null): ExpenseFormViewModel {
+    @Test
+    fun `a template fills what it holds, and leaves the amount already typed`() =
+        runTest {
+            val cash = accounts.add("Comptant", AccountType.CASH, last4 = null)
+            val groceries = templates.save(coffee.copy(name = "Épicerie", amount = null, accountId = cash))
+            val form = open()
+            form.onAmountChange("12,50")
+            form.onNoteChange("avec Léa")
+
+            form.template.apply(templates.byId(groceries)!!)
+
+            val state = form.uiState.value
+            assertEquals("12,50", state.amountText)
+            assertEquals("Zoo Cafe", state.merchantText)
+            assertEquals(cash, state.accountId)
+            assertEquals("avec Léa", state.note)
+            assertTrue(state.canSave)
+        }
+
+    @Test
+    fun `a template always sets the kind, and never the day`() =
+        runTest {
+            val bank = accounts.add("Chèques", AccountType.BANK, last4 = null)
+            val cash = accounts.add("Comptant", AccountType.CASH, last4 = null)
+            val withdrawal =
+                templates.save(
+                    coffee.copy(
+                        name = "Retrait",
+                        kind = TransactionKind.TRANSFER,
+                        merchantName = null,
+                        accountId = bank,
+                        toAccountId = cash,
+                    ),
+                )
+            val form = open()
+            form.onDateChange(LocalDate.of(2026, 9, 30))
+
+            form.template.apply(templates.byId(withdrawal)!!)
+
+            val state = form.uiState.value
+            assertEquals(TransactionKind.TRANSFER, state.kind)
+            assertEquals(bank to cash, state.accountId to state.toAccountId)
+            assertEquals(LocalDate.of(2026, 9, 30), state.date)
+        }
+
+    @Test
+    fun `a second template goes over the first`() =
+        runTest {
+            val first = templates.save(coffee.copy(note = "au comptoir"))
+            val second = templates.save(coffee.copy(name = "Dîner", amount = null, merchantName = "Resto"))
+            val form = open()
+
+            form.template.apply(templates.byId(first)!!)
+            form.template.apply(templates.byId(second)!!)
+
+            val state = form.uiState.value
+            assertEquals("Resto", state.merchantText)
+            assertEquals(Money(475, Money.CAD), state.amount)
+            assertEquals("au comptoir", state.note)
+        }
+
+    @Test
+    fun `the category a template gives is not replaced by its merchant's`() =
+        runTest {
+            val restaurants = categories.named("Restaurants")
+            val outings = categories.named("Sorties")
+            spentAt("Zoo Cafe", categoryId = restaurants)
+            val withCategory = templates.save(coffee.copy(categoryId = outings))
+            val form = open()
+
+            form.template.apply(templates.byId(withCategory)!!)
+
+            assertEquals(outings, form.uiState.value.categoryId)
+        }
+
+    @Test
+    fun `a template with no category takes the one its merchant gives`() =
+        runTest {
+            val restaurants = categories.named("Restaurants")
+            spentAt("Zoo Cafe", categoryId = restaurants)
+            val bare = templates.save(coffee)
+            val form = open()
+
+            form.template.apply(templates.byId(bare)!!)
+
+            assertEquals(restaurants, form.uiState.value.categoryId)
+        }
+
+    @Test
+    fun `saving a transaction filled from a template writes an ordinary row and moves the template to the front`() =
+        runTest {
+            val coffeeId = templates.save(coffee)
+            templates.save(coffee.copy(name = "Passe d'autobus", merchantName = "STS"))
+            val form = open()
+            form.template.apply(templates.byId(coffeeId)!!)
+
+            form.save()
+            advanceUntilIdle()
+
+            val row = transactions.confirmed().first().single()
+            assertEquals(Money(475, Money.CAD), row.amount)
+            assertEquals("Zoo Cafe", row.displayMerchant)
+            assertEquals(TransactionSource.MANUAL, row.source)
+            assertEquals(listOf("Café matin", "Passe d'autobus"), templates.all().first().map { it.name })
+        }
+
+    @Test
+    fun `templates are offered on a new transaction only`() =
+        runTest {
+            val existing = spentAt("Zoo Cafe", categoryId = null)
+
+            assertTrue(open().uiState.value.offersTemplates)
+            assertFalse(open(editing = existing).uiState.value.offersTemplates)
+            assertFalse(open(template = NEW_TEMPLATE_ID).uiState.value.offersTemplates)
+        }
+
+    /** A purchase at [merchant], which from then on gives [categoryId]. */
+    private suspend fun spentAt(
+        merchant: String,
+        categoryId: Long?,
+    ): Long =
+        transactions.addManual(
+            amount = Money(900, Money.CAD),
+            merchantName = merchant,
+            occurredAt = Instant.parse("2026-09-20T15:00:00Z"),
+            note = null,
+            kind = TransactionKind.EXPENSE,
+            accountId = null,
+            toAccountId = null,
+            categoryId = categoryId,
+            reach = CategoryReach(others = false, fromNowOn = true).takeIf { categoryId != null },
+        )
+
+    private fun TestScope.open(
+        template: Long? = null,
+        editing: Long? = null,
+    ): ExpenseFormViewModel {
         val merchants = MerchantRepository(database.merchantDao())
         val form =
             ExpenseFormViewModel(
-                savedStateHandle = SavedStateHandle(template?.let { mapOf(TEMPLATE_ID_ARG to it) } ?: emptyMap()),
+                savedStateHandle =
+                    SavedStateHandle(
+                        listOfNotNull(
+                            template?.let { TEMPLATE_ID_ARG to it },
+                            editing?.let { EXPENSE_ID_ARG to it },
+                        ).toMap(),
+                    ),
                 transactions = transactions,
                 editor =
                     TransactionEditor(
@@ -195,6 +342,8 @@ class ExpenseFormTemplateTest {
                 clock = Clock.systemUTC(),
                 zoneId = Provider { ZONE },
             )
+        backgroundScope.launch { form.knownMerchants.collect {} }
+        backgroundScope.launch { form.knownAccounts.collect {} }
         advanceUntilIdle()
         return form
     }

@@ -99,6 +99,10 @@ internal fun FormDialog(
             )
         }
 
+        Picking.TEMPLATES -> {
+            TemplateSheet(viewModel.template, onClose)
+        }
+
         Picking.NOTHING -> {
             Unit
         }
@@ -139,7 +143,17 @@ private fun DateDialog(
 }
 
 /** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
-internal enum class Picking { NOTHING, DATE, LAST_DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION, ADD_CATEGORY }
+internal enum class Picking {
+    NOTHING,
+    DATE,
+    LAST_DATE,
+    TIME,
+    DELETE,
+    ADD_ACCOUNT,
+    ADD_DESTINATION,
+    ADD_CATEGORY,
+    TEMPLATES,
+}
 
 /**
  * A calendar for one day. [onNone], when given, is a button beside *Cancel* that

@@ -124,6 +124,8 @@ data class ExpenseFormUiState(
     /** True when the form is about a template rather than a transaction: it then has a name, and no day. */
     val isTemplate: Boolean = false,
     val templateName: String = "",
+    /** The template the form was last filled from, so saving can note it was used. */
+    val appliedTemplateId: Long? = null,
     val isEditing: Boolean = false,
     /** True while the transaction being edited is read off disk, so the form never shows "now" in its place. */
     val loading: Boolean = false,
@@ -156,6 +158,9 @@ data class ExpenseFormUiState(
     val endsBeforeItStarts: Boolean get() = rhythm != null && lastDate != null && lastDate < date
 
     val isSchedule: Boolean get() = schedule != null
+
+    /** A template starts a transaction: one already written is corrected field by field. */
+    val offersTemplates: Boolean get() = !isEditing && !isTemplate
 
     /**
      * The day the rhythm counts from. A schedule left on its next day with the same
@@ -273,9 +278,6 @@ class ExpenseFormViewModel
         /** How often it comes back, and until when. */
         val repeat = RepeatChoice(_uiState)
 
-        /** The template's name. */
-        val template = TemplateChoice(_uiState)
-
         /** The category, the list it is picked from, and the offer beside it. */
         val category =
             CategoryPicker(
@@ -286,6 +288,16 @@ class ExpenseFormViewModel
                 categoryGroups = categoryGroups,
                 editingId = editingId,
                 today = { LocalDate.now(zoneId.get()) },
+                scope = viewModelScope,
+                sharing = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            )
+
+        /** The templates the form can be filled from, and a template's own name. */
+        val template =
+            TemplateChoice(
+                form = _uiState,
+                templates = templates,
+                following = { category.following(it).withLastAccount(lastAccounts.value) },
                 scope = viewModelScope,
                 sharing = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             )

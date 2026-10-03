@@ -93,6 +93,7 @@ internal class FormWriter(
                 )
                 original.id
             }
+        state.appliedTemplateId?.let { templates.markUsed(it) }
         state.rhythm?.takeIf { state.canRepeat }?.let { recurring.repeat(id, it, state.lastDate) }
     }
 
