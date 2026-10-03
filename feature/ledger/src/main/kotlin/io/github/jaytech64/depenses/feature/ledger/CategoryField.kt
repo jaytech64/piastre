@@ -170,7 +170,7 @@ private fun CategoryOfferBoxes(
 
 /** The whole row toggles, so the label is as much a target as the box. */
 @Composable
-private fun OfferBox(
+internal fun OfferBox(
     label: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,

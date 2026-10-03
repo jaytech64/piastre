@@ -9,6 +9,7 @@ import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.RawNotificationEventDao
 import io.github.jaytech64.depenses.core.database.RecurringTransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
+import io.github.jaytech64.depenses.core.database.TransactionTemplateDao
 import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
@@ -39,6 +40,7 @@ class LedgerImport
         private val categories: CategoryRepository,
         private val categoryGroups: CategoryGroupRepository,
         private val recurring: RecurringTransactionDao,
+        private val templates: TransactionTemplateDao,
         private val posting: RecurringPosting,
     ) {
         /** Reads and checks [input], and says what importing it would do, without writing anything. */
@@ -167,6 +169,10 @@ class LedgerImport
                 document.recurring.associate { it.id to recurringIdFor(it, accountIds, merchantIds, categoryIds) }
             plan.newTransactions.forEach {
                 transactions.insert(it.toEntity(accountIds, merchantIds, categoryIds, recurringIds))
+            }
+            // A template already here, found by its identity, is left as you have it.
+            document.templates.forEach {
+                templates.insertOrIgnore(it.toEntity(accountIds, merchantIds, categoryIds))
             }
         }
 

@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Recurrence
 import io.github.jaytech64.depenses.core.model.Rhythm
+import io.github.jaytech64.depenses.core.model.TemplateContent
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import kotlinx.coroutines.flow.first
@@ -397,6 +398,80 @@ class LedgerImportTest {
             assertTrue(reading.toString(), (reading as ImportReading.Refused).problem is ImportProblem.Inconsistent)
         }
 
+    @Test
+    fun `a template comes back with its account, merchant and category, and its place in the list`() =
+        runTest {
+            val cash = source.accounts().add("Comptant", AccountType.CASH, last4 = null)
+            val restaurants = source.categoryRepository().named("Restaurants")
+            val coffee = source.templates().save(coffee().copy(accountId = cash, categoryId = restaurants))
+            source.templates().save(coffee().copy(name = "Épicerie", amount = null, merchantName = "Metro Plus"))
+            source.templates().markUsed(coffee)
+
+            target.importing(source.export())
+
+            val arrived = target.templates().all().first()
+            assertEquals(listOf("Café matin", "Épicerie"), arrived.map { it.name })
+            assertEquals(listOf(cad(4_75), null), arrived.map { it.amount })
+            assertEquals(listOf("Zoo Cafe", "Metro Plus"), arrived.map { it.merchantName })
+            assertEquals("Comptant", arrived.first().accountName)
+            assertEquals("Restaurants", arrived.first().categoryName)
+        }
+
+    @Test
+    fun `a template already here is not added twice, and stays as you changed it`() =
+        runTest {
+            source.templates().save(coffee())
+            val file = source.export()
+            target.importing(file)
+            val here =
+                target
+                    .templates()
+                    .all()
+                    .first()
+                    .single()
+            target.templates().change(here.id, coffee().copy(name = "Café"))
+
+            target.importing(file)
+
+            assertEquals(
+                listOf("Café"),
+                target
+                    .templates()
+                    .all()
+                    .first()
+                    .map { it.name },
+            )
+        }
+
+    @Test
+    fun `a template pointing at an account the file does not list refuses the file`() =
+        runTest {
+            val template =
+                """{"id": 1, "uuid": "t-1", "name": "Café", "kind": "EXPENSE", "amountMinor": null, "currency": "CAD",
+                    "merchantId": null, "merchantName": null, "merchantRaw": null, "accountId": 9, "toAccountId": null,
+                    "categoryId": null, "note": null, "lastUsedAtUtcMillis": null}"""
+            val file = document().replace(""""aliases": [],""", """"aliases": [], "templates": [$template],""")
+
+            val reading = target.reading(file)
+
+            assertTrue(reading.toString(), (reading as ImportReading.Refused).problem is ImportProblem.Inconsistent)
+        }
+
+    private fun coffee() =
+        TemplateContent(
+            name = "Café matin",
+            kind = TransactionKind.EXPENSE,
+            amount = cad(4_75),
+            merchantName = "Zoo Cafe",
+            accountId = null,
+            toAccountId = null,
+            categoryId = null,
+            note = null,
+        )
+
+    private fun DepensesDatabase.templates() =
+        TemplateRepository(transactionTemplateDao(), MerchantRepository(merchantDao()), Clock.fixed(EXPORTED_AT, ZONE))
+
     private suspend fun DepensesDatabase.categorised(): List<Pair<String?, String?>> =
         transactionDao().allWithMerchant().filter { it.categoryName != null }.map { it.merchantName to it.categoryName }
 
@@ -437,6 +512,7 @@ class LedgerImportTest {
             categories = categoryRepository(),
             categoryGroups = categoryGroupRepository(),
             recurring = recurringTransactionDao(),
+            templates = transactionTemplateDao(),
             posting = posting(),
         )
 
@@ -476,6 +552,7 @@ class LedgerImportTest {
             categoryDao(),
             categoryGroupDao(),
             recurringTransactionDao(),
+            transactionTemplateDao(),
             Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
         ).write(bytes, ExportFormat.JSON, LABELS)
         return bytes.toString(Charsets.UTF_8.name())

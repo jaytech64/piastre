@@ -104,6 +104,7 @@ class ExpenseFormViewModelTest {
             ),
         categoryGroups = database.categoryGroupRepository(),
         recurring = database.recurringRepository(clock, ZONE),
+        templates = database.templateRepository(clock),
         clock = clock,
         zoneId = Provider { ZONE },
     )

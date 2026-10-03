@@ -11,8 +11,8 @@ import kotlinx.serialization.Serializable
  * Version 2 dropped `paymentMethod`, because cash became an account, and renamed
  * the card list to accounts: a version-1 reader must refuse the file rather than
  * guess at what it no longer says. Fields added since — an account's opening
- * balance, its place in your order, categories and their groups, and recurring transactions — left
- * it at 2, and default to null or empty for a file written before them. A reader
+ * balance, its place in your order, categories and their groups, recurring transactions, and
+ * templates — left it at 2, and default to null or empty for a file written before them. A reader
  * from before recurring transactions refuses a file holding a row one wrote, on
  * its source, rather than guessing what that source means.
  */
@@ -37,6 +37,7 @@ internal data class ExportDocument(
     val categories: List<ExportedCategory> = emptyList(),
     val categoryGroups: List<ExportedCategoryGroup> = emptyList(),
     val recurring: List<ExportedRecurring> = emptyList(),
+    val templates: List<ExportedTemplate> = emptyList(),
 )
 
 /**
@@ -66,6 +67,30 @@ internal data class ExportedRecurring(
     val firstDate: String,
     val lastDate: String?,
     val nextDue: String?,
+)
+
+/**
+ * A template. It arrived within version 2, so a file written before it has none.
+ *
+ * [uuid] is its identity on any phone: an import that finds it already there
+ * leaves yours as it is. [amountMinor] is null when the template holds no amount.
+ */
+@Serializable
+internal data class ExportedTemplate(
+    val id: Long,
+    val uuid: String,
+    val name: String,
+    val kind: String,
+    val amountMinor: Long?,
+    val currency: String,
+    val merchantId: Long?,
+    val merchantName: String?,
+    val merchantRaw: String?,
+    val accountId: Long?,
+    val toAccountId: Long?,
+    val categoryId: Long?,
+    val note: String?,
+    val lastUsedAtUtcMillis: Long?,
 )
 
 /**

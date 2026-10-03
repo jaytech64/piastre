@@ -11,6 +11,7 @@ import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.RecurringRepository
+import io.github.jaytech64.depenses.core.data.TemplateRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.designsystem.Formatters
@@ -25,6 +26,7 @@ import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
+import io.github.jaytech64.depenses.core.model.TransactionTemplate
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -50,6 +52,12 @@ const val EXPENSE_ID_ARG = "expenseId"
 
 /** The navigation argument naming the recurring transaction to edit, in place of [EXPENSE_ID_ARG]. */
 const val RECURRING_ID_ARG = "recurringId"
+
+/** The navigation argument naming the template to edit, in place of [EXPENSE_ID_ARG]. */
+const val TEMPLATE_ID_ARG = "templateId"
+
+/** [TEMPLATE_ID_ARG] for a template not saved yet. No stored template has it: their ids start at 1. */
+const val NEW_TEMPLATE_ID = 0L
 
 /** Which end of a transfer a choice is about. Anything else has only a source. */
 enum class AccountSlot { SOURCE, DESTINATION }
@@ -113,6 +121,14 @@ data class ExpenseFormUiState(
     /** The recurring transaction being edited, as it was on disk, or null when the form is about a transaction. */
     val schedule: ScheduleAsStored? = null,
     val capturedAccountLabel: String? = null,
+    /** True when the form is about a template rather than a transaction: it then has a name, and no day. */
+    val isTemplate: Boolean = false,
+    /** A template's name; on a transaction, the name of the template saving it will also make. */
+    val templateName: String = "",
+    /** Whether the *Save as template* box is ticked. */
+    val savesAsTemplate: Boolean = false,
+    /** The template the form was last filled from, so saving can note it was used. */
+    val appliedTemplateId: Long? = null,
     val isEditing: Boolean = false,
     /** True while the transaction being edited is read off disk, so the form never shows "now" in its place. */
     val loading: Boolean = false,
@@ -122,16 +138,39 @@ data class ExpenseFormUiState(
 ) {
     val amount: Money? get() = Formatters.parseMoney(amountText)
 
+    val canSave: Boolean get() = !saving && !loading && if (isTemplate) templateIsWhole else transactionIsWhole
+
     /**
      * A transaction needs an amount; a transfer also needs two accounts, and two
-     * different ones; and one that repeats cannot stop before it starts.
+     * different ones; one that repeats cannot stop before it starts; and one also
+     * saved as a template needs that template's name.
      */
-    val canSave: Boolean get() = amount != null && !saving && !loading && transferIsSettled && !endsBeforeItStarts
+    private val transactionIsWhole: Boolean
+        get() =
+            amount != null && transferIsSettled && !endsBeforeItStarts &&
+                (!savesAsTemplate || templateName.isNotBlank())
+
+    /**
+     * A template needs only a name. Its amount can be left out, but not half
+     * typed, and what it does say about a transfer cannot be the typo a
+     * transaction refuses.
+     */
+    private val templateIsWhole: Boolean
+        get() =
+            templateName.isNotBlank() &&
+                (amountText.isBlank() || amount != null) &&
+                !(kind == TransactionKind.TRANSFER && accountId != null && accountId == toAccountId)
 
     /** An end date set before the transaction's own day. */
     val endsBeforeItStarts: Boolean get() = rhythm != null && lastDate != null && lastDate < date
 
     val isSchedule: Boolean get() = schedule != null
+
+    /** A template starts a transaction: one already written is corrected field by field. */
+    val offersTemplates: Boolean get() = !isEditing && !isTemplate
+
+    /** Any transaction can be kept as a template, captured or not. A schedule or a template is not a transaction. */
+    val offersSavingAsTemplate: Boolean get() = !isSchedule && !isTemplate
 
     /**
      * The day the rhythm counts from. A schedule left on its next day with the same
@@ -162,7 +201,8 @@ data class ExpenseFormUiState(
 /**
  * One form for adding a transaction and for correcting one, because the two ask
  * the same questions — and a second form would drift from the first the day one
- * of them learns something.
+ * of them learns something. A recurring transaction and a template open in it
+ * too, for the same reason.
  */
 @HiltViewModel
 class ExpenseFormViewModel
@@ -176,6 +216,7 @@ class ExpenseFormViewModel
         private val categories: CategoryRepository,
         private val categoryGroups: CategoryGroupRepository,
         private val recurring: RecurringRepository,
+        private val templates: TemplateRepository,
         private val clock: Clock,
         private val zoneId: Provider<ZoneId>,
     ) : ViewModel() {
@@ -183,7 +224,13 @@ class ExpenseFormViewModel
 
         private val scheduleId: Long? = savedStateHandle.get<Long>(RECURRING_ID_ARG)
 
-        private val writer = FormWriter(transactions, editor, recurring, zoneId::get)
+        private val templateId: Long? = savedStateHandle.get<Long>(TEMPLATE_ID_ARG)
+
+        private val storedTemplateId: Long? = templateId?.takeIf { it != NEW_TEMPLATE_ID }
+
+        private val isStored = editingId != null || scheduleId != null || storedTemplateId != null
+
+        private val writer = FormWriter(transactions, editor, recurring, templates, zoneId::get)
 
         /** The transaction as it was on disk before this edit, or null when adding. */
         private var original: Transaction? = null
@@ -194,8 +241,10 @@ class ExpenseFormViewModel
                     ExpenseFormUiState(
                         date = LocalDate.now(local),
                         time = LocalTime.now(local),
-                        isEditing = editingId != null || scheduleId != null,
-                        loading = editingId != null || scheduleId != null,
+                        isEditing = isStored,
+                        loading = isStored,
+                        isTemplate = templateId != null,
+                        canRepeat = templateId == null,
                     )
                 },
             )
@@ -253,6 +302,17 @@ class ExpenseFormViewModel
                 sharing = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             )
 
+        /** The templates the form can be filled from, and a template's own name. */
+        val template =
+            TemplateChoice(
+                form = _uiState,
+                templates = templates,
+                following = { category.following(it).withLastAccount(lastAccounts.value) },
+                suggestedName = { it.suggestedTemplateName(category.known.value, knownAccounts.value) },
+                scope = viewModelScope,
+                sharing = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            )
+
         // A transaction that is no longer there has nothing to edit, so the screen
         // simply closes rather than offering to save into a row that is gone.
         init {
@@ -261,6 +321,14 @@ class ExpenseFormViewModel
                     val schedule = recurring.byId(id)
                     _uiState.update { state ->
                         schedule?.let { state.filledFrom(it, today()) } ?: state.copy(loading = false, done = true)
+                    }
+                }
+            }
+            storedTemplateId?.let { id ->
+                viewModelScope.launch {
+                    val template = templates.byId(id)
+                    _uiState.update { state ->
+                        template?.let { state.filledFrom(it) } ?: state.copy(loading = false, done = true)
                     }
                 }
             }
@@ -327,28 +395,29 @@ class ExpenseFormViewModel
          */
         fun save(pastDaysAgreed: Boolean = false) {
             val state = _uiState.value
-            if (state.amount == null || (!pastDaysAgreed && repeat.asksAboutPastDays(today()))) return
+            if (!state.canSave || (!pastDaysAgreed && repeat.asksAboutPastDays(today()))) return
             val reach =
                 category.offer.value
                     ?.reach
                     .takeUnless { state.isSchedule }
             _uiState.update { it.copy(saving = true, backfill = null) }
             viewModelScope.launch {
-                writer.write(state, original, scheduleId, reach)
+                writer.write(state, original, FormTarget(scheduleId, templateId), reach)
                 _uiState.update { it.copy(saving = false, done = true) }
             }
         }
 
         /**
          * Only offered while editing: a transaction not yet saved has nothing to
-         * remove. On a recurring transaction it stops it, and what it wrote stays.
+         * remove. On a recurring transaction it stops it, and what it wrote stays;
+         * on a template it removes the template, and what it filled stays.
          */
         fun delete() {
             val editing = original
-            if (editing == null && scheduleId == null) return
+            if (!isStored) return
             _uiState.update { it.copy(saving = true) }
             viewModelScope.launch {
-                writer.remove(editing, scheduleId)
+                writer.remove(editing, FormTarget(scheduleId, storedTemplateId))
                 _uiState.update { it.copy(saving = false, done = true) }
             }
         }
@@ -407,6 +476,22 @@ private fun ExpenseFormUiState.filledFrom(
         lastDate = schedule.recurrence.lastDate,
         canRepeat = false,
         schedule = ScheduleAsStored(schedule.recurrence, schedule.nextDue),
+        loading = false,
+    )
+
+/** The form filled from a template: everything it holds, and no day. */
+private fun ExpenseFormUiState.filledFrom(template: TransactionTemplate): ExpenseFormUiState =
+    copy(
+        templateName = template.name,
+        amountText = template.amount?.let(Formatters::amountInput).orEmpty(),
+        merchantText = template.merchantName.orEmpty(),
+        note = template.note.orEmpty(),
+        kind = template.kind,
+        accountId = template.accountId,
+        accountChosen = true,
+        toAccountId = template.toAccountId,
+        categoryId = template.categoryId,
+        categoryChosen = true,
         loading = false,
     )
 

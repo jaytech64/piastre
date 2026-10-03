@@ -63,4 +63,7 @@ object DatabaseModule {
     @Provides
     fun recurringTransactionDao(database: DepensesDatabase): RecurringTransactionDao =
         database.recurringTransactionDao()
+
+    @Provides
+    fun transactionTemplateDao(database: DepensesDatabase): TransactionTemplateDao = database.transactionTemplateDao()
 }

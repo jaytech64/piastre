@@ -65,7 +65,7 @@ internal fun FormDialog(
 
         Picking.DELETE -> {
             ConfirmDeleteDialog(
-                stopping = state.stoppingName(),
+                wording = state.deleteWording(),
                 onConfirm = {
                     viewModel.delete()
                     onClose()
@@ -97,6 +97,10 @@ internal fun FormDialog(
                 onDismiss = onClose,
                 groups = groups,
             )
+        }
+
+        Picking.TEMPLATES -> {
+            TemplateSheet(viewModel.template, onClose)
         }
 
         Picking.NOTHING -> {
@@ -139,7 +143,17 @@ private fun DateDialog(
 }
 
 /** Which dialog is over the form. Deleting asks first, because it cannot be undone from here. */
-internal enum class Picking { NOTHING, DATE, LAST_DATE, TIME, DELETE, ADD_ACCOUNT, ADD_DESTINATION, ADD_CATEGORY }
+internal enum class Picking {
+    NOTHING,
+    DATE,
+    LAST_DATE,
+    TIME,
+    DELETE,
+    ADD_ACCOUNT,
+    ADD_DESTINATION,
+    ADD_CATEGORY,
+    TEMPLATES,
+}
 
 /**
  * A calendar for one day. [onNone], when given, is a button beside *Cancel* that
@@ -229,53 +243,67 @@ private fun TimePickerDisplayMode.toggled(): TimePickerDisplayMode =
 
 @Composable
 private fun ConfirmDeleteDialog(
-    stopping: String?,
+    wording: DeleteWording,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onCancel,
-        title = {
-            Text(
-                stopping?.let { stringResource(R.string.recurring_stop_title, it) }
-                    ?: stringResource(R.string.edit_delete_title),
-            )
-        },
-        text = {
-            Text(
-                stringResource(
-                    if (stopping !=
-                        null
-                    ) {
-                        R.string.recurring_stop_body
-                    } else {
-                        R.string.edit_delete_body
-                    },
-                ),
-            )
-        },
+        title = { Text(wording.title) },
+        text = { Text(wording.body) },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
             ) {
-                Text(stringResource(if (stopping != null) R.string.recurring_stop else R.string.edit_delete))
+                Text(wording.confirm)
             }
         },
         dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
     )
 }
 
+/** What the dialog asks before deleting, which says what deleting keeps. */
+private data class DeleteWording(
+    val title: String,
+    val body: String,
+    val confirm: String,
+)
+
 /**
- * What a recurring transaction is called when asking whether to stop it: its
- * merchant, or — for a transfer, which has none — its amount. Null on anything
- * that is not a recurring transaction.
+ * A recurring transaction is stopped, and named by its merchant or — for a
+ * transfer, which has none — its amount. A template is deleted by its name. Both
+ * say that what they wrote or filled stays.
  */
 @Composable
-private fun ExpenseFormUiState.stoppingName(): String? {
-    if (!isSchedule) return null
+private fun ExpenseFormUiState.deleteWording(): DeleteWording {
     val locale = LocalConfiguration.current.locales[0]
-    return merchantText.ifBlank { amount?.let { Formatters.money(it, locale) }.orEmpty() }
+    return when {
+        isTemplate -> {
+            DeleteWording(
+                title = stringResource(R.string.template_delete_title, templateName),
+                body = stringResource(R.string.template_delete_body),
+                confirm = stringResource(R.string.edit_delete),
+            )
+        }
+
+        isSchedule -> {
+            val name = merchantText.ifBlank { amount?.let { Formatters.money(it, locale) }.orEmpty() }
+            DeleteWording(
+                title = stringResource(R.string.recurring_stop_title, name),
+                body = stringResource(R.string.recurring_stop_body),
+                confirm = stringResource(R.string.recurring_stop),
+            )
+        }
+
+        else -> {
+            DeleteWording(
+                title = stringResource(R.string.edit_delete_title),
+                body = stringResource(R.string.edit_delete_body),
+                confirm = stringResource(R.string.edit_delete),
+            )
+        }
+    }
 }
 
 private fun LocalDate.toUtcMillis(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()

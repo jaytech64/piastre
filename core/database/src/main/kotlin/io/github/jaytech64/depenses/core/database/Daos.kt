@@ -580,9 +580,9 @@ interface AccountDao {
     )
 
     /**
-     * Returns 1 when the account was removed and 0 when a transaction or a
-     * recurring transaction still uses it, so nothing is ever left pointing at an
-     * account that is gone.
+     * Returns 1 when the account was removed and 0 when a transaction, a
+     * recurring transaction or a template still uses it, so nothing is ever left
+     * pointing at an account that is gone.
      */
     @Query(
         """
@@ -590,14 +590,34 @@ interface AccountDao {
             SELECT 1 FROM expense_transaction WHERE accountId = :id OR toAccountId = :id
         ) AND NOT EXISTS (
             SELECT 1 FROM recurring_transaction WHERE accountId = :id OR toAccountId = :id
+        ) AND NOT EXISTS (
+            SELECT 1 FROM transaction_template WHERE accountId = :id OR toAccountId = :id
         )
         """,
     )
     suspend fun deleteIfUnused(id: Long): Int
 }
 
+/** Everything that can carry a category, each cleared of one that is being removed. */
+interface CategoryClearing {
+    @Query("UPDATE expense_transaction SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromTransactions(id: Long)
+
+    @Query("UPDATE merchant SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromMerchants(id: Long)
+
+    @Query("UPDATE account SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromAccounts(id: Long)
+
+    @Query("UPDATE recurring_transaction SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromRecurring(id: Long)
+
+    @Query("UPDATE transaction_template SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromTemplates(id: Long)
+}
+
 @Dao
-interface CategoryDao {
+interface CategoryDao : CategoryClearing {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(category: CategoryEntity): Long
 
@@ -754,8 +774,8 @@ interface CategoryDao {
 
     /**
      * Removes a category and every trace of it: the transactions that carried it
-     * are left with none, and merchants, accounts and recurring transactions stop
-     * giving it. A category moves no balance, so this loses a label and never an
+     * are left with none, and merchants, accounts, recurring transactions and
+     * templates stop giving it. A category moves no balance, so this loses a label and never an
      * amount.
      */
     @Transaction
@@ -764,20 +784,9 @@ interface CategoryDao {
         clearFromMerchants(id)
         clearFromAccounts(id)
         clearFromRecurring(id)
+        clearFromTemplates(id)
         deleteRow(id)
     }
-
-    @Query("UPDATE expense_transaction SET categoryId = NULL WHERE categoryId = :id")
-    suspend fun clearFromTransactions(id: Long)
-
-    @Query("UPDATE merchant SET categoryId = NULL WHERE categoryId = :id")
-    suspend fun clearFromMerchants(id: Long)
-
-    @Query("UPDATE account SET categoryId = NULL WHERE categoryId = :id")
-    suspend fun clearFromAccounts(id: Long)
-
-    @Query("UPDATE recurring_transaction SET categoryId = NULL WHERE categoryId = :id")
-    suspend fun clearFromRecurring(id: Long)
 
     @Query("DELETE FROM category WHERE id = :id")
     suspend fun deleteRow(id: Long)
@@ -941,6 +950,77 @@ interface RecurringTransactionDao {
 /** A schedule with the names of what it points at, for the list of them. */
 data class RecurringWithNames(
     @Embedded val recurring: RecurringTransactionEntity,
+    val merchantName: String?,
+    val accountName: String?,
+    val accountType: AccountType?,
+    val toAccountName: String?,
+    val toAccountType: AccountType?,
+    val categoryName: String?,
+)
+
+@Dao
+interface TransactionTemplateDao {
+    @Insert
+    suspend fun insert(template: TransactionTemplateEntity): Long
+
+    /** For an import: a template whose [TransactionTemplateEntity.uuid] is already here is left alone. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertOrIgnore(template: TransactionTemplateEntity): Long
+
+    @Update
+    suspend fun update(template: TransactionTemplateEntity)
+
+    @Query("SELECT * FROM transaction_template WHERE id = :id")
+    suspend fun byId(id: Long): TransactionTemplateEntity?
+
+    /** Every template, the one last used first, and those never used after them, the newest first. */
+    @Query(
+        """
+        SELECT t.*, m.displayName AS merchantName, a.name AS accountName, a.type AS accountType,
+               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName
+        FROM transaction_template t
+        LEFT JOIN merchant m ON m.id = t.merchantId
+        LEFT JOIN account a ON a.id = t.accountId
+        LEFT JOIN account d ON d.id = t.toAccountId
+        LEFT JOIN category c ON c.id = t.categoryId
+        ORDER BY t.lastUsedAtUtcMillis IS NULL, t.lastUsedAtUtcMillis DESC, t.id DESC
+        """,
+    )
+    fun allWithNames(): Flow<List<TemplateWithNames>>
+
+    @Query(
+        """
+        SELECT t.*, m.displayName AS merchantName, a.name AS accountName, a.type AS accountType,
+               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName
+        FROM transaction_template t
+        LEFT JOIN merchant m ON m.id = t.merchantId
+        LEFT JOIN account a ON a.id = t.accountId
+        LEFT JOIN account d ON d.id = t.toAccountId
+        LEFT JOIN category c ON c.id = t.categoryId
+        WHERE t.id = :id
+        """,
+    )
+    suspend fun withNamesById(id: Long): TemplateWithNames?
+
+    @Query("SELECT * FROM transaction_template ORDER BY id")
+    suspend fun allOnce(): List<TransactionTemplateEntity>
+
+    @Query("SELECT COUNT(*) FROM transaction_template")
+    fun count(): Flow<Int>
+
+    @Query("UPDATE transaction_template SET lastUsedAtUtcMillis = :atUtcMillis WHERE id = :id")
+    suspend fun markUsed(
+        id: Long,
+        atUtcMillis: Long,
+    )
+
+    @Query("DELETE FROM transaction_template WHERE id = :id")
+    suspend fun delete(id: Long)
+}
+
+/** A template with the names of what it points at, for the list of them. */
+data class TemplateWithNames(
+    @Embedded val template: TransactionTemplateEntity,
     val merchantName: String?,
     val accountName: String?,
     val accountType: AccountType?,

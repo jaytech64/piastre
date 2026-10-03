@@ -8,7 +8,9 @@ import io.github.jaytech64.depenses.core.database.CategoryGroupDao
 import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.RecurringTransactionDao
 import io.github.jaytech64.depenses.core.database.RecurringWithNames
+import io.github.jaytech64.depenses.core.database.TemplateWithNames
 import io.github.jaytech64.depenses.core.database.TransactionDao
+import io.github.jaytech64.depenses.core.database.TransactionTemplateDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
@@ -93,6 +95,7 @@ class LedgerExport
         private val categories: CategoryDao,
         private val categoryGroups: CategoryGroupDao,
         private val recurring: RecurringTransactionDao,
+        private val templates: TransactionTemplateDao,
         private val clock: Clock,
     ) {
         /** Returns how many transactions were written. */
@@ -226,6 +229,7 @@ class LedgerExport
                     categories = categories.allOnce().map { ExportedCategory(it.id, it.name, it.groupId) },
                     categoryGroups = categoryGroups.allOnce().map { ExportedCategoryGroup(it.id, it.name) },
                     recurring = recurring.allWithNames().first().map { it.toExported() },
+                    templates = templates.allWithNames().first().map { it.toExported() },
                 )
             out.bufferedWriter(Charsets.UTF_8).apply {
                 write(JSON.encodeToString(document))
@@ -314,3 +318,21 @@ private suspend fun groupNamesByCategory(
         .mapNotNull { category -> category.groupId?.let(names::get)?.let { category.id to it } }
         .toMap()
 }
+
+private fun TemplateWithNames.toExported() =
+    ExportedTemplate(
+        id = template.id,
+        uuid = template.uuid,
+        name = template.name,
+        kind = template.kind.name,
+        amountMinor = template.amountMinor,
+        currency = template.currency,
+        merchantId = template.merchantId,
+        merchantName = merchantName,
+        merchantRaw = template.merchantRaw,
+        accountId = template.accountId,
+        toAccountId = template.toAccountId,
+        categoryId = template.categoryId,
+        note = template.note,
+        lastUsedAtUtcMillis = template.lastUsedAtUtcMillis,
+    )

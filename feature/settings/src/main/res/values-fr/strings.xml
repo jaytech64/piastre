@@ -187,4 +187,11 @@
         <item quantity="other">%d actives</item>
         <item quantity="many">%d actives</item>
     </plurals>
+    <string name="settings_templates">Modèles</string>
+    <string name="settings_templates_none">Aucun modèle</string>
+    <plurals name="settings_templates_count">
+        <item quantity="one">%d modèle</item>
+        <item quantity="other">%d modèles</item>
+        <item quantity="many">%d modèles</item>
+    </plurals>
 </resources>

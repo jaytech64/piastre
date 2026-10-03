@@ -163,4 +163,14 @@
     </plurals>
     <string name="ledger_upcoming_show">Afficher ce qui est à venir</string>
     <string name="ledger_upcoming_hide">Masquer ce qui est à venir</string>
+    <string name="templates_title">Modèles</string>
+    <string name="templates_empty">Aucun modèle encore. Cochez Enregistrer comme modèle en ajoutant une transaction.</string>
+    <string name="templates_new">Nouveau modèle</string>
+    <string name="template_title">Modèle</string>
+    <string name="template_name">Nom</string>
+    <string name="template_amount">Montant (facultatif)</string>
+    <string name="template_delete_title">Supprimer %s ?</string>
+    <string name="template_delete_body">Les transactions faites à partir de ce modèle restent dans vos dépenses.</string>
+    <string name="template_save_as">Enregistrer comme modèle</string>
+    <string name="template_save_name">Nom du modèle</string>
 </resources>

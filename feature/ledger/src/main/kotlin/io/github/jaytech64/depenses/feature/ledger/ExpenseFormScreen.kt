@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,22 +100,13 @@ private fun EntryForm(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            stringResource(state.title()),
-            style = MaterialTheme.typography.titleLarge,
-        )
+        FormTitle(state, onOpenTemplates = { onPick(Picking.TEMPLATES) })
+
+        if (state.isTemplate) TemplateNameField(state.templateName, viewModel.template::onNameChange)
 
         KindToggle(kind = state.kind, onChange = viewModel::onKindChange)
 
-        OutlinedTextField(
-            value = state.amountText,
-            onValueChange = viewModel::onAmountChange,
-            label = { Text(stringResource(R.string.manual_amount)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            isError = state.amountText.isNotBlank() && state.amount == null,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        AmountField(state, viewModel::onAmountChange)
 
         // A transfer moves your own money, so it has no merchant to name.
         if (state.kind != TransactionKind.TRANSFER) {
@@ -142,11 +131,12 @@ private fun EntryForm(
         CategorySection(
             state.categoryId,
             viewModel.category,
-            offers = !state.isSchedule,
+            offers = !state.isSchedule && !state.isTemplate,
             onAddCategory = { onPick(Picking.ADD_CATEGORY) },
         )
 
-        WhenSection(state = state, viewModel = viewModel, onPick = onPick)
+        // A template says what a transaction is, never when.
+        if (!state.isTemplate) WhenSection(state = state, viewModel = viewModel, onPick = onPick)
 
         OutlinedTextField(
             value = state.note,
@@ -154,6 +144,8 @@ private fun EntryForm(
             label = { Text(stringResource(R.string.manual_note)) },
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (state.offersSavingAsTemplate) SaveAsTemplate(state, viewModel.template)
 
         FormActions(
             state = state,
@@ -225,13 +217,6 @@ private fun AccountSlot.picking(): Picking =
     when (this) {
         AccountSlot.SOURCE -> Picking.ADD_ACCOUNT
         AccountSlot.DESTINATION -> Picking.ADD_DESTINATION
-    }
-
-private fun ExpenseFormUiState.title(): Int =
-    when {
-        isSchedule -> R.string.recurring_edit_title
-        isEditing -> R.string.edit_title
-        else -> R.string.manual_title
     }
 
 /**

@@ -58,6 +58,7 @@ internal fun ExportDocument.check() {
     accounts.forEach { it.checkCodes() }
     checkCategoryReferences(categoryIds)
     val recurringIds = checkRecurring(accountIds, merchantIds)
+    checkTemplates(accountIds, merchantIds)
     aliases.forEach { it.checkCodes(merchantIds) }
     val identities = HashSet<Pair<String, String>>()
     transactions.forEach { transaction ->
@@ -73,7 +74,7 @@ internal fun ExportDocument.check() {
 }
 
 /**
- * Every category a transaction, merchant or account names is one the file lists,
+ * Every category anything in the file names is one the file lists,
  * and so is every group a category is in.
  */
 private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
@@ -88,7 +89,8 @@ private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
         transactions.map { it.categoryId to "transaction ${it.sourceKey}" } +
             merchants.map { it.categoryId to "merchant ${it.id}" } +
             accounts.map { it.categoryId to "account ${it.id}" } +
-            recurring.map { it.categoryId to "recurring transaction ${it.id}" }
+            recurring.map { it.categoryId to "recurring transaction ${it.id}" } +
+            templates.map { it.categoryId to "template ${it.id}" }
     named.forEach { (id, owner) ->
         if (id != null && id !in categoryIds) inconsistent("$owner has a category not in the file")
     }

@@ -287,6 +287,7 @@ class ExpenseFormRepeatTest {
             categories = categories,
             categoryGroups = database.categoryGroupRepository(),
             recurring = recurring,
+            templates = database.templateRepository(CLOCK),
             clock = CLOCK,
             zoneId = Provider { ZONE },
         )
