@@ -6,6 +6,7 @@ import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantAliasEntity
 import io.github.jaytech64.depenses.core.database.RecurringTransactionEntity
+import io.github.jaytech64.depenses.core.database.TransactionTemplateEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.AliasOrigin
@@ -119,6 +120,25 @@ internal fun ExportedRecurring.toEntity(
     firstEpochDay = epochDay(firstDate),
     lastEpochDay = lastDate?.let(::epochDay),
     nextDueEpochDay = nextDue?.let(::epochDay),
+)
+
+internal fun ExportedTemplate.toEntity(
+    accountIds: Map<Long, Long>,
+    merchantIds: Map<Long, Long?>,
+    categoryIds: Map<Long, Long?>,
+) = TransactionTemplateEntity(
+    uuid = uuid,
+    name = name,
+    kind = TransactionKind.valueOf(kind),
+    amountMinor = amountMinor,
+    currency = currency,
+    merchantId = merchantId?.let { merchantIds[it] },
+    merchantRaw = merchantRaw,
+    accountId = accountId?.let(accountIds::getValue),
+    toAccountId = toAccountId?.let(accountIds::getValue),
+    categoryId = categoryId?.let { categoryIds[it] },
+    note = note,
+    lastUsedAtUtcMillis = lastUsedAtUtcMillis,
 )
 
 private fun epochDay(isoDate: String): Int = LocalDate.parse(isoDate).toEpochDay().toInt()
