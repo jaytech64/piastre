@@ -293,6 +293,112 @@ class ExpenseFormTemplateTest {
             assertFalse(open(template = NEW_TEMPLATE_ID).uiState.value.offersTemplates)
         }
 
+    @Test
+    fun `ticking Save as template names it after the merchant`() =
+        runTest {
+            val form = open()
+            form.onMerchantChange("Zoo Cafe")
+
+            form.template.onSaveAsTemplateChange(true)
+
+            assertEquals("Zoo Cafe", form.uiState.value.templateName)
+        }
+
+    @Test
+    fun `with no merchant it is named after the category, and a transfer after its accounts`() =
+        runTest {
+            val bank = accounts.add("Chèques", AccountType.BANK, last4 = null)
+            val cash = accounts.add("Comptant", AccountType.CASH, last4 = null)
+            val restaurants = categories.named("Restaurants")
+            val expense = open()
+            backgroundScope.launch { expense.category.known.collect {} }
+            advanceUntilIdle()
+            expense.category.onPick(restaurants)
+            val transfer = open()
+            transfer.onKindChange(TransactionKind.TRANSFER)
+            transfer.onAccountChange(AccountSlot.SOURCE, bank)
+            transfer.onAccountChange(AccountSlot.DESTINATION, cash)
+
+            expense.template.onSaveAsTemplateChange(true)
+            transfer.template.onSaveAsTemplateChange(true)
+
+            assertEquals("Restaurants", expense.uiState.value.templateName)
+            assertEquals("Chèques → Comptant", transfer.uiState.value.templateName)
+        }
+
+    @Test
+    fun `a name you typed is kept when the box is ticked again`() =
+        runTest {
+            val form = open()
+            form.onMerchantChange("Zoo Cafe")
+            form.template.onSaveAsTemplateChange(true)
+            form.template.onNameChange("Café matin")
+
+            form.template.onSaveAsTemplateChange(false)
+            form.template.onSaveAsTemplateChange(true)
+
+            assertEquals("Café matin", form.uiState.value.templateName)
+        }
+
+    @Test
+    fun `a transaction saved as a template needs the template's name`() =
+        runTest {
+            val form = open()
+            form.onAmountChange("4,75")
+            form.template.onSaveAsTemplateChange(true)
+
+            assertFalse(form.uiState.value.canSave)
+
+            form.template.onNameChange("Café matin")
+
+            assertTrue(form.uiState.value.canSave)
+        }
+
+    @Test
+    fun `saving with the box ticked writes the transaction and a template of it`() =
+        runTest {
+            val cash = accounts.add("Comptant", AccountType.CASH, last4 = null)
+            val form = open()
+            form.onAmountChange("4,75")
+            form.onMerchantChange("Zoo Cafe")
+            form.onAccountChange(AccountSlot.SOURCE, cash)
+            form.template.onSaveAsTemplateChange(true)
+
+            form.save()
+            advanceUntilIdle()
+
+            assertEquals(1, transactions.confirmed().first().size)
+            val template = templates.all().first().single()
+            assertEquals("Zoo Cafe", template.name)
+            assertEquals(Money(475, Money.CAD), template.amount)
+            assertEquals(cash, template.accountId)
+        }
+
+    @Test
+    fun `a transaction already in the ledger can be saved as a template, and stays one row`() =
+        runTest {
+            val form = open(editing = spentAt("Zoo Cafe", categoryId = null))
+            form.template.onSaveAsTemplateChange(true)
+
+            form.save()
+            advanceUntilIdle()
+
+            assertEquals(1, transactions.confirmed().first().size)
+            assertEquals(listOf("Zoo Cafe"), templates.all().first().map { it.name })
+        }
+
+    @Test
+    fun `saving without the box ticked makes no template`() =
+        runTest {
+            val form = open()
+            form.onAmountChange("4,75")
+
+            form.save()
+            advanceUntilIdle()
+
+            assertEquals(0, templates.count().first())
+        }
+
     /** A purchase at [merchant], which from then on gives [categoryId]. */
     private suspend fun spentAt(
         merchant: String,

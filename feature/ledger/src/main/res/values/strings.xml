@@ -164,4 +164,6 @@
     <string name="template_amount">Amount (optional)</string>
     <string name="template_delete_title">Delete %s?</string>
     <string name="template_delete_body">The transactions made from it stay in the ledger.</string>
+    <string name="template_save_as">Save as template</string>
+    <string name="template_save_name">Template name</string>
 </resources>

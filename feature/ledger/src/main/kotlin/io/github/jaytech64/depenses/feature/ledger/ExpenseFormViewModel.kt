@@ -123,7 +123,10 @@ data class ExpenseFormUiState(
     val capturedAccountLabel: String? = null,
     /** True when the form is about a template rather than a transaction: it then has a name, and no day. */
     val isTemplate: Boolean = false,
+    /** A template's name; on a transaction, the name of the template saving it will also make. */
     val templateName: String = "",
+    /** Whether the *Save as template* box is ticked. */
+    val savesAsTemplate: Boolean = false,
     /** The template the form was last filled from, so saving can note it was used. */
     val appliedTemplateId: Long? = null,
     val isEditing: Boolean = false,
@@ -139,9 +142,13 @@ data class ExpenseFormUiState(
 
     /**
      * A transaction needs an amount; a transfer also needs two accounts, and two
-     * different ones; and one that repeats cannot stop before it starts.
+     * different ones; one that repeats cannot stop before it starts; and one also
+     * saved as a template needs that template's name.
      */
-    private val transactionIsWhole: Boolean get() = amount != null && transferIsSettled && !endsBeforeItStarts
+    private val transactionIsWhole: Boolean
+        get() =
+            amount != null && transferIsSettled && !endsBeforeItStarts &&
+                (!savesAsTemplate || templateName.isNotBlank())
 
     /**
      * A template needs only a name. Its amount can be left out, but not half
@@ -161,6 +168,9 @@ data class ExpenseFormUiState(
 
     /** A template starts a transaction: one already written is corrected field by field. */
     val offersTemplates: Boolean get() = !isEditing && !isTemplate
+
+    /** Any transaction can be kept as a template, captured or not. A schedule or a template is not a transaction. */
+    val offersSavingAsTemplate: Boolean get() = !isSchedule && !isTemplate
 
     /**
      * The day the rhythm counts from. A schedule left on its next day with the same
@@ -298,6 +308,7 @@ class ExpenseFormViewModel
                 form = _uiState,
                 templates = templates,
                 following = { category.following(it).withLastAccount(lastAccounts.value) },
+                suggestedName = { it.suggestedTemplateName(category.known.value, knownAccounts.value) },
                 scope = viewModelScope,
                 sharing = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             )

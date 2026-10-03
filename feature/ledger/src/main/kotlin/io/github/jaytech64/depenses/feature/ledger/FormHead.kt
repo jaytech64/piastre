@@ -78,3 +78,28 @@ private fun ExpenseFormUiState.title(): Int =
         isEditing -> R.string.edit_title
         else -> R.string.manual_title
     }
+
+/**
+ * Keeps the transaction being saved as a template as well. The name appears
+ * once the box is ticked, already filled in, and Save waits for it.
+ */
+@Composable
+internal fun SaveAsTemplate(
+    state: ExpenseFormUiState,
+    choice: TemplateChoice,
+) {
+    OfferBox(
+        label = stringResource(R.string.template_save_as),
+        checked = state.savesAsTemplate,
+        onChange = choice::onSaveAsTemplateChange,
+    )
+    if (state.savesAsTemplate) {
+        OutlinedTextField(
+            value = state.templateName,
+            onValueChange = choice::onNameChange,
+            label = { Text(stringResource(R.string.template_save_name)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}

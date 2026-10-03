@@ -34,7 +34,8 @@ internal class FormWriter(
 ) {
     /**
      * Writes [state] over [original], or as a new transaction when there is none,
-     * then makes it repeat when that was asked. For a schedule it rewrites what
+     * then makes it repeat, and keeps it as a template, when either was asked.
+     * For a schedule it rewrites what
      * the schedule writes from now on instead, and for a template it writes the
      * template and no transaction.
      */
@@ -94,6 +95,7 @@ internal class FormWriter(
                 original.id
             }
         state.appliedTemplateId?.let { templates.markUsed(it) }
+        if (state.savesAsTemplate) templates.save(state.asTemplate())
         state.rhythm?.takeIf { state.canRepeat }?.let { recurring.repeat(id, it, state.lastDate) }
     }
 

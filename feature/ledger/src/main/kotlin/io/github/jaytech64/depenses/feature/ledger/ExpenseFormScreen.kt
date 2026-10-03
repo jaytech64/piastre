@@ -145,6 +145,8 @@ private fun EntryForm(
             modifier = Modifier.fillMaxWidth(),
         )
 
+        if (state.offersSavingAsTemplate) SaveAsTemplate(state, viewModel.template)
+
         FormActions(
             state = state,
             onSave = { viewModel.save() },
