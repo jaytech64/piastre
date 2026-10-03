@@ -298,3 +298,37 @@ data class RecurringTransactionEntity(
     val lastEpochDay: Int?,
     val nextDueEpochDay: Int?,
 )
+
+/**
+ * A transaction you type often, kept to fill the form with: what it is, and
+ * nothing about when.
+ *
+ * It writes nothing by itself, and a transaction filled from it keeps no link
+ * back, so changing or deleting a template never reaches a row already saved.
+ *
+ * [amountMinor] is null when the amount is different every time. [lastUsedAtUtcMillis]
+ * is when a transaction filled from it was last saved, and null until one is:
+ * it only decides the order templates are offered in.
+ *
+ * [uuid] is the template's identity outside this database, so an import can
+ * tell one it already holds from a new one.
+ */
+@Entity(
+    tableName = "transaction_template",
+    indices = [Index(value = ["uuid"], unique = true)],
+)
+data class TransactionTemplateEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val uuid: String,
+    val name: String,
+    val kind: TransactionKind,
+    val amountMinor: Long?,
+    val currency: String,
+    val merchantId: Long?,
+    val merchantRaw: String?,
+    val accountId: Long?,
+    val toAccountId: Long?,
+    val categoryId: Long?,
+    val note: String?,
+    val lastUsedAtUtcMillis: Long?,
+)

@@ -354,6 +354,18 @@ class DepensesDatabaseMigrationTest {
         assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE categoryId IS NOT NULL"))
     }
 
+    @Test
+    fun `migrating to schema 15 keeps the ledger and makes nothing a template`() {
+        helper.createDatabase(NAME, 14).use { database ->
+            database.insertTransaction()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 15, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(1, migrated.count("expense_transaction"))
+        assertEquals(0, migrated.count("transaction_template"))
+    }
+
     private fun SupportSQLiteDatabase.singleString(sql: String): String =
         query(sql).use { cursor ->
             cursor.moveToFirst()

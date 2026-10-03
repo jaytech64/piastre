@@ -17,6 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CategoryEntity::class,
         CategoryGroupEntity::class,
         RecurringTransactionEntity::class,
+        TransactionTemplateEntity::class,
     ],
     version = DepensesDatabase.VERSION,
     exportSchema = true,
@@ -38,8 +39,10 @@ abstract class DepensesDatabase : RoomDatabase() {
 
     abstract fun recurringTransactionDao(): RecurringTransactionDao
 
+    abstract fun transactionTemplateDao(): TransactionTemplateDao
+
     companion object {
-        const val VERSION: Int = 14
+        const val VERSION: Int = 15
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -60,6 +63,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_11_12,
                 MIGRATION_12_13,
                 MIGRATION_13_14,
+                MIGRATION_14_15,
             )
 
         const val NAME: String = "depenses.db"
@@ -470,6 +474,24 @@ private val MIGRATION_13_14 =
             )
             db.execSQL("ALTER TABLE category ADD COLUMN groupId INTEGER DEFAULT NULL")
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_category_groupId` ON `category` (`groupId`)")
+        }
+    }
+
+/** Schema 15 adds templates. Nothing existing is one, so the table starts empty. */
+private val MIGRATION_14_15 =
+    object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `transaction_template` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `uuid` TEXT NOT NULL, `name` TEXT NOT NULL, " +
+                    "`kind` TEXT NOT NULL, `amountMinor` INTEGER, `currency` TEXT NOT NULL, `merchantId` INTEGER, " +
+                    "`merchantRaw` TEXT, `accountId` INTEGER, `toAccountId` INTEGER, `categoryId` INTEGER, " +
+                    "`note` TEXT, `lastUsedAtUtcMillis` INTEGER)",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_transaction_template_uuid` " +
+                    "ON `transaction_template` (`uuid`)",
+            )
         }
     }
 
