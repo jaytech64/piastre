@@ -25,6 +25,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0013](0013-a-recurring-transaction-is-written-on-its-day.md) | A recurring transaction is written on its day, never projected | Accepted, revised twice — implemented |
 | [0014](0014-a-dated-filters-headline-is-the-balance-of-its-dates.md) | A dated filter's headline is the balance of its dates | Accepted, revised once — implemented |
 | [0015](0015-a-transaction-counts-from-its-day.md) | A transaction counts from its day | Accepted — implemented |
+| [0016](0016-a-categorys-group-is-read-through.md) | A category's group is read through, never written onto the row | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan in `.lavish/phase-2-capture-mvp.html`.
 Each record after them was written with the branch that made the decision.
