@@ -85,6 +85,8 @@
     <string name="form_category">Catégorie</string>
     <string name="form_category_none">Aucune</string>
     <string name="form_add_category">Nouvelle catégorie…</string>
+    <string name="form_category_recent">Récentes</string>
+    <string name="form_category_ungrouped">Sans groupe</string>
     <plurals name="category_offer_others_expense">
         <item quantity="one">Aussi l\'autre achat chez %2$s sans catégorie</item>
         <item quantity="other">Aussi les %1$d autres achats chez %2$s sans catégorie</item>

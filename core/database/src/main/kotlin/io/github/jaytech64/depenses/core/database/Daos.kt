@@ -643,6 +643,28 @@ interface CategoryDao {
     ): Flow<List<CategoryEntity>>
 
     /**
+     * At most [limit] categories confirmed rows of [kind] carried on or after
+     * [sinceEpochDay], in [byUse]'s order. A category not used since is not here,
+     * so the list is only ever what you have actually been picking.
+     */
+    @Query(
+        """
+        SELECT c.* FROM category c
+        JOIN expense_transaction t
+            ON t.categoryId = c.id AND t.kind = :kind AND t.status = 'CONFIRMED'
+            AND t.localDateEpochDay >= :sinceEpochDay
+        GROUP BY c.id
+        ORDER BY COUNT(*) DESC, MAX(t.occurredAtUtcMillis) DESC, c.normalisedName
+        LIMIT :limit
+        """,
+    )
+    fun recentlyUsed(
+        kind: TransactionKind,
+        sinceEpochDay: Int,
+        limit: Int,
+    ): Flow<List<CategoryEntity>>
+
+    /**
      * Confirmed transactions only, as an account counts them, and the merchants
      * and accounts that give it automatically.
      */

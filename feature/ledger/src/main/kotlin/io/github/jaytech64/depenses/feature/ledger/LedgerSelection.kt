@@ -5,6 +5,7 @@ package io.github.jaytech64.depenses.feature.ledger
 import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
+import io.github.jaytech64.depenses.core.model.CategoryGroup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -46,11 +47,17 @@ class LedgerSelection internal constructor(
         }
     }
 
-    /** Adds the category missing from the list and gives it to the selection. */
-    fun categoriseAsNew(name: String) {
+    /** What a category added for the selection can go in. */
+    val groups: Flow<List<CategoryGroup>> = categories.groups()
+
+    /** Adds the category missing from the list, in [groupId], and gives it to the selection. */
+    fun categoriseAsNew(
+        name: String,
+        groupId: Long?,
+    ) {
         val selected = now()
         scope.launch {
-            categories.named(name)?.let { editor.categoriseAll(selected, it) }
+            categories.named(name, groupId)?.let { editor.categoriseAll(selected, it) }
             end()
         }
     }

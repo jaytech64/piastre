@@ -70,6 +70,18 @@ class CategoryRepository
                 .byUse(kind, today.minusDays(RECENT_DAYS).toEpochDay().toInt())
                 .map { rows -> rows.map(CategoryEntity::toDomain) }
 
+        /**
+         * The few categories you have picked most for [kind] over the same
+         * [RECENT_DAYS], for the top of a list; none you have not used lately.
+         */
+        fun recent(
+            kind: TransactionKind,
+            today: LocalDate,
+        ): Flow<List<Category>> =
+            categories
+                .recentlyUsed(kind, today.minusDays(RECENT_DAYS).toEpochDay().toInt(), RECENT_COUNT)
+                .map { rows -> rows.map(CategoryEntity::toDomain) }
+
         /** Every category with what uses it, for Settings to sort in the screen's own language. */
         fun all(): Flow<List<CategoryUsage>> =
             categories.allWithCounts().map { rows ->
@@ -231,6 +243,7 @@ class CategoryRepository
 
         private companion object {
             const val RECENT_DAYS = 90L
+            const val RECENT_COUNT = 5
         }
     }
 

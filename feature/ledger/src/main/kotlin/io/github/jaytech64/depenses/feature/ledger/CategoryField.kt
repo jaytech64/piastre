@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.accountLabel
 import io.github.jaytech64.depenses.core.model.Category
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import java.text.Collator
 
 /** The category field, and the offer under it when there is something to offer. */
 @Composable
@@ -43,22 +44,31 @@ internal fun CategorySection(
     onAddCategory: () -> Unit,
 ) {
     val categories by picker.known.collectAsStateWithLifecycle()
+    val recent by picker.recent.collectAsStateWithLifecycle()
+    val groups by picker.groups.collectAsStateWithLifecycle()
     val offer by picker.offer.collectAsStateWithLifecycle()
-    CategoryField(selectedId, categories, onPick = picker::onPick, onAddCategory = onAddCategory)
+    val locale = currentLocale()
+    val sections =
+        remember(categories, groups, locale) { categorySections(categories, groups, Collator.getInstance(locale)) }
+    CategoryField(selectedId, categories, recent, sections, onPick = picker::onPick, onAddCategory = onAddCategory)
     offer?.takeIf { offers }?.let {
         CategoryOfferBoxes(it, onOthersChange = picker::onOthersChange, onFromNowOnChange = picker::onFromNowOnChange)
     }
 }
 
 /**
- * The category, picked from yours — the ones used most for this kind first — or
- * added from the last item without leaving the form.
+ * The category, picked from yours — the few used most lately for this kind
+ * first, then every one under its group — or added from the last item without
+ * leaving the form. A category used lately is in the list twice, at the top and
+ * under its group, so the list reads the same whatever you picked last.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryField(
     selectedId: Long?,
     categories: List<Category>,
+    recent: List<Category>,
+    sections: List<CategorySection>,
     onPick: (Long?) -> Unit,
     onAddCategory: () -> Unit,
 ) {
@@ -85,8 +95,20 @@ private fun CategoryField(
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.form_category_none)) }, onClick = { pick(null) })
-            categories.forEach { category ->
-                DropdownMenuItem(text = { Text(category.name) }, onClick = { pick(category.id) })
+            if (recent.isNotEmpty()) {
+                MenuHeading(stringResource(R.string.form_category_recent))
+                recent.forEach { category ->
+                    DropdownMenuItem(text = { Text(category.name) }, onClick = { pick(category.id) })
+                }
+            }
+            sections.forEach { section ->
+                // With no group at all, a heading over the one list would say nothing.
+                if (section.group != null || sections.size > 1) {
+                    MenuHeading(section.group?.name ?: stringResource(R.string.form_category_ungrouped))
+                }
+                section.categories.forEach { category ->
+                    DropdownMenuItem(text = { Text(category.name) }, onClick = { pick(category.id) })
+                }
             }
             HorizontalDivider()
             DropdownMenuItem(
@@ -98,6 +120,17 @@ private fun CategoryField(
             )
         }
     }
+}
+
+/** A heading among a menu's items, which arranges them and is not itself picked. */
+@Composable
+internal fun MenuHeading(label: String) {
+    Text(
+        label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 4.dp),
+    )
 }
 
 /**
