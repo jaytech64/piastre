@@ -39,8 +39,11 @@ import io.github.jaytech64.depenses.R
 import io.github.jaytech64.depenses.feature.ledger.EXPENSE_ID_ARG
 import io.github.jaytech64.depenses.feature.ledger.ExpenseFormScreen
 import io.github.jaytech64.depenses.feature.ledger.LedgerScreen
+import io.github.jaytech64.depenses.feature.ledger.NEW_TEMPLATE_ID
 import io.github.jaytech64.depenses.feature.ledger.RECURRING_ID_ARG
 import io.github.jaytech64.depenses.feature.ledger.RecurringListScreen
+import io.github.jaytech64.depenses.feature.ledger.TEMPLATE_ID_ARG
+import io.github.jaytech64.depenses.feature.ledger.TemplateListScreen
 import io.github.jaytech64.depenses.feature.reports.ReportsScreen
 import io.github.jaytech64.depenses.feature.review.ReviewScreen
 import io.github.jaytech64.depenses.feature.settings.CATEGORY_GROUP_ID_ARG
@@ -141,6 +144,7 @@ private fun NavGraphBuilder.settingsPages(navController: NavHostController) {
         SettingsScreen(
             onOpenCategories = { navController.navigate(CATEGORIES_ROUTE) },
             onOpenRecurring = { navController.navigate(RECURRING_LIST_ROUTE) },
+            onOpenTemplates = { navController.navigate(TEMPLATE_LIST_ROUTE) },
         )
     }
     composable(CATEGORIES_ROUTE) {
@@ -161,6 +165,34 @@ private fun NavGraphBuilder.settingsPages(navController: NavHostController) {
     composable(
         EDIT_RECURRING_ROUTE,
         arguments = listOf(navArgument(RECURRING_ID_ARG) { type = NavType.LongType }),
+    ) {
+        ExpenseFormScreen(onDone = { navController.popBackStack() })
+    }
+    templatePages(navController)
+}
+
+private fun NavGraphBuilder.templatePages(navController: NavHostController) {
+    composable(TEMPLATE_LIST_ROUTE) {
+        TemplateListScreen(
+            onOpen = { id -> navController.navigate(editTemplateRoute(id)) },
+            onNew = { navController.navigate(NEW_TEMPLATE_ROUTE) },
+        )
+    }
+    composable(
+        NEW_TEMPLATE_ROUTE,
+        arguments =
+            listOf(
+                navArgument(TEMPLATE_ID_ARG) {
+                    type = NavType.LongType
+                    defaultValue = NEW_TEMPLATE_ID
+                },
+            ),
+    ) {
+        ExpenseFormScreen(onDone = { navController.popBackStack() })
+    }
+    composable(
+        EDIT_TEMPLATE_ROUTE,
+        arguments = listOf(navArgument(TEMPLATE_ID_ARG) { type = NavType.LongType }),
     ) {
         ExpenseFormScreen(onDone = { navController.popBackStack() })
     }
@@ -235,3 +267,10 @@ private const val RECURRING_LIST_ROUTE = "settings/recurring"
 private const val EDIT_RECURRING_ROUTE = "settings/recurring/{$RECURRING_ID_ARG}"
 
 private fun editRecurringRoute(id: Long) = "settings/recurring/$id"
+
+/** Reached from Settings and returning to it; a template, new or not, opens in the transaction form. */
+private const val TEMPLATE_LIST_ROUTE = "settings/templates"
+private const val NEW_TEMPLATE_ROUTE = "settings/templates/new"
+private const val EDIT_TEMPLATE_ROUTE = "settings/templates/edit/{$TEMPLATE_ID_ARG}"
+
+private fun editTemplateRoute(id: Long) = "settings/templates/edit/$id"

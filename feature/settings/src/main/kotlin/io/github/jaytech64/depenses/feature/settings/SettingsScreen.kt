@@ -34,6 +34,7 @@ import java.time.Instant
 fun SettingsScreen(
     onOpenCategories: () -> Unit,
     onOpenRecurring: () -> Unit,
+    onOpenTemplates: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     healthViewModel: CaptureHealthViewModel = hiltViewModel(),
 ) {
@@ -91,6 +92,8 @@ fun SettingsScreen(
             onClick = onOpenRecurring,
         )
 
+        TemplatesRow(state.templateCount, onOpenTemplates)
+
         DataSection(lastAction = lastAction, viewModel = viewModel)
 
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
@@ -102,6 +105,23 @@ fun SettingsScreen(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
         )
     }
+}
+
+@Composable
+private fun TemplatesRow(
+    count: Int,
+    onClick: () -> Unit,
+) {
+    SettingRow(
+        title = stringResource(R.string.settings_templates),
+        body =
+            if (count == 0) {
+                stringResource(R.string.settings_templates_none)
+            } else {
+                pluralStringResource(R.plurals.settings_templates_count, count, count)
+            },
+        onClick = onClick,
+    )
 }
 
 /**

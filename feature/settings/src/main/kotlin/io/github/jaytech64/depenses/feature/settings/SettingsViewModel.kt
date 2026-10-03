@@ -20,6 +20,7 @@ import io.github.jaytech64.depenses.core.data.ImportReading
 import io.github.jaytech64.depenses.core.data.RawEventRepository
 import io.github.jaytech64.depenses.core.data.RecurringRepository
 import io.github.jaytech64.depenses.core.data.SettingsRepository
+import io.github.jaytech64.depenses.core.data.TemplateRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,7 @@ data class SettingsUiState(
     val rawEventCount: Int = 0,
     /** Recurring transactions with a day still to come. */
     val recurringCount: Int = 0,
+    val templateCount: Int = 0,
     val categoryCount: Int = 0,
     val groupCount: Int = 0,
     val loading: Boolean = true,
@@ -73,6 +75,7 @@ class SettingsViewModel
         private val erasure: DataErasure,
         rawEvents: RawEventRepository,
         recurring: RecurringRepository,
+        templates: TemplateRepository,
         categories: CategoryRepository,
         categoryGroups: CategoryGroupRepository,
     ) : ViewModel() {
@@ -92,11 +95,12 @@ class SettingsViewModel
                     groupCount = groupList.size,
                     loading = false,
                 )
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                initialValue = SettingsUiState(),
-            )
+            }.combine(templates.count()) { state, templateCount -> state.copy(templateCount = templateCount) }
+                .stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                    initialValue = SettingsUiState(),
+                )
 
         private val lastActionState = MutableStateFlow<LastAction?>(null)
 
