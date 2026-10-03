@@ -156,4 +156,12 @@
     </plurals>
     <string name="ledger_upcoming_show">Show what\'s upcoming</string>
     <string name="ledger_upcoming_hide">Hide what\'s upcoming</string>
+    <string name="templates_title">Templates</string>
+    <string name="templates_empty">No template yet. Tick Save as template when you add a transaction.</string>
+    <string name="templates_new">New template</string>
+    <string name="template_title">Template</string>
+    <string name="template_name">Name</string>
+    <string name="template_amount">Amount (optional)</string>
+    <string name="template_delete_title">Delete %s?</string>
+    <string name="template_delete_body">The transactions made from it stay in the ledger.</string>
 </resources>

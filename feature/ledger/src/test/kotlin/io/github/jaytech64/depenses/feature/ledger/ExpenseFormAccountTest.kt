@@ -197,6 +197,7 @@ class ExpenseFormAccountTest {
                 categories = categories,
                 categoryGroups = database.categoryGroupRepository(),
                 recurring = database.recurringRepository(Clock.systemUTC(), ZONE),
+                templates = database.templateRepository(),
                 clock = Clock.systemUTC(),
                 zoneId = Provider { ZONE },
             )

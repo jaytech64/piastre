@@ -107,17 +107,11 @@ private fun EntryForm(
             style = MaterialTheme.typography.titleLarge,
         )
 
+        if (state.isTemplate) TemplateNameField(state.templateName, viewModel.template::onNameChange)
+
         KindToggle(kind = state.kind, onChange = viewModel::onKindChange)
 
-        OutlinedTextField(
-            value = state.amountText,
-            onValueChange = viewModel::onAmountChange,
-            label = { Text(stringResource(R.string.manual_amount)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            isError = state.amountText.isNotBlank() && state.amount == null,
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        AmountField(state, viewModel::onAmountChange)
 
         // A transfer moves your own money, so it has no merchant to name.
         if (state.kind != TransactionKind.TRANSFER) {
@@ -142,11 +136,12 @@ private fun EntryForm(
         CategorySection(
             state.categoryId,
             viewModel.category,
-            offers = !state.isSchedule,
+            offers = !state.isSchedule && !state.isTemplate,
             onAddCategory = { onPick(Picking.ADD_CATEGORY) },
         )
 
-        WhenSection(state = state, viewModel = viewModel, onPick = onPick)
+        // A template says what a transaction is, never when.
+        if (!state.isTemplate) WhenSection(state = state, viewModel = viewModel, onPick = onPick)
 
         OutlinedTextField(
             value = state.note,
@@ -162,6 +157,37 @@ private fun EntryForm(
             onDelete = { onPick(Picking.DELETE) },
         )
     }
+}
+
+@Composable
+private fun TemplateNameField(
+    name: String,
+    onChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = name,
+        onValueChange = onChange,
+        label = { Text(stringResource(R.string.template_name)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/** Marked wrong only once something is typed that is not an amount: empty is not an error, it is not done yet. */
+@Composable
+private fun AmountField(
+    state: ExpenseFormUiState,
+    onChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = state.amountText,
+        onValueChange = onChange,
+        label = { Text(stringResource(if (state.isTemplate) R.string.template_amount else R.string.manual_amount)) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        isError = state.amountText.isNotBlank() && state.amount == null,
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 /** Save and Cancel together; Delete kept apart at the far end, and only when there is something to delete. */
@@ -229,6 +255,7 @@ private fun AccountSlot.picking(): Picking =
 
 private fun ExpenseFormUiState.title(): Int =
     when {
+        isTemplate -> R.string.template_title
         isSchedule -> R.string.recurring_edit_title
         isEditing -> R.string.edit_title
         else -> R.string.manual_title
