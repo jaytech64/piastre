@@ -169,7 +169,7 @@ private fun FilterFields(
 ) {
     SectionTitle(R.string.ledger_filters_where)
     AccountFilterField(state.accounts, state.filter.account, actions.onAccount)
-    CategoryFilterField(state.categories, state.filter.category, actions.onCategory)
+    CategoryFilterField(state.categories, state.categoryGroups, state.filter.category, actions.onCategory)
     MerchantFilterField(state.filter.merchant, onChooseMerchant)
 
     SectionTitle(R.string.ledger_filters_when)

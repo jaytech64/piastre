@@ -196,6 +196,7 @@ internal fun categoryLabel(choice: CategoryChoice): String =
     when (choice) {
         CategoryChoice.Uncategorised -> stringResource(R.string.ledger_filter_no_category)
         is CategoryChoice.Named -> choice.category.name
+        is CategoryChoice.InGroup -> choice.group.name
     }
 
 /** Material's own dense icon size, which a chip's icon sits at. */

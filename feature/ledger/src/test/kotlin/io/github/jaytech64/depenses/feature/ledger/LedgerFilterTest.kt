@@ -16,6 +16,7 @@ import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Category
+import io.github.jaytech64.depenses.core.model.CategoryGroup
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionSource
@@ -122,6 +123,53 @@ class LedgerFilterTest : LedgerTest() {
             assertEquals(Money(-120_000, Money.CAD), state.headline.transfers)
             assertEquals(Money(-120_000, Money.CAD), state.headline.balance)
             assertEquals(Money(-120_000, Money.CAD), state.days.single().total)
+        }
+
+    @Test
+    fun `a group shows every category in it, and adds up to them`() =
+        runTest {
+            val home = categoryRepository().namedGroup("Maison")!!
+            val power = categoryRepository().named("Électricité", home)!!
+            val insurance = categoryRepository().named("Assurance", home)!!
+            val desrives = account("Desrives")
+            val mortgage = account("Hypothèque")
+            insert(amountMinor = 8_410, day = TODAY, categoryId = power)
+            insert(amountMinor = 6_000, day = TODAY, categoryId = insurance)
+            insert(
+                amountMinor = 120_000,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = desrives,
+                toAccountId = mortgage,
+                categoryId = categoryRepository().named("Hypothèque", home),
+            )
+            insert(amountMinor = 4_000, day = TODAY, categoryId = category("Épicerie"))
+
+            viewModel.filters.onCategorySelected(CategoryChoice.InGroup(CategoryGroup(home, "Maison"), emptySet()))
+            val state = viewModel.uiState.first { it.filter.category != null }
+
+            assertEquals("Maison", (state.filter.category as CategoryChoice.InGroup).group.name)
+            assertEquals(
+                3,
+                state.days
+                    .single()
+                    .transactions.size,
+            )
+            assertEquals(Money(-134_410, Money.CAD), state.headline.balance)
+            assertEquals(Money(-120_000, Money.CAD), state.headline.transfers)
+        }
+
+    @Test
+    fun `the filter offers each group some row's category is in, counting all its rows`() =
+        runTest {
+            val home = categoryRepository().namedGroup("Maison")!!
+            categoryRepository().namedGroup("Auto")
+            insert(amountMinor = 8_410, day = TODAY, categoryId = categoryRepository().named("Électricité", home))
+            insert(amountMinor = 6_000, day = TODAY, categoryId = categoryRepository().named("Assurance", home))
+
+            val state = viewModel.uiState.first { it.categoryGroups.isNotEmpty() }
+
+            assertEquals(listOf("Maison" to 2), state.categoryGroups.map { it.value.group.name to it.count })
         }
 
     /** Under an account as well, the account's own arithmetic still decides (ADR-0006). */

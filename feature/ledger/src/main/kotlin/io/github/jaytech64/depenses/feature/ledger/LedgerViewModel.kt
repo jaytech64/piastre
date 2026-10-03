@@ -16,6 +16,7 @@ import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Category
+import io.github.jaytech64.depenses.core.model.CategoryGroup
 import io.github.jaytech64.depenses.core.model.CategoryUsage
 import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
@@ -71,6 +72,12 @@ sealed interface CategoryChoice {
 
     data class Named(
         val category: Category,
+    ) : CategoryChoice
+
+    /** Every category in [group], which [categoryIds] lists as they are now. */
+    data class InGroup(
+        val group: CategoryGroup,
+        val categoryIds: Set<Long>,
     ) : CategoryChoice
 }
 
@@ -134,6 +141,7 @@ data class LedgerFilter(
             null -> true
             CategoryChoice.Uncategorised -> categoryId == null
             is CategoryChoice.Named -> categoryId == category.category.id
+            is CategoryChoice.InGroup -> categoryId in category.categoryIds
         }
 }
 
@@ -161,6 +169,8 @@ data class LedgerUiState(
     val accounts: List<Account> = emptyList(),
     /** Only what some confirmed row carries, so no choice leads to an empty screen. */
     val categories: List<FilterOption<CategoryChoice>> = emptyList(),
+    /** Likewise only groups whose categories some confirmed row carries, each counting all of them. */
+    val categoryGroups: List<FilterOption<CategoryChoice.InGroup>> = emptyList(),
     /** Likewise only merchants some confirmed row names. */
     val merchants: List<FilterOption<Merchant>> = emptyList(),
     val filter: LedgerFilter = LedgerFilter(),
@@ -212,7 +222,7 @@ class LedgerViewModel
         @OptIn(ExperimentalCoroutinesApi::class)
         private val known: Flow<Known> =
             ticker.dates().flatMapLatest { today ->
-                combine(accounts.all(today), categories.all(), merchants.all(), ::Known)
+                combine(accounts.all(today), categories.all(), categories.groups(), merchants.all(), ::Known)
             }
 
         /** Whether what is dated after today is shown open or as its one line. */
@@ -254,7 +264,8 @@ class LedgerViewModel
                     headline = days.headlineRows(filter, today).summaryOf(filter),
                     needsReview = needsReview,
                     accounts = known.accounts,
-                    categories = transactions.categoryOptions(today),
+                    categories = transactions.categoryOptions(today, known.categories),
+                    categoryGroups = transactions.groupOptions(known),
                     merchants = transactions.merchantOptions(today, known.merchants),
                     filter = filter,
                     typedAtLeast = keys.amounts.atLeast,
@@ -274,18 +285,32 @@ class LedgerViewModel
 
         /**
          * Rows with no category first, since finding them is most of why the choice
-         * is there; then the categories, in the order [optionsBy] gives.
+         * is there; then the categories, in the order [optionsBy] gives, each as it
+         * is known now so the screen can put it under its group.
          */
-        private fun List<Transaction>.categoryOptions(today: LocalDate): List<FilterOption<CategoryChoice>> {
+        private fun List<Transaction>.categoryOptions(
+            today: LocalDate,
+            known: List<CategoryUsage>,
+        ): List<FilterOption<CategoryChoice>> {
             val uncategorised = count { it.categoryId == null }
+            val byId = known.associate { it.category.id to it.category }
             val named =
                 optionsBy(today, name = { it.category.name }) { row ->
-                    row.categoryId?.let { CategoryChoice.Named(Category(it, row.categoryName.orEmpty())) }
+                    row.categoryId?.let { id ->
+                        CategoryChoice.Named(byId[id] ?: Category(id, row.categoryName.orEmpty()))
+                    }
                 }
             return listOfNotNull(
                 FilterOption<CategoryChoice>(CategoryChoice.Uncategorised, uncategorised).takeIf { uncategorised > 0 },
             ) + named
         }
+
+        /** Each group some row's category is in, with how many rows its categories carry together. */
+        private fun List<Transaction>.groupOptions(known: Known): List<FilterOption<CategoryChoice.InGroup>> =
+            known.groups.mapNotNull { group ->
+                val choice = known.inGroup(group)
+                FilterOption(choice, count { it.categoryId in choice.categoryIds }).takeIf { it.count > 0 }
+            }
 
         /** Named as the merchant is called now, which a row read before a rename may not be. */
         private fun List<Transaction>.merchantOptions(
@@ -336,8 +361,15 @@ class LedgerViewModel
         private data class Known(
             val accounts: List<Account>,
             val categories: List<CategoryUsage>,
+            val groups: List<CategoryGroup>,
             val merchants: List<Merchant>,
         ) {
+            fun inGroup(group: CategoryGroup) =
+                CategoryChoice.InGroup(
+                    group,
+                    categories.filter { it.category.groupId == group.id }.mapTo(mutableSetOf()) { it.category.id },
+                )
+
             /**
              * The filter resolved against what exists. Something removed in Settings
              * leaves a filter nothing answers for, and the screen goes back to
@@ -348,12 +380,20 @@ class LedgerViewModel
                 LedgerFilter(
                     account = accounts.firstOrNull { it.id == selection.where.accountId },
                     category =
-                        if (selection.where.uncategorisedOnly) {
-                            CategoryChoice.Uncategorised
-                        } else {
-                            categories
-                                .firstOrNull { it.category.id == selection.where.categoryId }
-                                ?.let { CategoryChoice.Named(it.category) }
+                        when {
+                            selection.where.uncategorisedOnly -> {
+                                CategoryChoice.Uncategorised
+                            }
+
+                            selection.where.groupId != null -> {
+                                groups.firstOrNull { it.id == selection.where.groupId }?.let(::inGroup)
+                            }
+
+                            else -> {
+                                categories
+                                    .firstOrNull { it.category.id == selection.where.categoryId }
+                                    ?.let { CategoryChoice.Named(it.category) }
+                            }
                         },
                     merchant = merchants.firstOrNull { it.id == selection.where.merchantId },
                     from = selection.fromEpochDay?.let(LocalDate::ofEpochDay),
@@ -472,7 +512,8 @@ private fun List<Transaction>.categoriesFor(
  *
  * Under a category, with no account, a transfer is money that left for what the
  * category names (ADR-0011): the mortgage payment is what *Hypothèque* cost you
- * this month. *No category* is not a place money goes, so an uncategorised
+ * this month. A group is its categories together, so the same transfer is
+ * money that left under the group too, and a group adds up to its categories. *No category* is not a place money goes, so an uncategorised
  * transfer — a card payment, most often — keeps the whole ledger's zero rather
  * than charging you a second time for the purchases it settles.
  */
@@ -481,7 +522,7 @@ private fun Transaction.balanceMovedOn(filter: LedgerFilter): Money {
     return when {
         kind != TransactionKind.TRANSFER -> signedAmount
         account != null -> if (accountId == account.id) -amount else amount
-        filter.category is CategoryChoice.Named -> -amount
+        filter.category is CategoryChoice.Named || filter.category is CategoryChoice.InGroup -> -amount
         else -> signedAmount
     }
 }

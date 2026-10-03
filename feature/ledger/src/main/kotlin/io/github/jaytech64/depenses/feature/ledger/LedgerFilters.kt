@@ -31,6 +31,7 @@ class LedgerFilters internal constructor(
             combine(
                 savedState.getStateFlow<Long?>(SELECTED_ACCOUNT_ID, null),
                 savedState.getStateFlow<Long?>(SELECTED_CATEGORY_ID, null),
+                savedState.getStateFlow<Long?>(SELECTED_CATEGORY_GROUP_ID, null),
                 savedState.getStateFlow(UNCATEGORISED_ONLY, false),
                 savedState.getStateFlow<Long?>(SELECTED_MERCHANT_ID, null),
                 ::WhereKeys,
@@ -55,6 +56,7 @@ class LedgerFilters internal constructor(
     fun onCategorySelected(choice: CategoryChoice?) {
         savedState[UNCATEGORISED_ONLY] = choice == CategoryChoice.Uncategorised
         savedState[SELECTED_CATEGORY_ID] = (choice as? CategoryChoice.Named)?.category?.id
+        savedState[SELECTED_CATEGORY_GROUP_ID] = (choice as? CategoryChoice.InGroup)?.group?.id
     }
 
     /** Null shows every merchant again. */
@@ -102,6 +104,7 @@ class LedgerFilters internal constructor(
     private companion object {
         const val SELECTED_ACCOUNT_ID = "selectedAccountId"
         const val SELECTED_CATEGORY_ID = "selectedCategoryId"
+        const val SELECTED_CATEGORY_GROUP_ID = "selectedCategoryGroupId"
         const val UNCATEGORISED_ONLY = "uncategorisedOnly"
         const val SELECTED_MERCHANT_ID = "selectedMerchantId"
         const val FROM_EPOCH_DAY = "fromEpochDay"
@@ -142,6 +145,7 @@ internal data class AmountKeys(
 internal data class WhereKeys(
     val accountId: Long?,
     val categoryId: Long?,
+    val groupId: Long?,
     val uncategorisedOnly: Boolean,
     val merchantId: Long?,
 )

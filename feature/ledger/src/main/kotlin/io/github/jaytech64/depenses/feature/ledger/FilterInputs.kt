@@ -14,6 +14,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.designsystem.accountLabel
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Merchant
+import java.text.Collator
 
 /**
  * Every account, each with what it currently holds, so the choice is made against
@@ -68,12 +70,38 @@ internal fun AccountFilterField(
     }
 }
 
+/**
+ * *No category* first, then each group — itself a choice, showing every category
+ * in it — with its categories under it, A to Z, and those in no group last. With
+ * no group at all, the categories keep the order the form suggests them in.
+ */
 @Composable
 internal fun CategoryFilterField(
     options: List<FilterOption<CategoryChoice>>,
+    groups: List<FilterOption<CategoryChoice.InGroup>>,
     selected: CategoryChoice?,
     onPick: (CategoryChoice?) -> Unit,
 ) {
+    val locale = currentLocale()
+    val named = options.mapNotNull { option -> (option.value as? CategoryChoice.Named)?.let { it.category to option } }
+    val counts = named.associate { (category, option) -> category.id to option }
+    val sections =
+        remember(named, groups, locale) {
+            categorySections(named.map { it.first }, groups.map { it.value.group }, Collator.getInstance(locale))
+        }
+    val groupOptions = groups.associateBy { it.value.group.id }
+
+    @Composable
+    fun Item(
+        option: FilterOption<CategoryChoice>,
+        pick: (() -> Unit) -> Unit,
+    ) = DropdownMenuItem(
+        text = { Text(categoryLabel(option.value), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = { SelectedMark(selected == option.value) },
+        trailingIcon = { Aside(option.count.toString()) },
+        onClick = { pick { onPick(option.value) } },
+    )
+
     FilterDropdown(
         label = stringResource(R.string.ledger_filter_category),
         value = selected?.let { categoryLabel(it) } ?: stringResource(R.string.ledger_filter_all_categories),
@@ -83,15 +111,46 @@ internal fun CategoryFilterField(
             leadingIcon = { SelectedMark(selected == null) },
             onClick = { pick { onPick(null) } },
         )
-        options.forEach { option ->
-            DropdownMenuItem(
-                text = { Text(categoryLabel(option.value), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                leadingIcon = { SelectedMark(selected == option.value) },
-                trailingIcon = { Aside(option.count.toString()) },
-                onClick = { pick { onPick(option.value) } },
-            )
+        options.filter { it.value == CategoryChoice.Uncategorised }.forEach { Item(it, pick) }
+        if (groups.isEmpty()) {
+            named.forEach { (_, option) -> Item(option, pick) }
+            return@FilterDropdown
+        }
+        sections.forEach { section ->
+            val group = section.group
+            if (group == null) {
+                MenuHeading(stringResource(R.string.form_category_ungrouped))
+            } else {
+                groupOptions[group.id]?.let { GroupItem(it, selected, pick, onPick) }
+            }
+            section.categories.forEach { category -> counts[category.id]?.let { Item(it, pick) } }
         }
     }
+}
+
+/** A group in the category menu: a heading that is itself a choice, showing every category under it. */
+@Composable
+private fun GroupItem(
+    option: FilterOption<CategoryChoice.InGroup>,
+    selected: CategoryChoice?,
+    pick: (() -> Unit) -> Unit,
+    onPick: (CategoryChoice?) -> Unit,
+) {
+    val isSelected = (selected as? CategoryChoice.InGroup)?.group?.id == option.value.group.id
+    DropdownMenuItem(
+        text = {
+            Text(
+                option.value.group.name,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        leadingIcon = { SelectedMark(isSelected) },
+        trailingIcon = { Aside(option.count.toString()) },
+        onClick = { pick { onPick(option.value) } },
+    )
 }
 
 /** A read-only field whose menu closes itself once something in it is picked. */
