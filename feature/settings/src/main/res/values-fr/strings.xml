@@ -88,6 +88,30 @@
     <string name="settings_categories_delete_no_money">Aucun montant ni total ne change.</string>
     <string name="settings_categories_delete">Supprimer</string>
     <string name="settings_categories_cancel">Annuler</string>
+    <plurals name="settings_categories_count">
+        <item quantity="one">%d catégorie</item>
+        <item quantity="other">%d catégories</item>
+    </plurals>
+    <plurals name="settings_categories_in_groups">
+        <item quantity="one">%1$d dans %2$d groupe</item>
+        <item quantity="other">%1$d dans %2$d groupes</item>
+    </plurals>
+    <string name="categories_ungrouped">Sans groupe</string>
+    <string name="categories_group_empty">Aucune catégorie pour l\'instant</string>
+    <string name="categories_add_group">Ajouter un groupe</string>
+    <string name="categories_group_add_title">Nouveau groupe</string>
+    <string name="categories_group_name">Nom</string>
+    <string name="categories_group_add">Ajouter</string>
+    <string name="categories_group_save">Enregistrer</string>
+    <string name="categories_group_rename">Renommer le groupe</string>
+    <string name="categories_group_delete">Supprimer le groupe</string>
+    <string name="categories_group_name_taken">Un autre groupe porte déjà ce nom.</string>
+    <!-- "one" also matches 0 in French; the dialog only says this when there is at least one. -->
+    <plurals name="categories_group_delete_ungroups" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Sa catégorie n\'aura plus de groupe.</item>
+        <item quantity="other">Ses %d catégories n\'auront plus de groupe.</item>
+    </plurals>
+    <string name="categories_group_delete_no_transaction">Aucune transaction ne sera impactée.</string>
 
     <string name="settings_data_section">Vos données</string>
     <string name="settings_export">Exporter</string>
@@ -155,6 +179,7 @@
     <string name="export_column_type">type</string>
     <string name="export_column_account">compte</string>
     <string name="export_column_category">catégorie</string>
+    <string name="export_column_category_group">groupe</string>
     <string name="export_column_to_account">compte de destination</string>
     <string name="settings_recurring">Transactions récurrentes</string>
     <plurals name="settings_recurring_active">

@@ -20,4 +20,6 @@
     <string name="category_dialog_save">Enregistrer</string>
     <string name="category_dialog_delete">Supprimer</string>
     <string name="category_dialog_cancel">Annuler</string>
+    <string name="category_dialog_group">Groupe</string>
+    <string name="category_dialog_no_group">Aucun</string>
 </resources>

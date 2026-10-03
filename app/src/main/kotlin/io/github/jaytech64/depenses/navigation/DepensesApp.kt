@@ -27,6 +27,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -41,7 +43,10 @@ import io.github.jaytech64.depenses.feature.ledger.RECURRING_ID_ARG
 import io.github.jaytech64.depenses.feature.ledger.RecurringListScreen
 import io.github.jaytech64.depenses.feature.reports.ReportsScreen
 import io.github.jaytech64.depenses.feature.review.ReviewScreen
+import io.github.jaytech64.depenses.feature.settings.CATEGORY_GROUP_ID_ARG
 import io.github.jaytech64.depenses.feature.settings.CaptureHealthBanner
+import io.github.jaytech64.depenses.feature.settings.CategoriesScreen
+import io.github.jaytech64.depenses.feature.settings.CategoryGroupScreen
 import io.github.jaytech64.depenses.feature.settings.OnboardingScreen
 import io.github.jaytech64.depenses.feature.settings.OnboardingViewModel
 import io.github.jaytech64.depenses.feature.settings.SettingsScreen
@@ -124,20 +129,40 @@ private fun MainShell() {
                 }
                 composable(Destination.REPORTS.route) { ReportsScreen() }
                 composable(Destination.REVIEW.route) { ReviewScreen() }
-                composable(Destination.SETTINGS.route) {
-                    SettingsScreen(onOpenRecurring = { navController.navigate(RECURRING_LIST_ROUTE) })
-                }
-                composable(RECURRING_LIST_ROUTE) {
-                    RecurringListScreen(onOpen = { id -> navController.navigate(editRecurringRoute(id)) })
-                }
-                composable(
-                    EDIT_RECURRING_ROUTE,
-                    arguments = listOf(navArgument(RECURRING_ID_ARG) { type = NavType.LongType }),
-                ) {
-                    ExpenseFormScreen(onDone = { navController.popBackStack() })
-                }
+                settingsPages(navController)
             }
         }
+    }
+}
+
+/** Settings, and the pages reached from it that return to it. */
+private fun NavGraphBuilder.settingsPages(navController: NavHostController) {
+    composable(Destination.SETTINGS.route) {
+        SettingsScreen(
+            onOpenCategories = { navController.navigate(CATEGORIES_ROUTE) },
+            onOpenRecurring = { navController.navigate(RECURRING_LIST_ROUTE) },
+        )
+    }
+    composable(CATEGORIES_ROUTE) {
+        CategoriesScreen(onOpen = { id -> navController.navigate(categoryGroupRoute(id)) })
+    }
+    composable(
+        CATEGORY_GROUP_ROUTE,
+        arguments = listOf(navArgument(CATEGORY_GROUP_ID_ARG) { type = NavType.LongType }),
+    ) {
+        CategoryGroupScreen(onClose = { navController.popBackStack() })
+    }
+    composable(UNGROUPED_CATEGORIES_ROUTE) {
+        CategoryGroupScreen(onClose = { navController.popBackStack() })
+    }
+    composable(RECURRING_LIST_ROUTE) {
+        RecurringListScreen(onOpen = { id -> navController.navigate(editRecurringRoute(id)) })
+    }
+    composable(
+        EDIT_RECURRING_ROUTE,
+        arguments = listOf(navArgument(RECURRING_ID_ARG) { type = NavType.LongType }),
+    ) {
+        ExpenseFormScreen(onDone = { navController.popBackStack() })
     }
 }
 
@@ -197,6 +222,13 @@ private const val ADD_EXPENSE_ROUTE = "ledger/add"
 private const val EDIT_EXPENSE_ROUTE = "ledger/edit/{$EXPENSE_ID_ARG}"
 
 private fun editExpenseRoute(id: Long) = "ledger/edit/$id"
+
+/** Reached from Settings and returning to it; the categories in no group have a page of their own. */
+private const val CATEGORIES_ROUTE = "settings/categories"
+private const val CATEGORY_GROUP_ROUTE = "settings/categories/group/{$CATEGORY_GROUP_ID_ARG}"
+private const val UNGROUPED_CATEGORIES_ROUTE = "settings/categories/ungrouped"
+
+private fun categoryGroupRoute(id: Long?) = id?.let { "settings/categories/group/$it" } ?: UNGROUPED_CATEGORIES_ROUTE
 
 /** Reached from Settings and returning to it; a recurring transaction opens in the same form. */
 private const val RECURRING_LIST_ROUTE = "settings/recurring"

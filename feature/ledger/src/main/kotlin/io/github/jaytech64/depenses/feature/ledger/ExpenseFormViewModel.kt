@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.depenses.core.data.AccountRepository
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.RecurringRepository
@@ -173,6 +174,7 @@ class ExpenseFormViewModel
         merchants: MerchantRepository,
         private val accounts: AccountRepository,
         private val categories: CategoryRepository,
+        private val categoryGroups: CategoryGroupRepository,
         private val recurring: RecurringRepository,
         private val clock: Clock,
         private val zoneId: Provider<ZoneId>,
@@ -244,6 +246,7 @@ class ExpenseFormViewModel
                 merchants = knownMerchants,
                 accounts = knownAccounts,
                 categories = categories,
+                categoryGroups = categoryGroups,
                 editingId = editingId,
                 today = { LocalDate.now(zoneId.get()) },
                 scope = viewModelScope,

@@ -58,6 +58,9 @@ object DatabaseModule {
     fun categoryDao(database: DepensesDatabase): CategoryDao = database.categoryDao()
 
     @Provides
+    fun categoryGroupDao(database: DepensesDatabase): CategoryGroupDao = database.categoryGroupDao()
+
+    @Provides
     fun recurringTransactionDao(database: DepensesDatabase): RecurringTransactionDao =
         database.recurringTransactionDao()
 }

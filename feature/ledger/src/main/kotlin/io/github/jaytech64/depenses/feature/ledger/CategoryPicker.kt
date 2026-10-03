@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import io.github.jaytech64.depenses.core.data.CategoryGroupRepository
 import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Category
+import io.github.jaytech64.depenses.core.model.CategoryGroup
 import io.github.jaytech64.depenses.core.model.Merchant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +35,7 @@ class CategoryPicker internal constructor(
     private val merchants: StateFlow<List<Merchant>>,
     private val accounts: StateFlow<List<Account>>,
     private val categories: CategoryRepository,
+    categoryGroups: CategoryGroupRepository,
     editingId: Long?,
     today: () -> LocalDate,
     private val scope: CoroutineScope,
@@ -45,6 +48,17 @@ class CategoryPicker internal constructor(
             .distinctUntilChanged()
             .flatMapLatest { kind -> categories.byUse(kind, today()) }
             .stateIn(scope, sharing, emptyList())
+
+    /** The few categories picked most lately for the kind being entered, for the top of the list. */
+    val recent: StateFlow<List<Category>> =
+        form
+            .map { it.kind }
+            .distinctUntilChanged()
+            .flatMapLatest { kind -> categories.recent(kind, today()) }
+            .stateIn(scope, sharing, emptyList())
+
+    /** What the rest of the list is arranged under, and what a category added here can go in. */
+    val groups: StateFlow<List<CategoryGroup>> = categoryGroups.all().stateIn(scope, sharing, emptyList())
 
     private val place =
         combine(form, merchants, accounts) { state, merchants, accounts -> state.place(merchants, accounts) }
@@ -71,9 +85,15 @@ class CategoryPicker internal constructor(
 
     fun onFromNowOnChange(ticked: Boolean) = form.update { it.copy(fromNowOnChoice = ticked) }
 
-    /** Adds the category missing from the list and picks it, or picks the one you already have under that name. */
-    fun add(name: String) {
-        scope.launch { categories.named(name)?.let(::onPick) }
+    /**
+     * Adds the category missing from the list, in [groupId], and picks it; or
+     * picks the one you already have under that name, which stays in its group.
+     */
+    fun add(
+        name: String,
+        groupId: Long?,
+    ) {
+        scope.launch { categories.named(name, groupId)?.let(::onPick) }
     }
 
     /**

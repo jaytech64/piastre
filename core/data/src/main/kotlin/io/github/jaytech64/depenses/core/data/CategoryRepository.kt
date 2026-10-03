@@ -66,6 +66,18 @@ class CategoryRepository
                 .byUse(kind, today.minusDays(RECENT_DAYS).toEpochDay().toInt())
                 .map { rows -> rows.map(CategoryEntity::toDomain) }
 
+        /**
+         * The few categories you have picked most for [kind] over the same
+         * [RECENT_DAYS], for the top of a list; none you have not used lately.
+         */
+        fun recent(
+            kind: TransactionKind,
+            today: LocalDate,
+        ): Flow<List<Category>> =
+            categories
+                .recentlyUsed(kind, today.minusDays(RECENT_DAYS).toEpochDay().toInt(), RECENT_COUNT)
+                .map { rows -> rows.map(CategoryEntity::toDomain) }
+
         /** Every category with what uses it, for Settings to sort in the screen's own language. */
         fun all(): Flow<List<CategoryUsage>> =
             categories.allWithCounts().map { rows ->
@@ -73,14 +85,19 @@ class CategoryRepository
             }
 
         /**
-         * The category a typed name belongs to, created when there is none yet;
-         * null for a name with nothing in it. Typing `epicerie` picks the Épicerie
-         * you already have and keeps its spelling.
+         * The category a typed name belongs to, created in [groupId] when there is
+         * none yet; null for a name with nothing in it. Typing `epicerie` picks the
+         * Épicerie you already have, keeps its spelling, and leaves it in its group.
          */
-        suspend fun named(typed: String): Long? {
+        suspend fun named(
+            typed: String,
+            groupId: Long? = null,
+        ): Long? {
             val name = CategoryName.of(typed) ?: return null
             categories.byNormalisedName(name.normalisedName)?.let { return it.id }
-            categories.insert(CategoryEntity(name = name.displayName, normalisedName = name.normalisedName))
+            categories.insert(
+                CategoryEntity(name = name.displayName, normalisedName = name.normalisedName, groupId = groupId),
+            )
             return categories.byNormalisedName(name.normalisedName)?.id
         }
 
@@ -150,22 +167,21 @@ class CategoryRepository
                     }
                 }
             }
-            when {
-                reach.fromNowOn -> setDefault(anchor, categoryId)
-                defaultAt(anchor) == categoryId -> setDefault(anchor, null)
+            val default =
+                when {
+                    reach.fromNowOn -> categoryId
+                    defaultAt(anchor) == categoryId -> null
+                    else -> return
+                }
+            when (anchor) {
+                is CategoryAnchor.AtMerchant -> merchants.setCategory(anchor.merchantId, default)
+                is CategoryAnchor.IntoAccount -> accounts.setCategory(anchor.accountId, default)
             }
-        }
-
-        private suspend fun setDefault(
-            anchor: CategoryAnchor,
-            categoryId: Long?,
-        ) = when (anchor) {
-            is CategoryAnchor.AtMerchant -> merchants.setCategory(anchor.merchantId, categoryId)
-            is CategoryAnchor.IntoAccount -> accounts.setCategory(anchor.accountId, categoryId)
         }
 
         private companion object {
             const val RECENT_DAYS = 90L
+            const val RECENT_COUNT = 5
         }
     }
 
@@ -183,9 +199,9 @@ fun anchorFor(
         TransactionKind.EXPENSE, TransactionKind.INCOME -> merchantId?.let(CategoryAnchor::AtMerchant)
     }
 
-private fun CategoryEntity.toDomain() = Category(id = id, name = name)
+internal fun CategoryEntity.toDomain() = Category(id = id, name = name, groupId = groupId)
 
-private fun CategoryWithCounts.toDomain() =
+internal fun CategoryWithCounts.toDomain() =
     CategoryUsage(
         category = category.toDomain(),
         transactionCount = transactionCount,

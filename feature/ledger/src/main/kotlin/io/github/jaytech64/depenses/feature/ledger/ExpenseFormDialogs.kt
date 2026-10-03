@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.AccountDialog
 import io.github.jaytech64.depenses.core.designsystem.CategoryDialog
 import io.github.jaytech64.depenses.core.designsystem.Formatters
@@ -86,13 +87,15 @@ internal fun FormDialog(
         }
 
         Picking.ADD_CATEGORY -> {
+            val groups by viewModel.category.groups.collectAsStateWithLifecycle()
             CategoryDialog(
                 name = null,
-                onSave = { name ->
-                    viewModel.category.add(name)
+                onSave = { name, groupId ->
+                    viewModel.category.add(name, groupId)
                     onClose()
                 },
                 onDismiss = onClose,
+                groups = groups,
             )
         }
 

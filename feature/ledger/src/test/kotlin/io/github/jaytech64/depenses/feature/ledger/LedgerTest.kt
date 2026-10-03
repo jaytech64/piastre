@@ -64,6 +64,7 @@ abstract class LedgerTest {
             repository = transactionRepository(),
             accounts = AccountRepository(database.accountDao()),
             categories = categoryRepository(),
+            categoryGroups = categoryGroupRepository(),
             merchants = MerchantRepository(database.merchantDao()),
             editor =
                 TransactionEditor(
@@ -86,6 +87,8 @@ abstract class LedgerTest {
             categories = categoryRepository(),
             zoneId = Provider { ZONE },
         )
+
+    protected fun categoryGroupRepository() = database.categoryGroupRepository()
 
     protected fun categoryRepository() =
         CategoryRepository(

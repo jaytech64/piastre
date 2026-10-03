@@ -87,6 +87,29 @@
     <string name="settings_categories_delete_no_money">No amount or total changes.</string>
     <string name="settings_categories_delete">Delete</string>
     <string name="settings_categories_cancel">Cancel</string>
+    <plurals name="settings_categories_count">
+        <item quantity="one">%d category</item>
+        <item quantity="other">%d categories</item>
+    </plurals>
+    <plurals name="settings_categories_in_groups">
+        <item quantity="one">%1$d in %2$d group</item>
+        <item quantity="other">%1$d in %2$d groups</item>
+    </plurals>
+    <string name="categories_ungrouped">Not in a group</string>
+    <string name="categories_group_empty">No categories yet</string>
+    <string name="categories_add_group">Add a group</string>
+    <string name="categories_group_add_title">New group</string>
+    <string name="categories_group_name">Name</string>
+    <string name="categories_group_add">Add</string>
+    <string name="categories_group_save">Save</string>
+    <string name="categories_group_rename">Rename the group</string>
+    <string name="categories_group_delete">Delete the group</string>
+    <string name="categories_group_name_taken">Another group already has this name.</string>
+    <plurals name="categories_group_delete_ungroups">
+        <item quantity="one">Its category will no longer be in a group.</item>
+        <item quantity="other">Its %d categories will no longer be in a group.</item>
+    </plurals>
+    <string name="categories_group_delete_no_transaction">No transaction will be affected.</string>
 
     <string name="settings_data_section">Your data</string>
     <string name="settings_export">Export</string>
@@ -154,6 +177,7 @@
     <string name="export_column_type">type</string>
     <string name="export_column_account">account</string>
     <string name="export_column_category">category</string>
+    <string name="export_column_category_group">group</string>
     <string name="export_column_to_account">to account</string>
     <string name="settings_recurring">Recurring transactions</string>
     <plurals name="settings_recurring_active">

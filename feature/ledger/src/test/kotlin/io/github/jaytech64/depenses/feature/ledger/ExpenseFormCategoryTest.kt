@@ -267,11 +267,49 @@ class ExpenseFormCategoryTest {
         runTest {
             open()
 
-            viewModel.category.add("Hypothèque")
+            viewModel.category.add("Hypothèque", null)
 
             val picked = viewModel.uiState.first { it.categoryId != null }.categoryId
             assertEquals(categories.named("hypotheque"), picked)
             assertTrue(viewModel.uiState.value.categoryChosen)
+        }
+
+    @Test
+    fun `a category added from the form goes into the group chosen with it`() =
+        runTest {
+            val home = database.categoryGroupRepository().named("Maison")!!
+            open()
+
+            viewModel.category.add("Électricité", home)
+
+            val picked = viewModel.uiState.first { it.categoryId != null }.categoryId
+            assertEquals(
+                listOf(picked),
+                database
+                    .categoryGroupRepository()
+                    .categoriesIn(home)
+                    .first()
+                    .map { it.category.id },
+            )
+        }
+
+    @Test
+    fun `the top of the list is what you have been picking, and nothing you have not`() =
+        runTest {
+            val groceries = categories.named("Épicerie")!!
+            val restaurants = categories.named("Restaurants")!!
+            categories.named("Vêtements")
+            addPurchase("Metro Plus", groceries)
+            addPurchase("IGA", groceries)
+            addPurchase("Zoo Cafe", restaurants)
+            open()
+
+            assertEquals(
+                listOf("Épicerie", "Restaurants"),
+                viewModel.category.recent
+                    .first { it.isNotEmpty() }
+                    .map { it.name },
+            )
         }
 
     /** Opens the form the way the screen does, with every list it draws collected. */
@@ -291,12 +329,14 @@ class ExpenseFormCategoryTest {
                 merchants = MerchantRepository(database.merchantDao()),
                 accounts = accounts,
                 categories = categories,
+                categoryGroups = database.categoryGroupRepository(),
                 recurring = database.recurringRepository(Clock.systemUTC(), ZONE),
                 clock = Clock.systemUTC(),
                 zoneId = Provider { ZONE },
             )
         backgroundScope.launch { viewModel.category.offer.collect {} }
         backgroundScope.launch { viewModel.category.known.collect {} }
+        backgroundScope.launch { viewModel.category.recent.collect {} }
     }
 
     private suspend fun save() {

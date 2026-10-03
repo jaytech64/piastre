@@ -15,6 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MerchantAliasEntity::class,
         AccountEntity::class,
         CategoryEntity::class,
+        CategoryGroupEntity::class,
         RecurringTransactionEntity::class,
     ],
     version = DepensesDatabase.VERSION,
@@ -33,10 +34,12 @@ abstract class DepensesDatabase : RoomDatabase() {
 
     abstract fun categoryDao(): CategoryDao
 
+    abstract fun categoryGroupDao(): CategoryGroupDao
+
     abstract fun recurringTransactionDao(): RecurringTransactionDao
 
     companion object {
-        const val VERSION: Int = 13
+        const val VERSION: Int = 14
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -56,6 +59,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_10_11,
                 MIGRATION_11_12,
                 MIGRATION_12_13,
+                MIGRATION_13_14,
             )
 
         const val NAME: String = "depenses.db"
@@ -446,6 +450,26 @@ private val MIGRATION_12_13 =
                   )
                 """.trimIndent(),
             )
+        }
+    }
+
+/**
+ * Schema 14 lets categories be arranged in groups. Every existing category is
+ * left in none: nobody has said where any of them belongs.
+ */
+private val MIGRATION_13_14 =
+    object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `category_group` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`name` TEXT NOT NULL, `normalisedName` TEXT NOT NULL)",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_category_group_normalisedName` " +
+                    "ON `category_group` (`normalisedName`)",
+            )
+            db.execSQL("ALTER TABLE category ADD COLUMN groupId INTEGER DEFAULT NULL")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_category_groupId` ON `category` (`groupId`)")
         }
     }
 

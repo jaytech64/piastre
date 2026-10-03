@@ -643,6 +643,28 @@ interface CategoryDao {
     ): Flow<List<CategoryEntity>>
 
     /**
+     * At most [limit] categories confirmed rows of [kind] carried on or after
+     * [sinceEpochDay], in [byUse]'s order. A category not used since is not here,
+     * so the list is only ever what you have actually been picking.
+     */
+    @Query(
+        """
+        SELECT c.* FROM category c
+        JOIN expense_transaction t
+            ON t.categoryId = c.id AND t.kind = :kind AND t.status = 'CONFIRMED'
+            AND t.localDateEpochDay >= :sinceEpochDay
+        GROUP BY c.id
+        ORDER BY COUNT(*) DESC, MAX(t.occurredAtUtcMillis) DESC, c.normalisedName
+        LIMIT :limit
+        """,
+    )
+    fun recentlyUsed(
+        kind: TransactionKind,
+        sinceEpochDay: Int,
+        limit: Int,
+    ): Flow<List<CategoryEntity>>
+
+    /**
      * Confirmed transactions only, as an account counts them, and the merchants
      * and accounts that give it automatically.
      */
@@ -758,6 +780,63 @@ interface CategoryDao {
     suspend fun clearFromRecurring(id: Long)
 
     @Query("DELETE FROM category WHERE id = :id")
+    suspend fun deleteRow(id: Long)
+
+    /** Null takes the category out of any group. */
+    @Query("UPDATE category SET groupId = :groupId WHERE id = :id")
+    suspend fun moveToGroup(
+        id: Long,
+        groupId: Long?,
+    )
+
+    /** [moveToGroup] for a category in none; one already in a group stays where it is. */
+    @Query("UPDATE category SET groupId = :groupId WHERE id = :id AND groupId IS NULL")
+    suspend fun groupIfNone(
+        id: Long,
+        groupId: Long,
+    )
+}
+
+/** The groups categories are arranged under. */
+@Dao
+interface CategoryGroupDao {
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(group: CategoryGroupEntity): Long
+
+    @Query("SELECT * FROM category_group WHERE normalisedName = :normalisedName")
+    suspend fun byNormalisedName(normalisedName: String): CategoryGroupEntity?
+
+    @Query("SELECT * FROM category_group ORDER BY id")
+    suspend fun allOnce(): List<CategoryGroupEntity>
+
+    @Query("SELECT * FROM category_group ORDER BY normalisedName")
+    fun all(): Flow<List<CategoryGroupEntity>>
+
+    /**
+     * Returns 0 and changes nothing when another group already answers to the new
+     * name, as [CategoryDao.rename] does for a category.
+     */
+    @Query("UPDATE OR IGNORE category_group SET name = :name, normalisedName = :normalisedName WHERE id = :id")
+    suspend fun rename(
+        id: Long,
+        name: String,
+        normalisedName: String,
+    ): Int
+
+    /**
+     * Removes a group and leaves its categories in none. Every transaction keeps
+     * its category, since a group only arranges them.
+     */
+    @Transaction
+    suspend fun delete(id: Long) {
+        ungroup(id)
+        deleteRow(id)
+    }
+
+    @Query("UPDATE category SET groupId = NULL WHERE groupId = :id")
+    suspend fun ungroup(id: Long)
+
+    @Query("DELETE FROM category_group WHERE id = :id")
     suspend fun deleteRow(id: Long)
 }
 

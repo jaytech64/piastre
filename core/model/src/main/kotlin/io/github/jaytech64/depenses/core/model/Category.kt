@@ -4,10 +4,31 @@ package io.github.jaytech64.depenses.core.model
 
 import java.util.Locale
 
-/** A kind of spending or income you named, such as Épicerie or Hypothèque. */
+/**
+ * A kind of spending or income you named, such as Épicerie or Hypothèque. It is
+ * what a transaction is given; [groupId] only says where it is arranged, and is
+ * null while it is in no group.
+ */
 data class Category(
     val id: Long,
     val name: String,
+    val groupId: Long? = null,
+)
+
+/** What categories are arranged under, such as Maison. A transaction is never given one. */
+data class CategoryGroup(
+    val id: Long,
+    val name: String,
+)
+
+/**
+ * A group with how many categories it holds and how many confirmed transactions
+ * those carry. A null [group] stands for the categories in none.
+ */
+data class CategoryGroupUsage(
+    val group: CategoryGroup?,
+    val categoryCount: Int,
+    val transactionCount: Int,
 )
 
 /**

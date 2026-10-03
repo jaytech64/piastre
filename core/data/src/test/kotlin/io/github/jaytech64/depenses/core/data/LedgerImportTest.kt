@@ -262,6 +262,54 @@ class LedgerImportTest {
         }
 
     @Test
+    fun `groups come back with an import, each holding its categories`() =
+        runTest {
+            val categories = source.categoryRepository()
+            val home = source.categoryGroupRepository().named("Maison")!!
+            val power = categories.named("Électricité", home)!!
+            categories.named("Assurance", home)
+            source.categoryGroupRepository().named("Auto")
+            categories.named("Logement")
+            source.enter(84_10, TransactionKind.EXPENSE, merchant = "Hydro-Québec", categoryId = power)
+
+            target.importing(source.export())
+
+            assertEquals(source.grouped(), target.grouped())
+            assertEquals(listOf("Hydro-Québec" to "Électricité"), target.categorised())
+        }
+
+    @Test
+    fun `a category of yours already in a group stays there, and one in none joins the file's`() =
+        runTest {
+            val home = source.categoryGroupRepository().named("Maison")!!
+            source.categoryRepository().named("Assurance", home)
+            source.categoryRepository().named("Électricité", home)
+            val mine = target.categoryRepository()
+            mine.named("assurance", target.categoryGroupRepository().named("Auto"))
+            mine.named("electricite")
+
+            target.importing(source.export())
+
+            assertEquals(
+                setOf("Auto" to "assurance", "Maison" to "electricite"),
+                target.grouped(),
+            )
+        }
+
+    @Test
+    fun `a file naming a group it does not list is refused before anything is written`() =
+        runTest {
+            source.categoryRepository().named("Assurance")
+            source.enter(40_00, TransactionKind.EXPENSE, merchant = "Metro Plus")
+            val broken = source.export().replace("\"groupId\": null", "\"groupId\": 99")
+
+            val reading = target.reading(broken)
+
+            assertTrue(reading.toString(), reading is ImportReading.Refused)
+            assertEquals(0, target.transactionDao().count().first())
+        }
+
+    @Test
     fun `a merchant that already gives a category of yours keeps giving it`() =
         runTest {
             val groceries = source.categoryRepository().named("Épicerie")!!
@@ -352,6 +400,12 @@ class LedgerImportTest {
     private suspend fun DepensesDatabase.categorised(): List<Pair<String?, String?>> =
         transactionDao().allWithMerchant().filter { it.categoryName != null }.map { it.merchantName to it.categoryName }
 
+    /** Each category with its group's name, null for one in none. */
+    private suspend fun DepensesDatabase.grouped(): Set<Pair<String?, String>> {
+        val groups = categoryGroupDao().allOnce().associate { it.id to it.name }
+        return categoryDao().allOnce().map { it.groupId?.let(groups::get) to it.name }.toSet()
+    }
+
     private suspend fun DepensesDatabase.merchantDefaults(): List<Pair<String, String?>> {
         val names = categoryDao().allOnce().associate { it.id to it.name }
         return merchantDao().allOnce().filter { it.categoryId != null }.map { it.displayName to names[it.categoryId] }
@@ -381,6 +435,7 @@ class LedgerImportTest {
             merchantRows = merchantDao(),
             accounts = accountDao(),
             categories = categoryRepository(),
+            categoryGroups = categoryGroupRepository(),
             recurring = recurringTransactionDao(),
             posting = posting(),
         )
@@ -419,6 +474,7 @@ class LedgerImportTest {
             merchantDao(),
             accountDao(),
             categoryDao(),
+            categoryGroupDao(),
             recurringTransactionDao(),
             Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
         ).write(bytes, ExportFormat.JSON, LABELS)
@@ -526,6 +582,7 @@ class LedgerImportTest {
                 account = "compte",
                 toAccount = "compte de destination",
                 category = "catégorie",
+                categoryGroup = "groupe",
             )
     }
 }

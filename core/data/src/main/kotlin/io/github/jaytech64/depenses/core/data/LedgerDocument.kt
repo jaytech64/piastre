@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
  * Version 2 dropped `paymentMethod`, because cash became an account, and renamed
  * the card list to accounts: a version-1 reader must refuse the file rather than
  * guess at what it no longer says. Fields added since — an account's opening
- * balance, its place in your order, categories, and recurring transactions — left
+ * balance, its place in your order, categories and their groups, and recurring transactions — left
  * it at 2, and default to null or empty for a file written before them. A reader
  * from before recurring transactions refuses a file holding a row one wrote, on
  * its source, rather than guessing what that source means.
@@ -35,6 +35,7 @@ internal data class ExportDocument(
     val accounts: List<ExportedAccount>,
     val transactions: List<ExportedTransaction>,
     val categories: List<ExportedCategory> = emptyList(),
+    val categoryGroups: List<ExportedCategoryGroup> = emptyList(),
     val recurring: List<ExportedRecurring> = emptyList(),
 )
 
@@ -67,9 +68,20 @@ internal data class ExportedRecurring(
     val nextDue: String?,
 )
 
-/** A category you named. It arrived within version 2, so a file written before it has none. */
+/**
+ * A category you named. It arrived within version 2, so a file written before it
+ * has none; [groupId] arrived later still, and is null in a file written before groups.
+ */
 @Serializable
 internal data class ExportedCategory(
+    val id: Long,
+    val name: String,
+    val groupId: Long? = null,
+)
+
+/** A group categories are arranged under. It arrived within version 2, so a file written before it has none. */
+@Serializable
+internal data class ExportedCategoryGroup(
     val id: Long,
     val name: String,
 )

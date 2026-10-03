@@ -210,13 +210,33 @@ data class MerchantEntity(
  *
  * [normalisedName] is unique for the same reason a merchant's is: two spellings
  * of one name — `Épicerie`, `epicerie` — must find one category rather than make
- * a second, which would quietly split every total that groups by it.
+ * a second, which would quietly split every total that groups by it. It stays
+ * unique across groups too, so a category's bare name is never ambiguous.
+ *
+ * [groupId] is read through wherever the group is shown, unlike the category on
+ * a transaction: a group only arranges categories, so moving one must move its
+ * history with it. Null is a category nobody has put in a group.
  */
 @Entity(
     tableName = "category",
-    indices = [Index(value = ["normalisedName"], unique = true)],
+    indices = [Index(value = ["normalisedName"], unique = true), Index("groupId")],
 )
 data class CategoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val normalisedName: String,
+    val groupId: Long? = null,
+)
+
+/**
+ * What categories are arranged under, such as Maison. Nothing points at a group
+ * but a category, so a transaction can never be given one.
+ */
+@Entity(
+    tableName = "category_group",
+    indices = [Index(value = ["normalisedName"], unique = true)],
+)
+data class CategoryGroupEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val normalisedName: String,

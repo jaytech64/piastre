@@ -165,13 +165,15 @@ private fun SelectionDialog(
         }
 
         SelectionAction.ADD_CATEGORY -> {
+            val groups by viewModel.selection.groups.collectAsStateWithLifecycle(emptyList())
             CategoryDialog(
                 name = null,
-                onSave = {
-                    viewModel.selection.categoriseAsNew(it)
+                onSave = { name, groupId ->
+                    viewModel.selection.categoriseAsNew(name, groupId)
                     onClose()
                 },
                 onDismiss = onClose,
+                groups = groups,
             )
         }
 

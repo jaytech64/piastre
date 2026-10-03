@@ -392,4 +392,5 @@ private fun csvLabels() =
         account = stringResource(R.string.export_column_account),
         toAccount = stringResource(R.string.export_column_to_account),
         category = stringResource(R.string.export_column_category),
+        categoryGroup = stringResource(R.string.export_column_category_group),
     )

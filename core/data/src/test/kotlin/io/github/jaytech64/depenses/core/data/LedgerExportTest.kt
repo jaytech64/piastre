@@ -50,6 +50,7 @@ class LedgerExportTest {
                 merchants = database.merchantDao(),
                 accounts = database.accountDao(),
                 categories = database.categoryDao(),
+                categoryGroups = database.categoryGroupDao(),
                 recurring = database.recurringTransactionDao(),
                 clock = Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
             )
@@ -68,7 +69,7 @@ class LedgerExportTest {
             assertTrue("missing UTF-8 BOM", csv.startsWith(BOM))
             assertEquals(
                 "date;heure;marchand;montant;devise;source;statut;carte;note;type;compte;" +
-                    "compte de destination;catégorie",
+                    "compte de destination;catégorie;groupe",
                 csv.lines()[0].removePrefix(BOM),
             )
             assertTrue(csv, "MARCHE ST DAVID;16,09;CAD" in csv)
@@ -97,9 +98,26 @@ class LedgerExportTest {
 
             val rows = write(ExportFormat.CSV).lines()
 
-            assertTrue(rows.toString(), rows.any { it.endsWith(";EXPENSE;Débit Desrives;;") })
-            assertTrue(rows.toString(), rows.any { it.endsWith(";INCOME;;;") })
-            assertTrue(rows.toString(), rows.any { it.endsWith(";TRANSFER;CASH;Débit Desrives;") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";EXPENSE;Débit Desrives;;;") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";INCOME;;;;") })
+            assertTrue(rows.toString(), rows.any { it.endsWith(";TRANSFER;CASH;Débit Desrives;;") })
+        }
+
+    @Test
+    fun `the csv names each category's group in a column of its own, after the category`() =
+        runTest {
+            val categories = database.categoryRepository()
+            val power = categories.named("Électricité", database.categoryGroupRepository().named("Maison"))!!
+            val loose = categories.named("Logement")!!
+            store(merchantName = "HYDRO QUEBEC", amountMinor = 84_10)
+            store(merchantName = "PROPRIO", amountMinor = 1_200_00, sourceKey = "rent")
+            database.transactionDao().categorise(listOf(1L), power)
+            database.transactionDao().categorise(listOf(2L), loose)
+
+            val rows = write(ExportFormat.CSV).lines()
+
+            assertTrue(rows.toString(), rows.any { "HYDRO QUEBEC" in it && it.endsWith(";Électricité;Maison") })
+            assertTrue(rows.toString(), rows.any { "PROPRIO" in it && it.endsWith(";Logement;") })
         }
 
     /** The names you give your accounts are data about you, so they leave with the rest. */
@@ -333,6 +351,7 @@ class LedgerExportTest {
                 account = "compte",
                 toAccount = "compte de destination",
                 category = "catégorie",
+                categoryGroup = "groupe",
             )
     }
 }

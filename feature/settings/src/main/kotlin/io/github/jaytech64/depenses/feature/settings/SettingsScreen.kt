@@ -32,6 +32,7 @@ import java.time.Instant
 
 @Composable
 fun SettingsScreen(
+    onOpenCategories: () -> Unit,
     onOpenRecurring: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     healthViewModel: CaptureHealthViewModel = hiltViewModel(),
@@ -73,7 +74,11 @@ fun SettingsScreen(
 
         AccountsSection()
 
-        CategoriesSection()
+        SettingRow(
+            title = stringResource(R.string.settings_categories_section),
+            body = categoriesHeld(state.categoryCount, state.groupCount),
+            onClick = onOpenCategories,
+        )
 
         SettingRow(
             title = stringResource(R.string.settings_recurring),
@@ -138,6 +143,18 @@ private fun CaptureHealthRow(
         )
     }
 }
+
+/** "14 categories", or "14 in 4 groups" once there are groups. */
+@Composable
+private fun categoriesHeld(
+    categories: Int,
+    groups: Int,
+): String =
+    if (groups == 0) {
+        pluralStringResource(R.plurals.settings_categories_count, categories, categories)
+    } else {
+        pluralStringResource(R.plurals.settings_categories_in_groups, groups, categories, groups)
+    }
 
 @Composable
 internal fun SectionHeader(label: String) {
