@@ -5,15 +5,26 @@ package io.github.jaytech64.depenses.feature.settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
@@ -26,13 +37,22 @@ import io.github.jaytech64.depenses.core.model.CategoryUsage
 import java.text.Collator
 
 /**
- * Every category, A to Z the way the screen's language sorts — Épicerie among
- * the E's — with what uses it. A row opens the name to change it, or to delete it.
+ * One group's categories, A to Z the way the screen's language sorts — Épicerie
+ * among the E's — with what uses each. A row opens the name to change it, move it
+ * to another group, or delete it. The title's buttons rename or delete the group
+ * itself; the page of categories in no group has neither. [onClose] is called once
+ * the group is deleted.
  */
 @Composable
-internal fun CategoriesSection(viewModel: CategoriesViewModel = hiltViewModel()) {
+fun CategoryGroupScreen(
+    onClose: () -> Unit,
+    viewModel: CategoryGroupViewModel = hiltViewModel(),
+) {
     val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val groups by viewModel.groups.collectAsStateWithLifecycle()
+    val group by viewModel.group.collectAsStateWithLifecycle()
     val editing by viewModel.editing.collectAsStateWithLifecycle()
+    val deleted by viewModel.deleted.collectAsStateWithLifecycle()
     val locale = LocalConfiguration.current.locales[0]
     val sorted =
         remember(
@@ -40,19 +60,45 @@ internal fun CategoriesSection(viewModel: CategoriesViewModel = hiltViewModel())
             locale,
         ) { categories.sortedWith(compareBy(Collator.getInstance(locale)) { it.category.name }) }
 
-    SectionHeader(stringResource(R.string.settings_categories_section))
+    LaunchedEffect(deleted) { if (deleted) onClose() }
 
-    sorted.forEach { usage ->
-        CategoryRow(usage, onClick = { viewModel.edit(CategoryEdit.Existing(usage)) })
-    }
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        GroupTitle(
+            name =
+                if (viewModel.groupId ==
+                    null
+                ) {
+                    stringResource(R.string.categories_ungrouped)
+                } else {
+                    group?.name.orEmpty()
+                },
+            editable = viewModel.groupId != null,
+            onRename = { viewModel.edit(CategoryEdit.RenameGroup()) },
+            onDelete = { viewModel.edit(CategoryEdit.ConfirmDeleteGroup) },
+        )
 
-    TextButton(onClick = { viewModel.edit(CategoryEdit.New) }, modifier = Modifier.padding(horizontal = 4.dp)) {
-        Text(stringResource(R.string.settings_categories_add))
+        sorted.forEach { usage ->
+            CategoryRow(usage, onClick = { viewModel.edit(CategoryEdit.Existing(usage)) })
+        }
+
+        TextButton(onClick = { viewModel.edit(CategoryEdit.New) }, modifier = Modifier.padding(horizontal = 4.dp)) {
+            Text(stringResource(R.string.settings_categories_add))
+        }
     }
 
     when (val edit = editing) {
         CategoryEdit.New -> {
-            CategoryDialog(name = null, onSave = viewModel::save, onDismiss = { viewModel.edit(null) })
+            CategoryDialog(
+                name = null,
+                onSave = viewModel::save,
+                onDismiss = { viewModel.edit(null) },
+                groups = groups,
+                groupId = viewModel.groupId,
+            )
         }
 
         is CategoryEdit.Existing -> {
@@ -62,6 +108,8 @@ internal fun CategoriesSection(viewModel: CategoriesViewModel = hiltViewModel())
                 onDismiss = { viewModel.edit(null) },
                 error = stringResource(R.string.settings_categories_name_taken).takeIf { edit.refused },
                 onDelete = { viewModel.edit(CategoryEdit.ConfirmDelete(edit.usage)) },
+                groups = groups,
+                groupId = edit.usage.category.groupId,
             )
         }
 
@@ -73,10 +121,88 @@ internal fun CategoriesSection(viewModel: CategoriesViewModel = hiltViewModel())
             )
         }
 
+        is CategoryEdit.RenameGroup -> {
+            GroupDialog(
+                name = group?.name.orEmpty(),
+                onSave = viewModel::renameGroup,
+                onDismiss = { viewModel.edit(null) },
+                refused = edit.refused,
+            )
+        }
+
+        CategoryEdit.ConfirmDeleteGroup -> {
+            ConfirmDeleteGroupDialog(
+                name = group?.name.orEmpty(),
+                categoryCount = categories.size,
+                onConfirm = viewModel::deleteGroup,
+                onCancel = { viewModel.edit(null) },
+            )
+        }
+
         null -> {
             Unit
         }
     }
+}
+
+/** The group's name, with its rename and delete buttons when it is a group you made. */
+@Composable
+private fun GroupTitle(
+    name: String,
+    editable: Boolean,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(name, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+        if (editable) {
+            IconButton(onClick = onRename) {
+                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.categories_group_rename))
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.categories_group_delete))
+            }
+        }
+    }
+}
+
+/**
+ * Says what deleting a group undoes: its categories are left in none. Every
+ * transaction keeps its category, which the dialog says too.
+ */
+@Composable
+private fun ConfirmDeleteGroupDialog(
+    name: String,
+    categoryCount: Int,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val ungroups =
+        pluralStringResource(R.plurals.categories_group_delete_ungroups, categoryCount, categoryCount)
+            .takeIf { categoryCount > 0 }
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(stringResource(R.string.settings_categories_delete_title, name)) },
+        text = {
+            Text(
+                listOfNotNull(ungroups, stringResource(R.string.categories_group_delete_no_transaction))
+                    .joinToString(" "),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.settings_categories_delete), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.settings_categories_cancel)) }
+        },
+    )
 }
 
 @Composable

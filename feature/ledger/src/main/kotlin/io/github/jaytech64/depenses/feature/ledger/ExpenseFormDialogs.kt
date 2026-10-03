@@ -88,7 +88,7 @@ internal fun FormDialog(
         Picking.ADD_CATEGORY -> {
             CategoryDialog(
                 name = null,
-                onSave = { name ->
+                onSave = { name, _ ->
                     viewModel.category.add(name)
                     onClose()
                 },

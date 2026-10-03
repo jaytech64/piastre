@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jaytech64.depenses.core.data.CategoryRepository
 import io.github.jaytech64.depenses.core.data.CsvLabels
 import io.github.jaytech64.depenses.core.data.DataErasure
 import io.github.jaytech64.depenses.core.data.ExportFormat
@@ -32,6 +33,8 @@ data class SettingsUiState(
     val rawEventCount: Int = 0,
     /** Recurring transactions with a day still to come. */
     val recurringCount: Int = 0,
+    val categoryCount: Int = 0,
+    val groupCount: Int = 0,
     val loading: Boolean = true,
 )
 
@@ -69,13 +72,22 @@ class SettingsViewModel
         private val erasure: DataErasure,
         rawEvents: RawEventRepository,
         recurring: RecurringRepository,
+        categories: CategoryRepository,
     ) : ViewModel() {
         val uiState: StateFlow<SettingsUiState> =
-            combine(settings.captureEnabled, rawEvents.count(), recurring.activeCount()) { enabled, count, active ->
+            combine(
+                settings.captureEnabled,
+                rawEvents.count(),
+                recurring.activeCount(),
+                categories.all(),
+                categories.groups(),
+            ) { enabled, count, active, categoryList, groupList ->
                 SettingsUiState(
                     captureEnabled = enabled,
                     rawEventCount = count,
                     recurringCount = active,
+                    categoryCount = categoryList.size,
+                    groupCount = groupList.size,
                     loading = false,
                 )
             }.stateIn(

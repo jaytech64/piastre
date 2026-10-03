@@ -167,8 +167,8 @@ private fun SelectionDialog(
         SelectionAction.ADD_CATEGORY -> {
             CategoryDialog(
                 name = null,
-                onSave = {
-                    viewModel.selection.categoriseAsNew(it)
+                onSave = { name, _ ->
+                    viewModel.selection.categoriseAsNew(name)
                     onClose()
                 },
                 onDismiss = onClose,

@@ -20,4 +20,6 @@
     <string name="category_dialog_save">Save</string>
     <string name="category_dialog_delete">Delete</string>
     <string name="category_dialog_cancel">Cancel</string>
+    <string name="category_dialog_group">Group</string>
+    <string name="category_dialog_no_group">None</string>
 </resources>
