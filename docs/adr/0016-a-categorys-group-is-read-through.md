@@ -1,6 +1,7 @@
 # 16. A category's group is read through, never written onto the row
 
 - **Status:** Accepted — implemented.
+  Its clause on transfers under a group filter is replaced by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md): a group still adds up to its categories, and a transfer counts in both by the accounts it joins.
 - **Decided:** 2026-10-02, while planning category groups (`.lavish/category-groups.html`, forks A to I).
 - **Touches:** `:core:database` (`CategoryGroupEntity`, `CategoryEntity.groupId`, `CategoryGroupDao`, `MIGRATION_13_14`), `:core:data` (`CategoryGroupRepository`, `LedgerExport`, `LedgerImport`), `:feature:settings`, `:feature:ledger`.
 

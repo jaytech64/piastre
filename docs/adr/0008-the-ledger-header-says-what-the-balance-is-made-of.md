@@ -1,6 +1,6 @@
 # 8. The ledger header says what the balance is made of
 
-- **Status:** Accepted — implemented.
+- **Status:** Accepted — implemented; amended by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md).
 - **Decided:** 2026-09-23, while planning the ledger header (`.lavish/ledger-header-income-and-spending.html`).
 - **Touches:** `:feature:ledger` (`LedgerViewModel`, `SummaryFigures`).
 
@@ -38,6 +38,12 @@ Most months have no income logged, and *Revenus 0,00 $* is the honest answer to 
 **The header is taller.**
 At large font sizes the figures take one line each instead of sharing columns.
 With the capture banner showing, an account filter on and the font at 200 %, the header leaves room for about one row of the list on a Pixel 10.
+
+## Revision — 2026-10-04
+
+[ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md) folds a transfer that crosses into or out of a bank account into *Dépenses* or *Revenus* on the unfiltered ledger.
+The folding this record rejected was of every transfer, card payments included; the one accepted there counts only money that left the ledger.
+Under an account filter *Virements* stays a figure of its own, and the figures still add up to the balance.
 
 ## Where this lives in the code
 

@@ -1,6 +1,6 @@
 # 6. A filtered total answers for one account
 
-- **Status:** Accepted — implemented.
+- **Status:** Accepted — implemented; amended by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md).
 - **Decided:** 2026-09-20, while building the ledger's account filter (`.lavish/ledger-account-filter.html`).
 - **Touches:** `:feature:ledger` (`LedgerViewModel`).
 
@@ -35,6 +35,12 @@ This is the visible half of the decision: a day showing a $60.00 row and totalli
 
 Reports, exports and the unfiltered ledger are untouched, and `signedAmount` keeps exactly one meaning.
 A transfer filtered to each of its two ends in turn shows as a loss on one and a gain on the other, which is correct and is covered by a test that says so.
+
+## Revision — 2026-10-04
+
+[ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md) changed what a transfer is worth unfiltered: it is no longer always zero, but money out when it goes into a bank account and money in when it comes back out of one.
+What this record decided is untouched: under an account filter a transfer is signed by which end the account is on.
+The function that does it is now `movedOn`.
 
 ## Where this lives in the code
 
