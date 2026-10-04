@@ -97,16 +97,15 @@ class LedgerFilterTest : LedgerTest() {
         }
 
     /**
-     * A transfer is worth zero to the ledger as a whole, but the mortgage payment
-     * is exactly what the *Hypothèque* category is for: under that filter it is
-     * money that left, or the headline says nothing was spent over rows that say
-     * otherwise (ADR-0011).
+     * The mortgage payment is exactly what the *Hypothèque* category is for, and
+     * it counts there for the reason it counts anywhere: it went into a bank
+     * account (ADR-0017).
      */
     @Test
-    fun `a transfer under a category is money that left for it`() =
+    fun `a transfer into a bank account is money that left, under its category too`() =
         runTest {
             val desrives = account("Desrives")
-            val mortgage = account("Hypothèque")
+            val mortgage = account("Hypothèque", AccountType.BANK)
             val mortgageCategory = category("Hypothèque")
             insert(
                 amountMinor = 120_000,
@@ -120,9 +119,36 @@ class LedgerFilterTest : LedgerTest() {
             viewModel.filters.onCategorySelected(CategoryChoice.Named(Category(mortgageCategory, "Hypothèque")))
             val state = viewModel.uiState.first { it.filter.category != null }
 
-            assertEquals(Money(-120_000, Money.CAD), state.headline.transfers)
+            assertEquals(Money(120_000, Money.CAD), state.headline.expenses)
+            assertEquals(Money(0, Money.CAD), state.headline.transfers)
             assertEquals(Money(-120_000, Money.CAD), state.headline.balance)
             assertEquals(Money(-120_000, Money.CAD), state.days.single().total)
+        }
+
+    /** A category says what a transfer was for, not whether the money left. */
+    @Test
+    fun `a transfer between cards moves nothing under its category either`() =
+        runTest {
+            val cardPayments = category("Paiements de carte")
+            insert(
+                amountMinor = 45_480,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = account("Desrives"),
+                toAccountId = account("Visa"),
+                categoryId = cardPayments,
+            )
+
+            viewModel.filters.onCategorySelected(CategoryChoice.Named(Category(cardPayments, "Paiements de carte")))
+            val state = viewModel.uiState.first { it.filter.category != null }
+
+            assertEquals(
+                1,
+                state.days
+                    .single()
+                    .transactions.size,
+            )
+            assertEquals(BalanceSummary(), state.headline)
         }
 
     @Test
@@ -132,7 +158,7 @@ class LedgerFilterTest : LedgerTest() {
             val power = categoryRepository().named("Électricité", home)!!
             val insurance = categoryRepository().named("Assurance", home)!!
             val desrives = account("Desrives")
-            val mortgage = account("Hypothèque")
+            val mortgage = account("Hypothèque", AccountType.BANK)
             insert(amountMinor = 8_410, day = TODAY, categoryId = power)
             insert(amountMinor = 6_000, day = TODAY, categoryId = insurance)
             insert(
@@ -156,7 +182,7 @@ class LedgerFilterTest : LedgerTest() {
                     .transactions.size,
             )
             assertEquals(Money(-134_410, Money.CAD), state.headline.balance)
-            assertEquals(Money(-120_000, Money.CAD), state.headline.transfers)
+            assertEquals(Money(134_410, Money.CAD), state.headline.expenses)
         }
 
     @Test
@@ -195,9 +221,26 @@ class LedgerFilterTest : LedgerTest() {
             assertEquals(Money(120_000, Money.CAD), state.headline.balance)
         }
 
+    @Test
+    fun `an uncategorised transfer into a bank account is money that left with no category`() =
+        runTest {
+            insert(
+                amountMinor = 30_000,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = account("Desrives"),
+                toAccountId = account("Épargne", AccountType.BANK),
+            )
+
+            viewModel.filters.onCategorySelected(CategoryChoice.Uncategorised)
+            val state = viewModel.uiState.first { it.filter.category != null }
+
+            assertEquals(Money(-30_000, Money.CAD), state.headline.balance)
+        }
+
     /** A card payment is most of what goes uncategorised, and counting it would charge the purchases twice. */
     @Test
-    fun `an uncategorised transfer still moves nothing under no category`() =
+    fun `an uncategorised card payment moves nothing under no category`() =
         runTest {
             val desrives = account("Desrives")
             val visa = account("Visa")

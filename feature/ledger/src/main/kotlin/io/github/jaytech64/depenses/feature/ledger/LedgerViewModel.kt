@@ -47,17 +47,18 @@ data class LedgerDay(
 /**
  * What the balance of a set of rows is made of: a month, a day, or a selection.
  *
- * Income and expenses are counted by kind, the same rows a report counts, so
- * the whole ledger's expenses and a report's *dépensé* for the month are one
- * number. A transfer is neither: it is worth zero to the whole ledger and moves
- * a filtered account's balance (ADR-0006), so it is a figure of its own rather
- * than being folded into either of the other two, and the three always add up
- * to [balance].
+ * On the whole ledger a transfer is not a figure of its own: one that crossed
+ * into a bank account is among the expenses and one that came back out of it
+ * is among the income (ADR-0017), the same rows a report counts, so the whole
+ * ledger's expenses and a report's for the month are one number. Under an
+ * account filter a transfer moves that account whichever accounts it joins
+ * (ADR-0006), so it is a figure of its own there rather than being folded into
+ * either of the other two. Either way the figures add up to [balance].
  */
 data class BalanceSummary(
     val income: Money = Money(0, Money.CAD),
     val expenses: Money = Money(0, Money.CAD),
-    /** Zero on the whole ledger; under a filter, what [balanceMovedOn] says it moved. */
+    /** Zero unless an account is filtered on, and then what [movedOn] says each transfer moved. */
     val transfers: Money = Money(0, Money.CAD),
     /** The rows in a currency no figure here counts (ADR-0012). */
     val otherCurrencyCount: Int = 0,
@@ -444,16 +445,14 @@ private val HOME_ZERO = Money(0, Money.CAD)
  */
 private fun List<Transaction>.summaryOf(filter: LedgerFilter): BalanceSummary {
     val counted = inHomeCurrency()
-
-    fun sumOf(
-        kind: TransactionKind,
-        amount: (Transaction) -> Money,
-    ): Money = counted.filter { it.kind == kind }.map(amount).fold(HOME_ZERO, Money::plus)
+    val account = filter.account
+    val (ofTheAccount, ofTheLedger) = counted.partition { account != null && it.kind == TransactionKind.TRANSFER }
+    val moved = ofTheLedger.map { it.signedAmount }
 
     return BalanceSummary(
-        income = sumOf(TransactionKind.INCOME) { it.amount },
-        expenses = sumOf(TransactionKind.EXPENSE) { it.amount },
-        transfers = sumOf(TransactionKind.TRANSFER) { it.balanceMovedOn(filter) },
+        income = moved.filter { it.minor > 0 }.fold(HOME_ZERO, Money::plus),
+        expenses = -moved.filter { it.minor < 0 }.fold(HOME_ZERO, Money::plus),
+        transfers = ofTheAccount.map { it.movedOn(checkNotNull(account)) }.fold(HOME_ZERO, Money::plus),
         otherCurrencyCount = size - counted.size,
     )
 }
@@ -498,35 +497,14 @@ private fun List<Transaction>.categoriesFor(
 }
 
 /**
- * What the transaction moves, read from where [filter] stands.
+ * What a transfer moves on [account], which is not the whole ledger: money that
+ * left for another account of yours has still left this one, so the transfer is
+ * signed by which end the account is on (ADR-0006). That is the arithmetic the
+ * account's own balance is already built from in `AccountDao.allWithCounts`,
+ * and that balance is what the filter menu offered to pick from; the two would
+ * otherwise disagree about the same transfer, one tap apart.
  *
- * Unfiltered it is [Transaction.signedAmount], where a transfer is worth zero:
- * it moves your own money between your own accounts, so the ledger as a whole
- * is unchanged.
- *
- * One account is not the whole ledger, though — money that left for another
- * account of yours has still left this one — so under an account filter a
- * transfer is signed by which end the account is on (ADR-0006). That is the
- * arithmetic the account's own balance is already built from in
- * `AccountDao.allWithCounts`, and that balance is what the filter menu offered
- * to pick from; the two would otherwise disagree about the same transfer, one
- * tap apart.
- *
- * Under a category, with no account, a transfer is money that left for what the
- * category names (ADR-0011): the mortgage payment is what *Hypothèque* cost you
- * this month. A group is its categories together, so the same transfer is
- * money that left under the group too, and a group adds up to its categories.
- * *No category* is not a place money goes, so an uncategorised
- * transfer — a card payment, most often — keeps the whole ledger's zero rather
- * than charging you a second time for the purchases it settles.
+ * With no account filtered on, a category or a group changes nothing: a
+ * transfer is worth [Transaction.signedAmount] wherever it is read (ADR-0017).
  */
-private fun Transaction.balanceMovedOn(filter: LedgerFilter): Money {
-    val account = filter.account
-    return when {
-        kind != TransactionKind.TRANSFER -> signedAmount
-        account != null -> if (accountId == account.id) -amount else amount
-        filter.category is CategoryChoice.Named -> -amount
-        filter.category is CategoryChoice.InGroup -> -amount
-        else -> signedAmount
-    }
-}
+private fun Transaction.movedOn(account: Account): Money = if (accountId == account.id) -amount else amount

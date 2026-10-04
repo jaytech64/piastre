@@ -170,16 +170,18 @@ abstract class LedgerTest {
         ),
     )
 
-    protected suspend fun account(name: String) =
-        database.accountDao().insert(
-            AccountEntity(
-                name = name,
-                type = AccountType.BANK,
-                issuerLabel = null,
-                last4 = null,
-                origin = AccountOrigin.USER,
-            ),
-        )
+    protected suspend fun account(
+        name: String,
+        type: AccountType = AccountType.CARD,
+    ) = database.accountDao().insert(
+        AccountEntity(
+            name = name,
+            type = type,
+            issuerLabel = null,
+            last4 = null,
+            origin = AccountOrigin.USER,
+        ),
+    )
 
     protected suspend fun merchant(name: String) =
         database.merchantDao().insert(MerchantEntity(displayName = name, normalisedName = name.uppercase()))

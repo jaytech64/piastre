@@ -15,8 +15,9 @@ import java.util.Locale
 /**
  * Income and expenses, unsigned because the label already says which way the
  * money went, and transfers only where they moved something — which is only ever
- * under a filter, since they are worth zero to the whole ledger. A net transfer
- * can go either way, so that one figure carries its sign.
+ * under an account filter, since on the whole ledger a transfer that counts is
+ * already among the other two (ADR-0017). A net transfer can go either way, so
+ * that one figure carries its sign.
  *
  * Rows in another currency are in none of them, and a line under them says how
  * many, as ADR-0002 asks of any total that leaves rows out.
