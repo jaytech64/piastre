@@ -1097,27 +1097,45 @@ data class MerchantTotal(
 )
 
 /**
+ * A transfer counts by the two accounts it joins, and these are that rule in
+ * SQL: `Transaction.signedAmount` is the same rule in Kotlin, and
+ * `ReportRepositoryTest` holds the two to the same cent (ADR-0017).
+ *
+ * A bank account is outside what the ledger spends from, so money moved into
+ * one has left and money moved out of one has come back. `NULL <> 'BANK'` is
+ * not true, which is what leaves out a transfer with an account missing.
+ */
+private const val TRANSFER_ENDS =
+    "LEFT JOIN account origin ON origin.id = t.accountId " +
+        "LEFT JOIN account destination ON destination.id = t.toAccountId"
+private const val MONEY_OUT =
+    "(t.kind = 'EXPENSE' OR (t.kind = 'TRANSFER' AND destination.type = 'BANK' AND origin.type <> 'BANK'))"
+private const val MONEY_IN =
+    "(t.kind = 'INCOME' OR (t.kind = 'TRANSFER' AND origin.type = 'BANK' AND destination.type <> 'BANK'))"
+
+/**
  * Reports are SQL, not Kotlin loops over the whole table. Every one of these
  * groups on an indexed integer column, so a year of history costs the same as a
  * week.
  *
- * They are about spending, so every one but [incomeForRange] keeps to expenses:
- * a paycheque ranked beside the grocer would make the ranking wrong, and a card
- * payment counted as spending would charge you twice for the purchases it
- * settles. No query counts a transfer, which moves the whole ledger by nothing.
+ * They are about what went out, so every one but [incomeForRange] keeps to
+ * [MONEY_OUT]: a paycheque ranked beside the grocer would make the ranking
+ * wrong, and a card payment counted as spending would charge you twice for the
+ * purchases it settles.
  */
 @Dao
 interface ReportDao {
     @Query(
         """
-        SELECT localDateEpochDay AS day, SUM(amountMinor) AS totalMinor, COUNT(*) AS count
-        FROM expense_transaction
-        WHERE status = 'CONFIRMED'
-          AND kind = 'EXPENSE'
-          AND currency = :currency
-          AND localDateEpochDay BETWEEN :fromDay AND :toDay
-        GROUP BY localDateEpochDay
-        ORDER BY localDateEpochDay
+        SELECT t.localDateEpochDay AS day, SUM(t.amountMinor) AS totalMinor, COUNT(*) AS count
+        FROM expense_transaction t
+        """ + TRANSFER_ENDS + """
+        WHERE t.status = 'CONFIRMED'
+          AND """ + MONEY_OUT + """
+          AND t.currency = :currency
+          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
+        GROUP BY t.localDateEpochDay
+        ORDER BY t.localDateEpochDay
         """,
     )
     fun dailyTotals(
@@ -1128,12 +1146,13 @@ interface ReportDao {
 
     @Query(
         """
-        SELECT SUM(amountMinor)
-        FROM expense_transaction
-        WHERE status = 'CONFIRMED'
-          AND kind = 'EXPENSE'
-          AND currency = :currency
-          AND localDateEpochDay BETWEEN :fromDay AND :toDay
+        SELECT SUM(t.amountMinor)
+        FROM expense_transaction t
+        """ + TRANSFER_ENDS + """
+        WHERE t.status = 'CONFIRMED'
+          AND """ + MONEY_OUT + """
+          AND t.currency = :currency
+          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun totalForRange(
@@ -1144,12 +1163,13 @@ interface ReportDao {
 
     @Query(
         """
-        SELECT SUM(amountMinor)
-        FROM expense_transaction
-        WHERE status = 'CONFIRMED'
-          AND kind = 'INCOME'
-          AND currency = :currency
-          AND localDateEpochDay BETWEEN :fromDay AND :toDay
+        SELECT SUM(t.amountMinor)
+        FROM expense_transaction t
+        """ + TRANSFER_ENDS + """
+        WHERE t.status = 'CONFIRMED'
+          AND """ + MONEY_IN + """
+          AND t.currency = :currency
+          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun incomeForRange(
@@ -1181,10 +1201,10 @@ interface ReportDao {
     ): Flow<List<MerchantTotal>>
 
     /**
-     * How many incomes and purchases in the range every other query on this DAO
-     * left out because they were in something other than [currency]. A transfer
-     * is not counted: it is worth nothing to any total here, so leaving one out
-     * understates nothing.
+     * How many rows in the range the figures above would have counted, and left
+     * out because they were in something other than [currency]. A transfer that
+     * moves the ledger by nothing is not among them: it is in no total here, so
+     * leaving one out understates nothing.
      *
      * Converting them is impossible here — a rate needs a network, and there is
      * none — so a report can only decline to count them. Declining silently is
@@ -1195,11 +1215,12 @@ interface ReportDao {
     @Query(
         """
         SELECT COUNT(*)
-        FROM expense_transaction
-        WHERE status = 'CONFIRMED'
-          AND kind IN ('EXPENSE', 'INCOME')
-          AND currency != :currency
-          AND localDateEpochDay BETWEEN :fromDay AND :toDay
+        FROM expense_transaction t
+        """ + TRANSFER_ENDS + """
+        WHERE t.status = 'CONFIRMED'
+          AND (""" + MONEY_OUT + " OR " + MONEY_IN + """)
+          AND t.currency != :currency
+          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun otherCurrencyCount(

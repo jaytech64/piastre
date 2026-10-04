@@ -22,10 +22,10 @@
     <string name="reports_heat_less">moins</string>
     <string name="reports_heat_more">plus</string>
     <string name="reports_nothing">Rien dans cette période</string>
-    <plurals name="reports_purchases">
-        <item quantity="one">%d achat</item>
-        <item quantity="other">%d achats</item>
-        <item quantity="many">%d d\'achats</item>
+    <plurals name="reports_transactions">
+        <item quantity="one">%d transaction</item>
+        <item quantity="other">%d transactions</item>
+        <item quantity="many">%d de transactions</item>
     </plurals>
     <plurals name="reports_other_currency">
         <item quantity="one">%d transaction dans une autre devise n\'est pas comptée.</item>
