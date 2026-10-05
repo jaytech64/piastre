@@ -124,7 +124,8 @@
         <item quantity="one">%d transaction in another currency is not counted.</item>
         <item quantity="other">%d transactions in another currency are not counted.</item>
     </plurals>
-<string name="form_repeats">Repeats</string>
+    <string name="form_time_recurring">Recurring</string>
+    <string name="form_repeats">Repeats</string>
     <string name="repeat_never">Never</string>
     <string name="repeat_weekly">Every week, on %s</string>
     <string name="repeat_every_two_weeks">Every 2 weeks, on %s</string>

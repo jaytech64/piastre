@@ -66,6 +66,9 @@ internal class FormWriter(
             )
             return
         }
+        val rhythm = state.rhythm?.takeIf { state.canRepeat }
+        // Made to repeat, it becomes its schedule's first row, which only a typed row can.
+        val recurring = state.recurring && rhythm == null
         val id =
             if (original == null) {
                 transactions.addManual(
@@ -78,6 +81,7 @@ internal class FormWriter(
                     toAccountId = state.destinationToSave,
                     categoryId = state.categoryId,
                     reach = reach,
+                    recurring = recurring,
                 )
             } else {
                 editor.edit(
@@ -91,12 +95,13 @@ internal class FormWriter(
                     toAccountId = state.destinationToSave,
                     categoryId = state.categoryId,
                     reach = reach,
+                    recurring = recurring,
                 )
                 original.id
             }
         state.appliedTemplateId?.let { templates.markUsed(it) }
         if (state.savesAsTemplate) templates.save(state.asTemplate())
-        state.rhythm?.takeIf { state.canRepeat }?.let { recurring.repeat(id, it, state.lastDate) }
+        rhythm?.let { this.recurring.repeat(id, it, state.lastDate) }
     }
 
     private suspend fun writeTemplate(
