@@ -227,11 +227,10 @@ private fun TimePickerSheet(
     val showsClock = displayMode == TimePickerDisplayMode.Picker && clockFits
 
     // Not TimePickerDialog: its row of actions squeezes the last button rather than wrap, and has
-    // no room for three in French. The actions are drawn with the hour, in a row that wraps.
+    // no room for three in French.
     AlertDialog(
         onDismissRequest = onClose,
         title = { TimePickerDialogDefaults.Title(displayMode = displayMode) },
-        confirmButton = {},
         text = {
             Column {
                 if (showsClock) TimePicker(state = pickerState) else TimeInput(state = pickerState)
@@ -241,20 +240,22 @@ private fun TimePickerSheet(
                         displayMode = displayMode,
                     )
                 }
-                // No gap: a text button is padded already, and with one Enregistrer starts a second line.
-                ButtonsRow(gap = 0.dp) {
-                    onRecurring?.let {
-                        TextButton(
-                            onClick = {
-                                it()
-                                onClose()
-                            },
-                        ) { Text(stringResource(R.string.form_time_recurring)) }
-                    }
-                    TextButton(onClick = onClose) { Text(stringResource(R.string.manual_cancel)) }
-                    TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
-                        Text(stringResource(R.string.manual_save))
-                    }
+            }
+        },
+        confirmButton = {
+            // No gap: a text button is padded already, and with one Enregistrer starts a second line.
+            ButtonsRow(gap = 0.dp) {
+                onRecurring?.let {
+                    TextButton(
+                        onClick = {
+                            it()
+                            onClose()
+                        },
+                    ) { Text(stringResource(R.string.form_time_recurring)) }
+                }
+                TextButton(onClick = onClose) { Text(stringResource(R.string.manual_cancel)) }
+                TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
+                    Text(stringResource(R.string.manual_save))
                 }
             }
         },
