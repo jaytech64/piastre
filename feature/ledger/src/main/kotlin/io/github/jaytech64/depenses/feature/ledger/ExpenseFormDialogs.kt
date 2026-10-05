@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.feature.ledger
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -25,11 +26,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.AccountDialog
+import io.github.jaytech64.depenses.core.designsystem.ButtonsRow
 import io.github.jaytech64.depenses.core.designsystem.CategoryDialog
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import java.time.Instant
@@ -203,7 +206,7 @@ internal fun DatePickerSheet(
 
 /**
  * Opens on typed hour and minute fields, since a time read off a receipt is
- * quicker typed than dialled; the toggle in the corner swaps to the clock face
+ * quicker typed than dialled; the toggle under them swaps to the clock face
  * and back. The clock is withheld on a window too short to hold it.
  *
  * [onRecurring] is the answer that is not an hour — it comes back, so it has a
@@ -223,37 +226,39 @@ private fun TimePickerSheet(
     val clockFits = LocalConfiguration.current.screenHeightDp.dp > TimePickerDialogDefaults.MinHeightForTimePicker
     val showsClock = displayMode == TimePickerDisplayMode.Picker && clockFits
 
-    TimePickerDialog(
+    // Not TimePickerDialog: its row of actions squeezes the last button rather than wrap, and has
+    // no room for three in French. The actions are drawn with the hour, in a row that wraps.
+    AlertDialog(
         onDismissRequest = onClose,
         title = { TimePickerDialogDefaults.Title(displayMode = displayMode) },
-        confirmButton = {
-            TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
-                Text(stringResource(R.string.manual_save))
+        confirmButton = {},
+        text = {
+            Column {
+                if (showsClock) TimePicker(state = pickerState) else TimeInput(state = pickerState)
+                if (clockFits) {
+                    TimePickerDialogDefaults.DisplayModeToggle(
+                        onDisplayModeChange = { displayMode = displayMode.toggled() },
+                        displayMode = displayMode,
+                    )
+                }
+                // No gap: a text button is padded already, and with one Enregistrer starts a second line.
+                ButtonsRow(gap = 0.dp) {
+                    onRecurring?.let {
+                        TextButton(
+                            onClick = {
+                                it()
+                                onClose()
+                            },
+                        ) { Text(stringResource(R.string.form_time_recurring)) }
+                    }
+                    TextButton(onClick = onClose) { Text(stringResource(R.string.manual_cancel)) }
+                    TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
+                        Text(stringResource(R.string.manual_save))
+                    }
+                }
             }
         },
-        dismissButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.manual_cancel)) } },
-        modeToggleButton = {
-            if (clockFits) {
-                TimePickerDialogDefaults.DisplayModeToggle(
-                    onDisplayModeChange = { displayMode = displayMode.toggled() },
-                    displayMode = displayMode,
-                )
-            }
-        },
-    ) {
-        // Under the hour rather than beside Cancel and Save: the row of actions has no room for a third.
-        Column {
-            if (showsClock) TimePicker(state = pickerState) else TimeInput(state = pickerState)
-            onRecurring?.let {
-                TextButton(
-                    onClick = {
-                        it()
-                        onClose()
-                    },
-                ) { Text(stringResource(R.string.form_time_recurring)) }
-            }
-        }
-    }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
