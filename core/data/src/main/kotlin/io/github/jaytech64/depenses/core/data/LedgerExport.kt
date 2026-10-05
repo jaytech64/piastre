@@ -335,4 +335,5 @@ private fun TemplateWithNames.toExported() =
         categoryId = template.categoryId,
         note = template.note,
         lastUsedAtUtcMillis = template.lastUsedAtUtcMillis,
+        recurring = template.recurring,
     )

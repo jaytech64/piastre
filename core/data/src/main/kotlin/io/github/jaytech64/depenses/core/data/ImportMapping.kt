@@ -139,6 +139,7 @@ internal fun ExportedTemplate.toEntity(
     categoryId = categoryId?.let { categoryIds[it] },
     note = note,
     lastUsedAtUtcMillis = lastUsedAtUtcMillis,
+    recurring = recurring,
 )
 
 private fun epochDay(isoDate: String): Int = LocalDate.parse(isoDate).toEpochDay().toInt()

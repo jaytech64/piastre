@@ -418,6 +418,36 @@ class LedgerImportTest {
         }
 
     @Test
+    fun `a recurring template comes back recurring, and one from a file that never said is not`() =
+        runTest {
+            source.templates().save(coffee().copy(name = "Hydro", recurring = true))
+            val exported = source.export()
+            assertTrue(exported.contains(""""recurring": true"""))
+
+            target.importing(exported)
+            val silent = inMemoryDatabase()
+            silent.importing(exported.replace(Regex(""",\s*"recurring": true"""), ""))
+
+            assertEquals(
+                listOf(true),
+                target
+                    .templates()
+                    .all()
+                    .first()
+                    .map { it.recurring },
+            )
+            assertEquals(
+                listOf(false),
+                silent
+                    .templates()
+                    .all()
+                    .first()
+                    .map { it.recurring },
+            )
+            silent.close()
+        }
+
+    @Test
     fun `a template already here is not added twice, and stays as you changed it`() =
         runTest {
             source.templates().save(coffee())
