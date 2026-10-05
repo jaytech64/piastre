@@ -399,6 +399,72 @@ class ExpenseFormTemplateTest {
             assertEquals(0, templates.count().first())
         }
 
+    @Test
+    fun `a recurring template fills a recurring transaction, at whatever amount is typed`() =
+        runTest {
+            val hydro =
+                templates.save(
+                    coffee.copy(name = "Hydro", amount = null, merchantName = "Hydro-Québec", recurring = true),
+                )
+            val form = open()
+
+            form.template.apply(templates.byId(hydro)!!)
+            form.onAmountChange("101,32")
+            form.save()
+            advanceUntilIdle()
+
+            val saved = transactions.confirmed().first().single()
+            assertEquals(TransactionSource.RECURRING, saved.source)
+            assertEquals(Money(10_132, Money.CAD), saved.amount)
+        }
+
+    @Test
+    fun `a template that is not recurring leaves a recurring transaction as it is`() =
+        runTest {
+            val form = open()
+            form.repeat.onRecurringChange(true)
+
+            form.template.apply(templates.byId(templates.save(coffee))!!)
+
+            assertTrue(form.uiState.value.recurring)
+        }
+
+    @Test
+    fun `a template is made recurring on its own form, or from a recurring transaction`() =
+        runTest {
+            val own = open(template = NEW_TEMPLATE_ID)
+            own.template.onNameChange("Hydro")
+            own.repeat.onRecurringChange(true)
+            own.save()
+            advanceUntilIdle()
+
+            val from = open()
+            from.onAmountChange("62,00")
+            from.onMerchantChange("Vidéotron")
+            from.repeat.onRecurringChange(true)
+            from.template.onSaveAsTemplateChange(true)
+            from.save()
+            advanceUntilIdle()
+
+            assertEquals(
+                mapOf("Hydro" to true, "Vidéotron" to true),
+                templates.all().first().associate {
+                    it.name to
+                        it.recurring
+                },
+            )
+            assertTrue(
+                open(
+                    template =
+                        templates
+                            .all()
+                            .first()
+                            .first()
+                            .id,
+                ).uiState.value.recurring,
+            )
+        }
+
     /** A purchase at [merchant], which from then on gives [categoryId]. */
     private suspend fun spentAt(
         merchant: String,

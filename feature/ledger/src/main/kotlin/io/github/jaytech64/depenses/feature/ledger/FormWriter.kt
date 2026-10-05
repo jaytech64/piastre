@@ -131,7 +131,7 @@ internal class FormWriter(
     }
 }
 
-/** What the form says, as a template: everything but its day. */
+/** What the form says, as a template: everything but its day, and of its hour only whether it has one. */
 private fun ExpenseFormUiState.asTemplate() =
     TemplateContent(
         name = templateName,
@@ -142,4 +142,5 @@ private fun ExpenseFormUiState.asTemplate() =
         toAccountId = destinationToSave,
         categoryId = categoryId,
         note = note,
+        recurring = recurring,
     )

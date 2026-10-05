@@ -498,6 +498,7 @@ private fun ExpenseFormUiState.filledFrom(template: TransactionTemplate): Expens
         toAccountId = template.toAccountId,
         categoryId = template.categoryId,
         categoryChosen = true,
+        recurring = template.recurring,
         loading = false,
     )
 

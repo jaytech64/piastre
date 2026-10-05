@@ -54,7 +54,8 @@ class TemplateChoice internal constructor(
  * The form once [template] has filled it. What the template holds replaces what
  * was there, and what it leaves empty stays as typed: an amount entered before
  * picking a template with none is kept. The kind is always the template's. The
- * day, the time and whether it repeats are never touched.
+ * day and whether it repeats are never touched; nor is the hour, unless the
+ * template is recurring, which is to have none.
  *
  * An account or a category the template gives counts as chosen, so the merchant
  * it names does not then put its own in their place.
@@ -70,6 +71,7 @@ internal fun ExpenseFormUiState.applying(template: TransactionTemplate): Expense
         categoryId = template.categoryId ?: categoryId,
         categoryChosen = categoryChosen || template.categoryId != null,
         note = template.note ?: note,
+        recurring = recurring || template.recurring,
         appliedTemplateId = template.id,
     )
 
