@@ -207,6 +207,8 @@ A category's group is the opposite: read through, never copied onto the row, so 
 A day a schedule falls on becomes a row once it has come, and nothing counts it before — its next day is only previewed above today; only a typed transaction can repeat, or a captured one would be counted twice ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md), `RecurringRepository.repeat`).
 Due days are caught up at process start, midnight and listener bind (`RecurringPosting`); never reach for WorkManager or an alarm to fire them, which would bring in a permission this app refuses.
 
+`source = RECURRING` says a row has a day and no hour, not that a schedule wrote it: a typed row can be marked so and has no `recurringId`, and a schedule's row given an hour is `MANUAL` and keeps its own, so never read one from the other.
+
 ### A parser fix repairs history
 
 Bump `NotificationParser.version` on **any** behaviour change.

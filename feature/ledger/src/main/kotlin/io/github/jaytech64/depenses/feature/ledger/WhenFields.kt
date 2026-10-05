@@ -228,7 +228,13 @@ internal fun WhenRow(
         // A recurring transaction has a day and no hour.
         if (!state.isSchedule) {
             OutlinedButton(onClick = { onPick(Picking.TIME) }) {
-                Text(Formatters.time(state.time.toInstantOn(state.date), ZoneOffset.UTC, locale))
+                Text(
+                    if (state.recurring) {
+                        stringResource(R.string.ledger_recurring)
+                    } else {
+                        Formatters.time(state.time.toInstantOn(state.date), ZoneOffset.UTC, locale)
+                    },
+                )
             }
         }
     }

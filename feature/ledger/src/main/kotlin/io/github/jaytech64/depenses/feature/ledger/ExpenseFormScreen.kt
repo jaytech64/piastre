@@ -135,8 +135,16 @@ private fun EntryForm(
             onAddCategory = { onPick(Picking.ADD_CATEGORY) },
         )
 
-        // A template says what a transaction is, never when.
-        if (!state.isTemplate) WhenSection(state = state, viewModel = viewModel, onPick = onPick)
+        // A template says what a transaction is, never when — only whether it has an hour at all.
+        if (state.isTemplate) {
+            OfferBox(
+                label = stringResource(R.string.form_time_recurring),
+                checked = state.recurring,
+                onChange = viewModel.repeat::onRecurringChange,
+            )
+        } else {
+            WhenSection(state = state, viewModel = viewModel, onPick = onPick)
+        }
 
         OutlinedTextField(
             value = state.note,

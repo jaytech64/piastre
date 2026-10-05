@@ -42,7 +42,7 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun transactionTemplateDao(): TransactionTemplateDao
 
     companion object {
-        const val VERSION: Int = 15
+        const val VERSION: Int = 16
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -64,6 +64,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_12_13,
                 MIGRATION_13_14,
                 MIGRATION_14_15,
+                MIGRATION_15_16,
             )
 
         const val NAME: String = "depenses.db"
@@ -492,6 +493,18 @@ private val MIGRATION_14_15 =
                 "CREATE UNIQUE INDEX IF NOT EXISTS `index_transaction_template_uuid` " +
                     "ON `transaction_template` (`uuid`)",
             )
+        }
+    }
+
+/**
+ * Schema 16 lets a template say the transaction it fills is recurring. No
+ * template made before could say so, so every one of them is not: false here is
+ * what was true, not a guess.
+ */
+private val MIGRATION_15_16 =
+    object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE transaction_template ADD COLUMN recurring INTEGER NOT NULL DEFAULT 0")
         }
     }
 

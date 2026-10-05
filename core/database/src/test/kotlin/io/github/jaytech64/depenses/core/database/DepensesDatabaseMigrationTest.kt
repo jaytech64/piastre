@@ -366,6 +366,21 @@ class DepensesDatabaseMigrationTest {
         assertEquals(0, migrated.count("transaction_template"))
     }
 
+    @Test
+    fun `migrating to schema 16 keeps every template, and none of them is recurring`() {
+        helper.createDatabase(NAME, 15).use { database ->
+            database.execSQL(
+                "INSERT INTO transaction_template (uuid, name, kind, amountMinor, currency) " +
+                    "VALUES ('t-1', 'Hydro', 'EXPENSE', NULL, 'CAD')",
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 16, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(1, migrated.count("transaction_template"))
+        assertEquals(0, migrated.singleInt("SELECT recurring FROM transaction_template WHERE uuid = 't-1'"))
+    }
+
     private fun SupportSQLiteDatabase.singleString(sql: String): String =
         query(sql).use { cursor ->
             cursor.moveToFirst()

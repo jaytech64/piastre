@@ -6,7 +6,9 @@ package io.github.jaytech64.depenses.core.model
  * A transaction you type often, kept to fill the form with. It holds what the
  * transaction is and nothing about when, and writes nothing by itself.
  *
- * [amount] is null when it is different every time.
+ * [amount] is null when it is different every time. [recurring] is true when the
+ * transaction it fills comes back, and so has a day and no hour: the bill typed
+ * each month because its amount is only known once it arrives.
  */
 data class TransactionTemplate(
     val id: Long,
@@ -24,6 +26,7 @@ data class TransactionTemplate(
     val categoryId: Long?,
     val categoryName: String?,
     val note: String?,
+    val recurring: Boolean = false,
 )
 
 /** What a template is made of, as typed: what [TransactionTemplate] holds before it has an id. */
@@ -36,4 +39,5 @@ data class TemplateContent(
     val toAccountId: Long?,
     val categoryId: Long?,
     val note: String?,
+    val recurring: Boolean = false,
 )

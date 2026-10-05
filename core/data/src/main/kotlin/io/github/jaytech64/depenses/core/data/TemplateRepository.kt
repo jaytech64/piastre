@@ -55,6 +55,7 @@ class TemplateRepository
                     categoryId = content.categoryId,
                     note = content.note(),
                     lastUsedAtUtcMillis = null,
+                    recurring = content.recurring,
                 ),
             )
         }
@@ -85,6 +86,7 @@ class TemplateRepository
                     toAccountId = content.destination(),
                     categoryId = content.categoryId,
                     note = content.note(),
+                    recurring = content.recurring,
                 ),
             )
         }
@@ -123,5 +125,6 @@ private fun toDomain(row: TemplateWithNames): TransactionTemplate =
             categoryId = categoryId,
             categoryName = row.categoryName,
             note = note,
+            recurring = recurring,
         )
     }

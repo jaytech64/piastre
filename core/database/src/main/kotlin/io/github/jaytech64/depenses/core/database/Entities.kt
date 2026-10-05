@@ -331,4 +331,6 @@ data class TransactionTemplateEntity(
     val categoryId: Long?,
     val note: String?,
     val lastUsedAtUtcMillis: Long?,
+    /** Whether the transaction it fills has a day and no hour, because it comes back. */
+    @ColumnInfo(defaultValue = "0") val recurring: Boolean = false,
 )

@@ -72,6 +72,11 @@ data class ExpenseFormUiState(
     val merchantText: String = "",
     val date: LocalDate,
     val time: LocalTime,
+    /**
+     * True when it has a day and no hour, because it comes back: [time] is then
+     * not shown, and not saved. Never true of a captured transaction.
+     */
+    val recurring: Boolean = false,
     val note: String = "",
     val kind: TransactionKind = TransactionKind.EXPENSE,
     /**
@@ -355,7 +360,8 @@ class ExpenseFormViewModel
 
         fun onDateChange(date: LocalDate) = _uiState.update { it.copy(date = date) }
 
-        fun onTimeChange(time: LocalTime) = _uiState.update { it.copy(time = time) }
+        /** An hour is the other answer to [RepeatChoice.onRecurringChange], so giving one takes that back. */
+        fun onTimeChange(time: LocalTime) = _uiState.update { it.copy(time = time, recurring = false) }
 
         fun onKindChange(kind: TransactionKind) =
             _uiState.update {
@@ -492,6 +498,7 @@ private fun ExpenseFormUiState.filledFrom(template: TransactionTemplate): Expens
         toAccountId = template.toAccountId,
         categoryId = template.categoryId,
         categoryChosen = true,
+        recurring = template.recurring,
         loading = false,
     )
 
@@ -506,6 +513,7 @@ private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseForm
         merchantText = transaction.displayMerchant.orEmpty(),
         date = local.toLocalDate(),
         time = local.toLocalTime(),
+        recurring = transaction.source == TransactionSource.RECURRING,
         note = transaction.note.orEmpty(),
         kind = transaction.kind,
         accountId = transaction.accountId,

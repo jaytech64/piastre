@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.feature.ledger
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -59,7 +60,9 @@ internal fun FormDialog(
                     viewModel.onTimeChange(it)
                     onClose()
                 },
-                onCancel = onClose,
+                // The hour of a captured transaction is the one Wallet gave it.
+                onRecurring = { viewModel.repeat.onRecurringChange(true) }.takeUnless { state.isCaptured },
+                onClose = onClose,
             )
         }
 
@@ -202,13 +205,18 @@ internal fun DatePickerSheet(
  * Opens on typed hour and minute fields, since a time read off a receipt is
  * quicker typed than dialled; the toggle in the corner swaps to the clock face
  * and back. The clock is withheld on a window too short to hold it.
+ *
+ * [onRecurring] is the answer that is not an hour — it comes back, so it has a
+ * day and no hour — and closes the dialog too. It is null on a captured
+ * transaction, whose hour is the one Wallet gave it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TimePickerSheet(
     time: LocalTime,
     onPicked: (LocalTime) -> Unit,
-    onCancel: () -> Unit,
+    onRecurring: (() -> Unit)?,
+    onClose: () -> Unit,
 ) {
     val pickerState = rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = true)
     var displayMode by remember { mutableStateOf(TimePickerDisplayMode.Input) }
@@ -216,14 +224,14 @@ private fun TimePickerSheet(
     val showsClock = displayMode == TimePickerDisplayMode.Picker && clockFits
 
     TimePickerDialog(
-        onDismissRequest = onCancel,
+        onDismissRequest = onClose,
         title = { TimePickerDialogDefaults.Title(displayMode = displayMode) },
         confirmButton = {
             TextButton(onClick = { onPicked(LocalTime.of(pickerState.hour, pickerState.minute)) }) {
                 Text(stringResource(R.string.manual_save))
             }
         },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.manual_cancel)) } },
+        dismissButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.manual_cancel)) } },
         modeToggleButton = {
             if (clockFits) {
                 TimePickerDialogDefaults.DisplayModeToggle(
@@ -233,7 +241,18 @@ private fun TimePickerSheet(
             }
         },
     ) {
-        if (showsClock) TimePicker(state = pickerState) else TimeInput(state = pickerState)
+        // Under the hour rather than beside Cancel and Save: the row of actions has no room for a third.
+        Column {
+            if (showsClock) TimePicker(state = pickerState) else TimeInput(state = pickerState)
+            onRecurring?.let {
+                TextButton(
+                    onClick = {
+                        it()
+                        onClose()
+                    },
+                ) { Text(stringResource(R.string.form_time_recurring)) }
+            }
+        }
     }
 }
 

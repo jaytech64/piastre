@@ -253,6 +253,78 @@ class ExpenseFormRepeatTest {
             assertEquals(2, transactions.confirmed().first().size)
         }
 
+    @Test
+    fun `a transaction said to be recurring is saved with its day and no hour, and repeats nothing`() =
+        runTest {
+            viewModel.onAmountChange("101,32")
+            viewModel.onMerchantChange("Hydro-Québec")
+            viewModel.repeat.onRecurringChange(true)
+
+            viewModel.save()
+            viewModel.uiState.first { it.done }
+
+            val saved = transactions.confirmed().first().single()
+            assertEquals(TransactionSource.RECURRING, saved.source)
+            assertEquals(LocalDate.of(2026, 9, 27), saved.localDate)
+            assertEquals(LocalTime.NOON, saved.occurredAt.atZone(ZONE).toLocalTime())
+            assertTrue(recurring.all().first().isEmpty())
+        }
+
+    @Test
+    fun `picking an hour takes recurring back`() =
+        runTest {
+            viewModel.onAmountChange("101,32")
+            viewModel.repeat.onRecurringChange(true)
+            viewModel.onTimeChange(LocalTime.of(14, 12))
+
+            viewModel.save()
+            viewModel.uiState.first { it.done }
+
+            val saved = transactions.confirmed().first().single()
+            assertEquals(TransactionSource.MANUAL, saved.source)
+            assertEquals(LocalTime.of(14, 12), saved.occurredAt.atZone(ZONE).toLocalTime())
+        }
+
+    @Test
+    fun `a row a schedule wrote opens as recurring, and keeps no hour when its amount is corrected`() =
+        runTest {
+            val typed = typedOn(LocalDate.of(2026, 8, 25))
+            recurring.repeat(typed, Rhythm.MONTHLY, lastDate = null)
+            val written = transactions.confirmed().first().single { it.id != typed }
+            viewModel = open(editing = written.id)
+
+            assertTrue(viewModel.uiState.first { !it.loading }.recurring)
+            viewModel.onAmountChange("91,20")
+            viewModel.save()
+            viewModel.uiState.first { it.done }
+
+            val corrected = transactions.byId(written.id)
+            assertEquals(TransactionSource.RECURRING, corrected?.source)
+            assertEquals(written.occurredAt, corrected?.occurredAt)
+            assertEquals(9_120L, corrected?.amount?.minor)
+        }
+
+    @Test
+    fun `a transaction said to be recurring and made to repeat starts its schedule`() =
+        runTest {
+            viewModel.onAmountChange("85,00")
+            viewModel.repeat.onRecurringChange(true)
+            viewModel.repeat.onRhythmChange(Rhythm.MONTHLY)
+
+            viewModel.save()
+            viewModel.uiState.first { it.done }
+
+            val schedule = recurring.all().first().single()
+            assertEquals(
+                schedule.id,
+                transactions
+                    .confirmed()
+                    .first()
+                    .single()
+                    .recurringId,
+            )
+        }
+
     private suspend fun typedOn(day: LocalDate): Long =
         transactions.addManual(
             amount = Money(8_500, Money.CAD),

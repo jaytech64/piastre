@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import io.github.jaytech64.depenses.parsing.GoogleWalletParser
@@ -26,6 +27,7 @@ import org.robolectric.RobolectricTestRunner
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import javax.inject.Provider
 
@@ -421,6 +423,90 @@ class TransactionEditorTest {
             assertNotNull(named)
             assertEquals(named, repository.byId(id)?.accountId)
         }
+
+    /** Typed at 23:40, it is still that day's: noon is worked out from the day, not the other way round. */
+    @Test
+    fun `a typed transaction said to be recurring has its day and no hour`() =
+        runTest {
+            val lateEvening =
+                LocalDate
+                    .of(2026, 9, 5)
+                    .atTime(23, 40)
+                    .atZone(ZONE)
+                    .toInstant()
+
+            val id =
+                repository.addManual(
+                    Money(10_132, Money.CAD),
+                    "Hydro-Québec",
+                    lateEvening,
+                    note = null,
+                    kind = TransactionKind.EXPENSE,
+                    accountId = null,
+                    toAccountId = null,
+                    categoryId = null,
+                    reach = null,
+                    recurring = true,
+                )
+
+            val stored = repository.byId(id)
+            assertEquals(TransactionSource.RECURRING, stored?.source)
+            assertEquals(LocalDate.of(2026, 9, 5), stored?.localDate)
+            assertEquals(noonOn(LocalDate.of(2026, 9, 5)), stored?.occurredAt)
+            assertNull(stored?.recurringId)
+        }
+
+    @Test
+    fun `a typed transaction can be made recurring, and given its hour back`() =
+        runTest {
+            val id = addManual(merchant = "Hydro-Québec")
+            val day = repository.byId(id)?.localDate
+
+            editAt(id, occurredAt(), recurring = true)
+            val recurring = repository.byId(id)
+            editAt(id, occurredAt(), recurring = false)
+            val timed = repository.byId(id)
+
+            assertEquals(TransactionSource.RECURRING, recurring?.source)
+            assertEquals(day?.let(::noonOn), recurring?.occurredAt)
+            assertEquals(TransactionSource.MANUAL, timed?.source)
+            assertEquals(occurredAt(), timed?.occurredAt)
+        }
+
+    /** Its hour is what Wallet said, and its source is what lets a parser fix reach it. */
+    @Test
+    fun `a captured purchase keeps its hour whatever is asked`() =
+        runTest {
+            captureCoffee()
+            val id = capturedId()
+
+            editAt(id, occurredAt(), recurring = true, merchant = MERCHANT_RAW)
+
+            val stored = repository.byId(id)
+            assertEquals(TransactionSource.NOTIFICATION, stored?.source)
+            assertEquals(occurredAt(), stored?.occurredAt)
+        }
+
+    private suspend fun editAt(
+        id: Long,
+        occurredAt: Instant,
+        recurring: Boolean,
+        merchant: String = "Hydro-Québec",
+    ) = editor.edit(
+        id,
+        Money(1_250, Money.CAD),
+        TransactionKind.EXPENSE,
+        merchant,
+        occurredAt,
+        note = null,
+        accountId = null,
+        toAccountId = null,
+        categoryId = null,
+        reach = null,
+        recurring = recurring,
+    )
+
+    private fun noonOn(day: LocalDate): Instant = day.atTime(LocalTime.NOON).atZone(ZONE).toInstant()
 
     private suspend fun captureShouting(merchant: String) =
         capture.capture(

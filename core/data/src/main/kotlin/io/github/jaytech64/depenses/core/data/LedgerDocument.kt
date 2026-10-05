@@ -74,6 +74,7 @@ internal data class ExportedRecurring(
  *
  * [uuid] is its identity on any phone: an import that finds it already there
  * leaves yours as it is. [amountMinor] is null when the template holds no amount.
+ * [recurring] arrived later, and a file written before it has templates that are not.
  */
 @Serializable
 internal data class ExportedTemplate(
@@ -91,6 +92,7 @@ internal data class ExportedTemplate(
     val categoryId: Long?,
     val note: String?,
     val lastUsedAtUtcMillis: Long?,
+    val recurring: Boolean = false,
 )
 
 /**

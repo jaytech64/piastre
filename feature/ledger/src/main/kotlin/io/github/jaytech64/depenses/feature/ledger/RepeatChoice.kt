@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.update
 import java.time.LocalDate
 
 /**
- * The form's *Repeats* and *Ends* fields. It reads and writes the form's own
+ * The form's *Repeats* and *Ends* fields, and whether it is recurring without
+ * either: typed each time it comes back. It reads and writes the form's own
  * state, so a save sees one form; it is a class of its own only so the form's
  * view model stays about saving, as [CategoryPicker] does for the category.
  */
@@ -18,6 +19,9 @@ class RepeatChoice internal constructor(
     fun onRhythmChange(rhythm: Rhythm?) = form.update { it.copy(rhythm = rhythm) }
 
     fun onLastDateChange(date: LocalDate?) = form.update { it.copy(lastDate = date) }
+
+    /** Whether it has a day and no hour, because it comes back. It makes nothing repeat. */
+    fun onRecurringChange(recurring: Boolean) = form.update { it.copy(recurring = recurring) }
 
     fun dismissBackfill() = form.update { it.copy(backfill = null) }
 
