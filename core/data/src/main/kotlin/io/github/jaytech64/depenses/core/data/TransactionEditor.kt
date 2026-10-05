@@ -49,6 +49,12 @@ class TransactionEditor
          * [reach] is what the form offered beside the category, or null when it
          * offered nothing; the purchase and everything the category reaches are
          * written together or not at all.
+         *
+         * [recurring] says whether a typed row has a day and no hour, as
+         * [TransactionRepository.addManual] takes it, and either way can be undone
+         * here — on a row a schedule wrote too, which stays that schedule's, under
+         * the key that keeps its day from being written again. A captured row keeps
+         * the hour its notification gave it, whatever is asked.
          */
         suspend fun edit(
             id: Long,
@@ -61,12 +67,16 @@ class TransactionEditor
             toAccountId: Long?,
             categoryId: Long?,
             reach: CategoryReach?,
+            recurring: Boolean = false,
         ) = database.inTransaction {
             val row = transactions.withMerchantById(id) ?: return@inTransaction
             val existing = row.transaction
             val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
             val renamed = merchant != (row.merchantName ?: existing.merchantRaw)
-            val occurredAtMillis = occurredAt.toEpochMilli()
+            val zone = ZoneId.of(existing.zoneId)
+            val source = existing.source.typedAs(recurring)
+            val occurredAtMillis =
+                placedAtMillis(occurredAt.toEpochMilli(), zone, source == TransactionSource.RECURRING)
             val edited =
                 (
                     if (renamed) {
@@ -80,8 +90,9 @@ class TransactionEditor
                     amountMinor = amount.minor,
                     currency = amount.currency,
                     kind = kind,
+                    source = source,
                     occurredAtUtcMillis = occurredAtMillis,
-                    localDateEpochDay = localDateEpochDay(occurredAtMillis, ZoneId.of(existing.zoneId)),
+                    localDateEpochDay = localDateEpochDay(occurredAtMillis, zone),
                     note = note?.takeIf { it.isNotBlank() }?.trim(),
                     categoryId = categoryId,
                     reviewedAtUtcMillis = clock.millis(),
@@ -89,6 +100,17 @@ class TransactionEditor
             transactions.update(edited)
             categories.spreadFrom(edited, reach)
         }
+
+        private fun TransactionSource.typedAs(recurring: Boolean): TransactionSource =
+            when (this) {
+                TransactionSource.NOTIFICATION -> {
+                    this
+                }
+
+                TransactionSource.MANUAL, TransactionSource.RECURRING -> {
+                    if (recurring) TransactionSource.RECURRING else TransactionSource.MANUAL
+                }
+            }
 
         /**
          * A typed or recurring row simply takes the new name, or none.

@@ -89,6 +89,10 @@ class TransactionRepository
          * [accountId] is the account it came from, null when nothing was said, and
          * [toAccountId] where a transfer landed. [reach] is what the form offered
          * beside [categoryId], as [TransactionEditor.edit] takes it.
+         *
+         * A [recurring] one comes back, at an amount only known once it has: it has
+         * a day and no hour, and reads in the ledger as a row a schedule wrote. It
+         * is still typed each time, and writes nothing to come.
          */
         suspend fun addManual(
             amount: Money,
@@ -100,10 +104,12 @@ class TransactionRepository
             toAccountId: Long?,
             categoryId: Long?,
             reach: CategoryReach?,
+            recurring: Boolean = false,
         ): Long =
             database.inTransaction {
                 val entry =
                     manualEntry(amount, merchantName, occurredAt, note, kind, accountId, toAccountId, categoryId)
+                        .placed(recurring)
                 val id = transactions.insert(entry)
                 categories.spreadFrom(entry.copy(id = id), reach)
                 id
@@ -150,6 +156,12 @@ class TransactionRepository
                 toAccountId = toAccountId,
             )
         }
+
+        private fun ExpenseTransactionEntity.placed(recurring: Boolean): ExpenseTransactionEntity =
+            copy(
+                occurredAtUtcMillis = placedAtMillis(occurredAtUtcMillis, ZoneId.of(zoneId), recurring),
+                source = if (recurring) TransactionSource.RECURRING else TransactionSource.MANUAL,
+            )
 
         private companion object {
             /** Not a package name, and deliberately not one: no parser can claim it. */

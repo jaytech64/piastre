@@ -13,6 +13,7 @@ import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
+import io.github.jaytech64.depenses.core.model.localDateEpochDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -138,12 +139,39 @@ internal fun recurringSourceKey(
 ): String = "$uuid:$day"
 
 /**
- * The row a schedule writes for [day].
+ * Where a recurring row sits in time. It has a day and no hour, so it is placed
+ * at noon in [zone], as far from either midnight as a day allows.
+ */
+internal fun noonMillis(
+    day: LocalDate,
+    zone: ZoneId,
+): Long =
+    day
+        .atTime(LocalTime.NOON)
+        .atZone(zone)
+        .toInstant()
+        .toEpochMilli()
+
+/**
+ * The instant a typed row is stored at: the one it was given, or for a
+ * [recurring] one, [noonMillis] on the day that instant falls on in [zone].
+ */
+internal fun placedAtMillis(
+    occurredAtMillis: Long,
+    zone: ZoneId,
+    recurring: Boolean,
+): Long =
+    if (recurring) {
+        noonMillis(LocalDate.ofEpochDay(localDateEpochDay(occurredAtMillis, zone).toLong()), zone)
+    } else {
+        occurredAtMillis
+    }
+
+/**
+ * The row a schedule writes for [day], placed at [noonMillis].
  *
- * A due day has no hour, so the row is placed at noon in the zone it is written
- * in, as far from either midnight as a day allows. Its day is [day] itself
- * rather than one worked out from that instant, so the ledger files it on its
- * due day whatever zone it is later read from.
+ * Its day is [day] itself rather than one worked out from that instant, so the
+ * ledger files it on its due day whatever zone it is later read from.
  *
  * Its source key is [recurringSourceKey].
  */
@@ -155,12 +183,7 @@ internal fun RecurringTransactionEntity.occurrenceOn(
         rawEventId = null,
         amountMinor = amountMinor,
         currency = currency,
-        occurredAtUtcMillis =
-            day
-                .atTime(LocalTime.NOON)
-                .atZone(zone)
-                .toInstant()
-                .toEpochMilli(),
+        occurredAtUtcMillis = noonMillis(day, zone),
         zoneId = zone.id,
         localDateEpochDay = day.toEpochDay().toInt(),
         merchantId = merchantId,

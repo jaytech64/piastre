@@ -337,6 +337,43 @@ class RecurringRepositoryTest {
             )
         }
 
+    /** It shows its hour from then on, and is still the row for that day: the day is not written beside it. */
+    @Test
+    fun `a written row given an hour stays its schedule's, and its day is not written again`() =
+        runTest {
+            recurring.repeat(typed(on = LocalDate.of(2026, 8, 25)), Rhythm.MONTHLY, lastDate = null)
+            val schedule = recurring.all().first().single()
+            val september = ledger().single { it.localDate == LocalDate.of(2026, 9, 25) }
+            val atTen =
+                LocalDate
+                    .of(2026, 9, 25)
+                    .atTime(LocalTime.of(10, 0))
+                    .atZone(ZONE)
+                    .toInstant()
+
+            editor.edit(
+                id = september.id,
+                amount = Money(9_120, Money.CAD),
+                kind = TransactionKind.EXPENSE,
+                merchantName = "Vidéotron",
+                occurredAt = atTen,
+                note = null,
+                accountId = null,
+                toAccountId = null,
+                categoryId = null,
+                reach = null,
+                recurring = false,
+            )
+            database.recurringTransactionDao().moveNextDue(schedule.id, LocalDate.of(2026, 9, 25).toEpochDay().toInt())
+            val rewritten = posting.catchUp()
+
+            val edited = ledger().single { it.localDate == LocalDate.of(2026, 9, 25) }
+            assertEquals(0, rewritten)
+            assertEquals(TransactionSource.MANUAL, edited.source)
+            assertEquals(atTen, edited.occurredAt)
+            assertEquals(schedule.id, edited.recurringId)
+        }
+
     private suspend fun typed(
         on: LocalDate,
         categoryId: Long? = null,
