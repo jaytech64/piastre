@@ -1,6 +1,6 @@
 # 13. A recurring transaction is written on its day, never projected
 
-- **Status:** Accepted, revised twice — implemented.
+- **Status:** Accepted, revised three times — implemented.
 - **Decided:** 2026-09-27, while planning recurring transactions (`.lavish/recurring-transactions.html`, forks A, B, D and F).
 - **Touches:** `:core:model` (`Recurrence`), `:core:database` (`recurring_transaction`, schema 12), `:core:data` (`RecurringPosting`, `RecurringRepository`, export and import), `:feature:ledger`, `:feature:settings`, `:app`, `:capture:listener`.
 
@@ -62,6 +62,28 @@ The line is collapsed and set apart from the list, and says it's upcoming, so it
 Nothing else here changes: rows are still written only on their day.
 A schedule that starts after today now waits for its first day too, rather than writing it on save.
 
+## Revision — a row you type can be recurring
+
+- **Decided:** 2026-10-05 (`.lavish/typed-recurring.html`).
+
+A bill whose amount is only known once it arrives cannot be written by a schedule, so it is typed each time.
+It had to be given an hour, and was given midnight to sit where the recurring rows sit.
+It can now be said to be recurring instead, from the time dialog, or by the template that fills it.
+
+*Recurring* on a row therefore no longer means that a schedule wrote it.
+It means the row has a day and no hour because it comes back, whoever wrote it.
+Such a row is stored exactly as a schedule's is — source `RECURRING`, at noon on its day — so the ledger needs no second rule to word it or to place it in its day.
+It belongs to no schedule, writes nothing to come, and is counted like any confirmed row.
+
+The same choice can be undone, on a row a schedule wrote too.
+Given an hour, that row shows it and sorts by it, and keeps its schedule and the key that stops its day being written again.
+A captured row is never offered the choice: its hour is what the bank said, and its source is what lets a parser fix reach it.
+
+Rejected: a column of its own for "has no hour", leaving the source to say only who wrote the row.
+It is the more exact model, and it would have asked every reader of the source — the label, the order within a day, the export — to learn a second flag that today always agrees with the first.
+Rejected: turning the rows already typed at midnight into recurring ones in a migration.
+Midnight was a workaround, not a statement, and a migration that reads it as one is a guess.
+
 ## Consequences
 
 **A row appears only once the app or its listener has run on or after its day.**
@@ -69,7 +91,7 @@ It is always dated right, so the ledger is right whenever it is read, which is t
 No notification says it was written: that would need the permissions this record, and ADR-0004, decline.
 
 **A bill whose amount varies counts at the amount set until corrected.**
-A waiting state for such bills is a possible follow-up, and would need its own rule beside ADR-0002.
+One that varies too much for that is typed each time, and marked recurring, as the last revision allows.
 
 **A start in the past writes a row for every day since**, after saying how many and asking.
 Rows already typed by hand for those days are not detected, and would be doubled if agreed to.
@@ -83,4 +105,5 @@ The row and the cursor past its day are written in one database transaction, and
 - `RecurringTransactionEntity` and `MIGRATION_11_12` in `:core:database` — the schedule and its `nextDueEpochDay` cursor.
 - `RecurringPosting` in `:core:data` — the catch-up pass, and `occurrenceOn`, the row a day writes; called from `DepensesApplication` and `DepensesListenerService`.
 - `RecurringRepository.repeat`, which refuses a captured transaction or one already on a schedule, and `change`, which never touches a written row.
+- `TransactionRepository.addManual` and `TransactionEditor.edit`, which take whether a typed row is recurring, and `placedAtMillis`, the noon both share with `occurrenceOn`.
 - `RecurringRepositoryTest`, and `ExpenseFormRepeatTest` in `:feature:ledger`.
