@@ -18,18 +18,24 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jaytech64.depenses.core.model.ReportPeriod
 import java.util.Locale
 
 /**
  * One scroll: the period, what its balance is made of, where the spending went,
- * and the month it sits in.
+ * and the month it sits in. A category, a group or what has no category opens
+ * its transactions through [onOpenTransactions], which is all this screen knows
+ * of where they are shown.
  *
  * The calendar is last rather than on a screen of its own because it is a
  * breakdown of what the header says was spent — and because it doubles as the day picker,
  * which is why nothing here needs a date-range control.
  */
 @Composable
-fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
+fun ReportsScreen(
+    onOpenTransactions: (SpendingOf, ReportPeriod) -> Unit,
+    viewModel: ReportsViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val locale = currentLocale()
 
@@ -53,7 +59,12 @@ fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
             onStepForward = viewModel::onStepForward,
         )
 
-        CategoryRanking(state, locale, viewModel::onGroupTapped)
+        CategoryRanking(
+            state = state,
+            locale = locale,
+            onGroupTapped = viewModel::onGroupTapped,
+            onOpenTransactions = { of -> onOpenTransactions(of, state.period) },
+        )
 
         MonthHeatGrid(
             month = state.period.month,
