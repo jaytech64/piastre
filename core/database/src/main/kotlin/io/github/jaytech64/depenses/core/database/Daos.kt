@@ -121,6 +121,15 @@ interface RawNotificationEventDao {
     }
 }
 
+/**
+ * Keeps a write of a category off a split. A split's row carries none because
+ * its parts do, so `categoryId IS NULL` is true of it without meaning "nobody
+ * has said": every write that gives rows a category in bulk must add this, or
+ * the split would be counted under that category on top of its parts (ADR-0018).
+ */
+private const val NOT_SPLIT =
+    "NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = expense_transaction.id)"
+
 @Dao
 interface TransactionDao {
     /**
@@ -136,7 +145,8 @@ interface TransactionDao {
      * Fields the user owns — their note, their category, whether it was income —
      * survive a re-parse. A row with no category yet takes the one the new reading
      * carries, which is its merchant's, so a category given to a merchant since
-     * the first reading reaches a purchase Wallet re-posts.
+     * the first reading reaches a purchase Wallet re-posts. A split never does: its
+     * parts already say what it was for.
      * Everything the parser owns is overwritten, which is what makes fixing a
      * parser repair history.
      *
@@ -156,12 +166,15 @@ interface TransactionDao {
             transaction.copy(
                 id = existing.id,
                 note = existing.note,
-                categoryId = existing.categoryId ?: transaction.categoryId,
+                categoryId = existing.categoryId ?: transaction.categoryId.takeUnless { isSplit(existing.id) },
                 kind = existing.kind,
             ),
         )
         return existing.id
     }
+
+    @Query("SELECT EXISTS (SELECT 1 FROM transaction_part WHERE transactionId = :id)")
+    suspend fun isSplit(id: Long): Boolean
 
     @Insert
     suspend fun insert(transaction: ExpenseTransactionEntity): Long
@@ -331,7 +344,7 @@ interface TransactionDao {
      * Unlike [CategoryDao.categoriseAtMerchant], a row that already has a
      * category takes the new one: these rows were picked one by one, often
      * precisely because the category they carry is wrong. A dismissed row is left
-     * out, as there.
+     * out, as there, and so is a split, which was divided by hand part by part.
      *
      * The review time is not stamped, for the reason
      * [CategoryDao.categoriseAtMerchant] gives. [ids] is a selection made by hand,
@@ -341,7 +354,7 @@ interface TransactionDao {
     @Query(
         """
         UPDATE expense_transaction SET categoryId = :categoryId
-        WHERE id IN (:ids) AND status != 'DISMISSED'
+        WHERE id IN (:ids) AND status != 'DISMISSED' AND """ + NOT_SPLIT + """
         """,
     )
     suspend fun categorise(
@@ -795,7 +808,7 @@ interface CategoryDao : CategoryClearing {
      *
      * A row that already has a category keeps it: it may be the one purchase
      * there you filed elsewhere on purpose. A dismissed row is left out, since it
-     * is in no list and no total.
+     * is in no list and no total, and so is a split, whose parts carry its categories.
      *
      * The review time is deliberately not stamped. It is what locks the parser out
      * of a row, and labelling forty purchases must not stop a parser fix from
@@ -806,7 +819,7 @@ interface CategoryDao : CategoryClearing {
         """
         UPDATE expense_transaction SET categoryId = :categoryId
         WHERE merchantId = :merchantId AND kind = :kind AND categoryId IS NULL
-          AND status != 'DISMISSED' AND id IS NOT :exceptId
+          AND status != 'DISMISSED' AND id IS NOT :exceptId AND """ + NOT_SPLIT + """
         """,
     )
     suspend fun categoriseAtMerchant(
@@ -821,7 +834,7 @@ interface CategoryDao : CategoryClearing {
         """
         SELECT COUNT(*) FROM expense_transaction
         WHERE merchantId = :merchantId AND kind = :kind AND categoryId IS NULL
-          AND status != 'DISMISSED' AND id IS NOT :exceptId
+          AND status != 'DISMISSED' AND id IS NOT :exceptId AND """ + NOT_SPLIT + """
         """,
     )
     fun uncategorisedAtMerchant(
@@ -838,7 +851,7 @@ interface CategoryDao : CategoryClearing {
         """
         UPDATE expense_transaction SET categoryId = :categoryId
         WHERE toAccountId = :accountId AND kind = 'TRANSFER' AND categoryId IS NULL
-          AND status != 'DISMISSED' AND id IS NOT :exceptId
+          AND status != 'DISMISSED' AND id IS NOT :exceptId AND """ + NOT_SPLIT + """
         """,
     )
     suspend fun categoriseTransfersInto(
@@ -851,7 +864,7 @@ interface CategoryDao : CategoryClearing {
         """
         SELECT COUNT(*) FROM expense_transaction
         WHERE toAccountId = :accountId AND kind = 'TRANSFER' AND categoryId IS NULL
-          AND status != 'DISMISSED' AND id IS NOT :exceptId
+          AND status != 'DISMISSED' AND id IS NOT :exceptId AND """ + NOT_SPLIT + """
         """,
     )
     fun uncategorisedTransfersInto(
