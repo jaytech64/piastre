@@ -203,6 +203,11 @@ A merchant's category — or, for a transfer, the category of the account it goe
 Categorising rows in bulk must not stamp `reviewedAtUtcMillis`, which would lock a parser fix out of them (`CategoryDao.categoriseAtMerchant`).
 A category's group is the opposite: read through, never copied onto the row, so moving a category moves its history ([ADR-0016](docs/adr/0016-a-categorys-group-is-read-through.md)).
 
+### A split is one transaction, counted whole
+
+A split's row keeps the whole amount and its parts in `transaction_part` only divide it among categories, so a total reads the row and only what reads a category reads the parts ([ADR-0018](docs/adr/0018-a-split-divides-one-transaction-among-categories.md), `settleCategory`).
+Its row's `categoryId` is null because its parts carry them, so any write that fills in missing categories must pass over a row with parts (`NOT_SPLIT` in `Daos.kt`), or the split is counted under that category twice.
+
 ### A recurring transaction is written, never projected
 
 A day a schedule falls on becomes a row once it has come, and nothing counts it before — its next day is only previewed above today; only a typed transaction can repeat, or a captured one would be counted twice ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md), `RecurringRepository.repeat`).
