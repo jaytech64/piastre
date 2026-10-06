@@ -688,6 +688,19 @@ interface CategoryClearing {
     suspend fun clearFromParts(id: Long)
 }
 
+/**
+ * Every use of a category, once per transaction: the one a transaction carries,
+ * and each one its parts carry. A split is a use of every category it touches,
+ * and two parts under one category are still one transaction using it.
+ */
+private const val CATEGORISED =
+    "(SELECT t.id AS transactionId, t.categoryId, t.kind, t.status, t.localDateEpochDay, t.occurredAtUtcMillis " +
+        "FROM expense_transaction t WHERE t.categoryId IS NOT NULL " +
+        "UNION " +
+        "SELECT t.id, p.categoryId, t.kind, t.status, t.localDateEpochDay, t.occurredAtUtcMillis " +
+        "FROM transaction_part p JOIN expense_transaction t ON t.id = p.transactionId " +
+        "WHERE p.categoryId IS NOT NULL)"
+
 @Dao
 interface CategoryDao : CategoryClearing {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -713,7 +726,8 @@ interface CategoryDao : CategoryClearing {
     /**
      * Every category, the ones you use most for [kind] first: by how many confirmed
      * rows carried it on or after [sinceEpochDay], then by when it was last used,
-     * then by name — the order [MerchantDao.byUse] gives merchants.
+     * then by name — the order [MerchantDao.byUse] gives merchants. A split counts
+     * for every category its parts carry.
      *
      * The name breaks ties on its folded form, so an unused Épicerie sits among
      * the E's rather than after Z where SQLite's byte order would put it.
@@ -721,7 +735,7 @@ interface CategoryDao : CategoryClearing {
     @Query(
         """
         SELECT c.* FROM category c
-        LEFT JOIN expense_transaction t
+        LEFT JOIN """ + CATEGORISED + """ t
             ON t.categoryId = c.id AND t.kind = :kind AND t.status = 'CONFIRMED'
         GROUP BY c.id
         ORDER BY SUM(t.localDateEpochDay >= :sinceEpochDay) DESC,
@@ -742,7 +756,7 @@ interface CategoryDao : CategoryClearing {
     @Query(
         """
         SELECT c.* FROM category c
-        JOIN expense_transaction t
+        JOIN """ + CATEGORISED + """ t
             ON t.categoryId = c.id AND t.kind = :kind AND t.status = 'CONFIRMED'
             AND t.localDateEpochDay >= :sinceEpochDay
         GROUP BY c.id
@@ -757,13 +771,14 @@ interface CategoryDao : CategoryClearing {
     ): Flow<List<CategoryEntity>>
 
     /**
-     * Confirmed transactions only, as an account counts them, and the merchants
-     * and accounts that give it automatically.
+     * Confirmed transactions only, as an account counts them, a split among them
+     * for each category it touches, and the merchants and accounts that give it
+     * automatically.
      */
     @Query(
         """
         SELECT c.*,
-            (SELECT COUNT(*) FROM expense_transaction t
+            (SELECT COUNT(*) FROM """ + CATEGORISED + """ t
              WHERE t.categoryId = c.id AND t.status = 'CONFIRMED') AS transactionCount,
             (SELECT COUNT(*) FROM merchant m WHERE m.categoryId = c.id) AS merchantCount,
             (SELECT COUNT(*) FROM account a WHERE a.categoryId = c.id) AS accountCount
@@ -1192,6 +1207,11 @@ private const val MONEY_OUT =
 private const val MONEY_IN =
     "(t.kind = 'INCOME' OR (t.kind = 'TRANSFER' AND origin.type = 'BANK' AND destination.type <> 'BANK'))"
 
+/** The confirmed rows that went out in one currency over a range of days, which every spending figure counts. */
+private const val SPENT_IN_RANGE =
+    "t.status = 'CONFIRMED' AND " + MONEY_OUT +
+        " AND t.currency = :currency AND t.localDateEpochDay BETWEEN :fromDay AND :toDay"
+
 /**
  * Reports are SQL, not Kotlin loops over the whole table. Every one of these
  * groups on an indexed integer column, so a year of history costs the same as a
@@ -1261,19 +1281,30 @@ interface ReportDao {
      * What [dailyTotals] counts, by category instead of by day, so the rows add up
      * to the period's total. The group is joined here rather than stored on the
      * transaction: moving a category moves its history (ADR-0016).
+     *
+     * A split goes to each category by the amount of its parts, which add up to
+     * its own, so the totals still add up to the period's (ADR-0018). It is
+     * counted once under each category it touches, so the counts no longer do.
      */
     @Query(
         """
         SELECT c.id AS categoryId, c.name AS categoryName, g.id AS groupId, g.name AS groupName,
-               SUM(t.amountMinor) AS totalMinor, COUNT(*) AS count
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        LEFT JOIN category c ON c.id = t.categoryId
+               SUM(s.amountMinor) AS totalMinor, COUNT(DISTINCT s.transactionId) AS count
+        FROM (
+            SELECT t.id AS transactionId, t.categoryId AS categoryId, t.amountMinor AS amountMinor
+            FROM expense_transaction t
+            """ + TRANSFER_ENDS + """
+            WHERE """ + SPENT_IN_RANGE + """
+              AND NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = t.id)
+            UNION ALL
+            SELECT t.id, p.categoryId, p.amountMinor
+            FROM expense_transaction t
+            """ + TRANSFER_ENDS + """
+            JOIN transaction_part p ON p.transactionId = t.id
+            WHERE """ + SPENT_IN_RANGE + """
+        ) s
+        LEFT JOIN category c ON c.id = s.categoryId
         LEFT JOIN category_group g ON g.id = c.groupId
-        WHERE t.status = 'CONFIRMED'
-          AND """ + MONEY_OUT + """
-          AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         GROUP BY c.id
         """,
     )

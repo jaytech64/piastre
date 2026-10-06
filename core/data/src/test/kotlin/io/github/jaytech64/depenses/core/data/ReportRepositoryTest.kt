@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.database.CategoryEntity
 import io.github.jaytech64.depenses.core.database.CategoryGroupEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
+import io.github.jaytech64.depenses.core.database.TransactionPartEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
@@ -235,6 +236,53 @@ class ReportRepositoryTest {
         }
 
     @Test
+    fun `a split goes to each category by its parts, and the categories still add up to the period`() =
+        runTest {
+            val groceries = category("Épicerie", null)
+            val home = category("Maison", null)
+            spend(on = MONDAY, amountMinor = 18_742, key = "costco")
+            split("costco", 12_000L to groceries, 5_000L to home, 1_742L to null)
+            spend(on = SUNDAY, amountMinor = 3_000, categoryId = groceries)
+            spend(on = SUNDAY, amountMinor = 800)
+
+            val spending = reports.categorySpending(week(), TODAY).first().associateBy { it.category?.name }
+
+            assertEquals(Money(15_000, Money.CAD), spending.getValue("Épicerie").total)
+            assertEquals(2, spending.getValue("Épicerie").count)
+            assertEquals(Money(5_000, Money.CAD), spending.getValue("Maison").total)
+            assertEquals(Money(2_542, Money.CAD), spending.getValue(null).total)
+            assertEquals(2, spending.getValue(null).count)
+            assertEquals(
+                reports.spending(week(), TODAY).first().total,
+                spending.values.map { it.total }.reduce(Money::plus),
+            )
+        }
+
+    @Test
+    fun `two parts of one split under one category are one transaction there`() =
+        runTest {
+            val groceries = category("Épicerie", null)
+            spend(on = MONDAY, amountMinor = 18_742, key = "costco")
+            split("costco", 12_000L to groceries, 6_742L to groceries)
+
+            val spending = reports.categorySpending(week(), TODAY).first().single()
+
+            assertEquals(Money(18_742, Money.CAD), spending.total)
+            assertEquals(1, spending.count)
+        }
+
+    @Test
+    fun `splitting a purchase moves no other figure of the period`() =
+        runTest {
+            spend(on = MONDAY, amountMinor = 18_742, key = "costco")
+            val before = reports.spending(week(), TODAY).first() to reports.dailyTotals(week(), TODAY).first()
+
+            split("costco", 12_000L to category("Épicerie", null), 6_742L to null)
+
+            assertEquals(before, reports.spending(week(), TODAY).first() to reports.dailyTotals(week(), TODAY).first())
+        }
+
+    @Test
     fun `a transfer into a bank account goes to its category, and a card payment to none`() =
         runTest {
             val card = account(AccountType.CARD)
@@ -387,6 +435,25 @@ class ReportRepositoryTest {
                 accountId = accountId,
                 toAccountId = toAccountId,
             ),
+        )
+    }
+
+    private suspend fun split(
+        key: String,
+        vararg parts: Pair<Long, Long?>,
+    ) {
+        val id = checkNotNull(database.transactionDao().bySourceKey("manual", key)).id
+        database.transactionPartDao().replace(
+            id,
+            parts.map { (amountMinor, categoryId) ->
+                TransactionPartEntity(
+                    transactionId = id,
+                    position = 0,
+                    amountMinor = amountMinor,
+                    categoryId = categoryId,
+                    note = null,
+                )
+            },
         )
     }
 

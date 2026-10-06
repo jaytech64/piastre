@@ -197,6 +197,36 @@ class CategoryDaoTest {
         }
 
     @Test
+    fun `a split is a use of each category its parts carry, once`() =
+        runTest {
+            val groceries = category("Épicerie")
+            val home = category("Maison")
+            val bar = category("Bar")
+            val costco = transactions.insert(row("costco"))
+            database.transactionPartDao().replace(
+                costco,
+                listOf(groceries, groceries, home).map { categoryId ->
+                    TransactionPartEntity(
+                        transactionId = costco,
+                        position = 0,
+                        amountMinor = 100,
+                        categoryId = categoryId,
+                        note = null,
+                    )
+                },
+            )
+            transactions.insert(row("iga", categoryId = groceries))
+
+            val counts = categories.allWithCounts().first().associate { it.category.id to it.transactionCount }
+            val order = categories.byUse(TransactionKind.EXPENSE, sinceEpochDay = 0).first().map { it.id }
+            val recent = categories.recentlyUsed(TransactionKind.EXPENSE, sinceEpochDay = 0, limit = 5).first()
+
+            assertEquals(mapOf(groceries to 2, home to 1, bar to 0), counts)
+            assertEquals(listOf(groceries, home, bar), order)
+            assertEquals(listOf(groceries, home), recent.map { it.id })
+        }
+
+    @Test
     fun `deleting a group leaves its categories in none, and every transaction keeps its category`() =
         runTest {
             val home = group("Maison")
