@@ -186,13 +186,14 @@ Two rules inside that file that look like bugs and are not:
 Never widen a parser to make a review item disappear.
 Add a fixture, decide whether the parser can be certain, and if it cannot, leave it for the human.
 
-**Totals exclude `NEEDS_REVIEW` rows** ([ADR-0002](docs/adr/0002-totals-exclude-unreviewed-rows.md)), and a transfer moves a balance by zero — counting one would charge you twice for what a card payment settles (`Transaction.signedAmount`).
-That zero is the ledger as a whole: a transfer moves the balance of each account it touches, so a total scoped to one account signs it by which end that account is on ([ADR-0006](docs/adr/0006-a-filtered-total-answers-for-one-account.md), `LedgerViewModel.balanceMovedOn`).
-Under a category with no account, a transfer is money that left for that category; under *No category* it stays zero ([ADR-0011](docs/adr/0011-a-transfer-under-a-category-is-money-that-left.md)).
+**Totals exclude `NEEDS_REVIEW` rows** ([ADR-0002](docs/adr/0002-totals-exclude-unreviewed-rows.md)).
+A transfer counts by the accounts it joins: into a bank account it is money out, back out of one it is money in, and between cards and cash it is zero — counting a card payment would charge you twice for what it settles ([ADR-0017](docs/adr/0017-a-transfer-counts-by-the-accounts-it-joins.md), `Transaction.signedAmount`).
+A category changes none of that, and the rule is written a second time in SQL for reports (`MONEY_OUT`, `MONEY_IN` in `Daos.kt`), so change both or neither.
+A total scoped to one account is different: a transfer moves the balance of each account it touches, signed by which end that account is on ([ADR-0006](docs/adr/0006-a-filtered-total-answers-for-one-account.md), `LedgerViewModel.movedOn`).
 
-A report's ranking, calendar and spending comparison count expenses alone ([ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md)); its headline is the ledger's balance for the period, with the count and comparison kept under *Dépenses* so they read as spending ([ADR-0009](docs/adr/0009-a-report-says-what-its-balance-is-made-of.md)).
+A report's ranking, calendar and spending comparison count what went out and no income ([ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md)); its headline is the ledger's balance for the period, with the count and comparison kept under *Dépenses* so they read as spending ([ADR-0009](docs/adr/0009-a-report-says-what-its-balance-is-made-of.md)).
 
-The ledger header's figures always add up to the balance above them: income and expenses by kind, and a filtered account's transfers as a figure of their own, never folded into either ([ADR-0008](docs/adr/0008-the-ledger-header-says-what-the-balance-is-made-of.md), `BalanceSummary`).
+The ledger header's figures always add up to the balance above them: income and expenses, and under an account filter that account's transfers as a figure of their own, never folded into either ([ADR-0008](docs/adr/0008-the-ledger-header-says-what-the-balance-is-made-of.md), `BalanceSummary`).
 The headline is this month's, except under a filter with dates, where it is every row shown ([ADR-0014](docs/adr/0014-a-dated-filters-headline-is-the-balance-of-its-dates.md), `LedgerViewModel.headlineRows`).
 A row dated after today counts in no figure anywhere until its day — headline, day, selection, report, account balance — and waits in the line above today ([ADR-0015](docs/adr/0015-a-transaction-counts-from-its-day.md)); a new total must stop at today too.
 

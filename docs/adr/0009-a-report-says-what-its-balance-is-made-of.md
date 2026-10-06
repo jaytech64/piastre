@@ -1,7 +1,7 @@
 # 9. A report says what its balance is made of
 
 - **Status:** Accepted — implemented.
-  Amends [ADR-0007](0007-a-report-counts-spending-not-the-balance.md).
+  Amends [ADR-0007](0007-a-report-counts-spending-not-the-balance.md); amended by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md), under which a transfer is no longer always worth zero to a report and the count reads *transactions*.
 - **Decided:** 2026-09-25, while planning the reports header (`.lavish/reports-balance-header.html`).
 - **Touches:** `:core:database` (`ReportDao`), `:core:data` (`ReportRepository`), `:core:designsystem` (`BalanceFigures`), `:feature:reports`.
 

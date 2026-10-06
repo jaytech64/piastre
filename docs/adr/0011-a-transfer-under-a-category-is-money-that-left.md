@@ -1,6 +1,6 @@
 # 11. A transfer under a category is money that left for it
 
-- **Status:** Accepted — implemented.
+- **Status:** Superseded by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md), which counts a transfer by the accounts it joins, under a category as anywhere else.
 - **Decided:** 2026-09-26, while planning the ledger's category and merchant filters (`.lavish/ledger-filters.html`, fork D).
 - **Touches:** `:feature:ledger` (`LedgerViewModel`).
 

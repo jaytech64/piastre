@@ -227,7 +227,37 @@ class LedgerViewModelTest : LedgerTest() {
         }
 
     @Test
-    fun `a transfer adds nothing to any figure on the whole ledger`() =
+    fun `a transfer into a bank account is among the expenses, and one back out of it among the income`() =
+        runTest {
+            val desrives = account("Desrives")
+            val savings = account("Épargne", AccountType.BANK)
+            insert(amountMinor = 4_000, day = TODAY)
+            insert(
+                amountMinor = 120_000,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = desrives,
+                toAccountId = account("Hypothèque", AccountType.BANK),
+            )
+            insert(
+                amountMinor = 30_000,
+                day = TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = savings,
+                toAccountId = desrives,
+            )
+
+            val state = settled()
+
+            assertEquals(Money(30_000, Money.CAD), state.headline.income)
+            assertEquals(Money(124_000, Money.CAD), state.headline.expenses)
+            assertEquals(Money(0, Money.CAD), state.headline.transfers)
+            assertEquals(Money(-94_000, Money.CAD), state.headline.balance)
+            assertEquals(Money(-94_000, Money.CAD), state.days.single().total)
+        }
+
+    @Test
+    fun `a transfer between cards adds nothing to any figure on the whole ledger`() =
         runTest {
             insert(
                 amountMinor = 90_000,
@@ -387,7 +417,7 @@ class LedgerViewModelTest : LedgerTest() {
         }
 
     @Test
-    fun `a transfer still moves the whole ledger by nothing`() =
+    fun `a transfer between a card and cash still moves the whole ledger by nothing`() =
         runTest {
             val desrives = account("Desrives")
             val cash = account("Comptant")

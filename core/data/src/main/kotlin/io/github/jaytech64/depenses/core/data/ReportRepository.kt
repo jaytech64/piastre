@@ -19,7 +19,7 @@ data class MerchantSpending(
     val count: Int,
 )
 
-/** What a period cost, and how many purchases that was. */
+/** What went out over a period, and how many transactions that was. */
 data class PeriodSpending(
     val total: Money,
     val count: Int,
@@ -37,6 +37,10 @@ data class PeriodSpending(
  * rate, a rate needs a network, and this app has none. [otherCurrencyCount] is
  * how a screen says so out loud.
  *
+ * A transfer counts by the two accounts it joins, as it does in the ledger: one
+ * into a bank account is spending, one back out of it is income, and any other
+ * is in no figure (ADR-0017).
+ *
  * Every figure counts a period up to today and no further: a transaction dated
  * after today counts from its day, as it does in the ledger (ADR-0015), so each
  * function takes today alongside the period.
@@ -48,7 +52,7 @@ class ReportRepository
         private val reports: ReportDao,
     ) {
         /**
-         * What each day of [period] cost, days with no spending absent rather than
+         * What went out on each day of [period], days with no spending absent rather than
          * present as zero — "nothing" and "not yet" are different facts, and only the
          * caller knows which one an absent day is.
          */
@@ -64,7 +68,7 @@ class ReportRepository
                 }
 
         /**
-         * The period's total and its purchase count in one pass.
+         * What went out over the period, and in how many transactions, in one pass.
          *
          * Read from the per-day rows rather than from `totalForRange`, because those
          * rows already carry both numbers and a second query would re-read what the
@@ -98,9 +102,9 @@ class ReportRepository
                 .map { Money(it ?: 0L, currency) }
 
         /**
-         * What came in over [period]. A report reads it beside the spending to say
-         * what the period's balance is made of; nothing else on this repository
-         * counts an income.
+         * What came in over [period], money moved back out of a bank account
+         * included. A report reads it beside the spending to say what the period's
+         * balance is made of; nothing else on this repository counts an income.
          */
         fun income(
             period: ReportPeriod,
@@ -137,7 +141,7 @@ class ReportRepository
                     }
                 }
 
-        /** Incomes and purchases in [period] that every other figure on this repository left out. */
+        /** The rows in [period] that every other figure on this repository left out for their currency. */
         fun otherCurrencyCount(
             period: ReportPeriod,
             today: LocalDate,

@@ -1,6 +1,6 @@
 # 7. A report counts spending, not the balance
 
-- **Status:** Accepted — implemented; amended by [ADR-0009](0009-a-report-says-what-its-balance-is-made-of.md), which puts the balance at the head of the screen while the breakdown stays spending.
+- **Status:** Accepted — implemented; amended by [ADR-0009](0009-a-report-says-what-its-balance-is-made-of.md), which puts the balance at the head of the screen while the breakdown stays spending, and by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md), which counts a transfer into a bank account as spending.
 - **Decided:** 2026-09-20, while planning Phase 3 (`.lavish/phase-3-reports.html`).
 - **Touches:** `:core:database` (`ReportDao`), `:core:data` (`ReportRepository`), `:feature:reports`.
 

@@ -8,9 +8,12 @@ import io.github.jaytech64.depenses.core.data.LocalDateTicker
 import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.ReportRepository
 import io.github.jaytech64.depenses.core.data.TransactionRepository
+import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
+import io.github.jaytech64.depenses.core.model.AccountOrigin
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.PeriodUnit
 import io.github.jaytech64.depenses.core.model.ReportPeriod
@@ -90,7 +93,7 @@ class ReportsViewModelTest {
         }
 
     @Test
-    fun `a period totals what was spent in it and says how many purchases that was`() =
+    fun `a period totals what was spent in it and says how many transactions that was`() =
         runTest {
             spend(2_342, TODAY)
             spend(625, TODAY)
@@ -99,7 +102,7 @@ class ReportsViewModelTest {
             val state = settled()
 
             assertEquals(Money(2_967, Money.CAD), state.total)
-            assertEquals(2, state.purchaseCount)
+            assertEquals(2, state.spendingCount)
         }
 
     @Test
@@ -140,6 +143,42 @@ class ReportsViewModelTest {
         }
 
     @Test
+    fun `a transfer into a bank account is in a report's spending and its count`() =
+        runTest {
+            spend(1_000, TODAY)
+            record(
+                120_000,
+                TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = account(AccountType.CARD),
+                toAccountId = account(AccountType.BANK),
+            )
+
+            val state = settled()
+
+            assertEquals(Money(121_000, Money.CAD), state.total)
+            assertEquals(2, state.spendingCount)
+            assertEquals(Money(-121_000, Money.CAD), state.balance)
+        }
+
+    @Test
+    fun `money moved back out of a bank account is in a report's income`() =
+        runTest {
+            record(
+                30_000,
+                TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = account(AccountType.BANK),
+                toAccountId = account(AccountType.CARD),
+            )
+
+            val state = settled()
+
+            assertEquals(Money(30_000, Money.CAD), state.income)
+            assertEquals(Money(30_000, Money.CAD), state.balance)
+        }
+
+    @Test
     fun `a payday with no spending is not an empty period`() =
         runTest {
             record(185_000, TODAY, kind = TransactionKind.INCOME)
@@ -147,7 +186,7 @@ class ReportsViewModelTest {
             val state = settled()
 
             assertFalse(state.isEmpty)
-            assertEquals(0, state.purchaseCount)
+            assertEquals(0, state.spendingCount)
             assertEquals(Money(185_000, Money.CAD), state.balance)
         }
 
@@ -209,7 +248,7 @@ class ReportsViewModelTest {
 
             val state = settled()
 
-            assertEquals(0, state.purchaseCount)
+            assertEquals(0, state.spendingCount)
             assertNull(state.comparison)
         }
 
@@ -339,6 +378,8 @@ class ReportsViewModelTest {
         status: TransactionStatus = TransactionStatus.CONFIRMED,
         merchantId: Long? = null,
         currency: String = Money.CAD,
+        accountId: Long? = null,
+        toAccountId: Long? = null,
     ) {
         database.transactionDao().insert(
             ExpenseTransactionEntity(
@@ -369,9 +410,16 @@ class ReportsViewModelTest {
                 cardLast4 = null,
                 note = null,
                 kind = kind,
+                accountId = accountId,
+                toAccountId = toAccountId,
             ),
         )
     }
+
+    private suspend fun account(type: AccountType): Long =
+        database.accountDao().insert(
+            AccountEntity(name = null, type = type, issuerLabel = null, last4 = null, origin = AccountOrigin.USER),
+        )
 
     private suspend fun merchant(
         displayName: String,

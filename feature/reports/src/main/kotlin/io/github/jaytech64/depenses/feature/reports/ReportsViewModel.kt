@@ -58,9 +58,13 @@ data class ReportsUiState(
     val period: ReportPeriod = ReportPeriod(PeriodUnit.WEEK, LocalDate.ofEpochDay(0)),
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
-    /** What was spent: the figure the ranking and the calendar below break down. */
+    /**
+     * What went out: purchases, and transfers into a bank account (ADR-0017). It
+     * is the figure the ranking and the calendar below break down.
+     */
     val total: Money = Money(0, Money.CAD),
-    val purchaseCount: Int = 0,
+    /** How many transactions [total] adds up. */
+    val spendingCount: Int = 0,
     /**
      * Null when nothing was spent. "Rien de dépensé" already says so, and a
      * ▼ 100 % under it after a day with spending would say it a second time.
@@ -76,7 +80,7 @@ data class ReportsUiState(
     val merchants: List<MerchantShare> = emptyList(),
     /** Every day of [period]'s month that money was spent on. Absent days had none. */
     val monthTotals: Map<LocalDate, Money> = emptyMap(),
-    /** Incomes and purchases in the period that no figure here counted, because they were in another currency. */
+    /** The transactions in the period that no figure here counted, because they were in another currency. */
     val otherCurrencyCount: Int = 0,
     /** The whole ledger's queue, which the totals here also leave out. */
     val needsReviewCount: Int = 0,
@@ -89,13 +93,13 @@ data class ReportsUiState(
     val canStepForward: Boolean get() = today != null && period.endInclusive < today
 
     /**
-     * What came in less what was spent. A transfer is in neither figure, so it
-     * moves this by nothing, as it moves the ledger's unfiltered balance.
+     * What came in less what went out, which is the ledger's unfiltered balance
+     * for the period: both count a transfer by the accounts it joins.
      */
     val balance: Money get() = income + -total
 
     /** Nothing came in and nothing was spent. A payday with no spending is not empty. */
-    val isEmpty: Boolean get() = purchaseCount == 0 && income.minor == 0L && !loading
+    val isEmpty: Boolean get() = spendingCount == 0 && income.minor == 0L && !loading
 }
 
 @HiltViewModel
@@ -151,7 +155,7 @@ class ReportsViewModel
                     period = period,
                     today = today,
                     total = spending.total,
-                    purchaseCount = spending.count,
+                    spendingCount = spending.count,
                     comparison = if (spending.count == 0) null else compare(spending.total, before),
                     income = income,
                     incomeComparison = incomeBefore?.let { compare(income, it) },

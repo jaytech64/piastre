@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
+import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
+import io.github.jaytech64.depenses.core.model.AccountOrigin
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.PeriodUnit
 import io.github.jaytech64.depenses.core.model.ReportPeriod
@@ -22,6 +25,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.LocalDate
+import java.time.ZoneId
+import javax.inject.Provider
 
 /**
  * Through the real DAO and a real SQLite, because what these queries have to get
@@ -77,6 +82,73 @@ class ReportRepositoryTest {
             record(on = SUNDAY.plusDays(1), amountMinor = 9_999, kind = TransactionKind.INCOME, key = "next week")
 
             assertEquals(Money(152_500, Money.CAD), reports.income(week(), TODAY).first())
+        }
+
+    @Test
+    fun `a transfer into a bank account is spending, and one back out of it is income`() =
+        runTest {
+            val card = account(AccountType.CARD)
+            val mortgage = account(AccountType.BANK)
+            spend(on = MONDAY, amountMinor = 1_000)
+            transfer(on = MONDAY, amountMinor = 120_000, from = card, into = mortgage)
+            transfer(on = SUNDAY, amountMinor = 30_000, from = mortgage, into = account(AccountType.CASH))
+
+            val spending = reports.spending(week(), TODAY).first()
+
+            assertEquals(Money(121_000, Money.CAD), spending.total)
+            assertEquals(2, spending.count)
+            assertEquals(Money(121_000, Money.CAD), reports.total(week(), TODAY).first())
+            assertEquals(Money(121_000, Money.CAD), reports.dailyTotals(week(), TODAY).first()[MONDAY])
+            assertEquals(Money(30_000, Money.CAD), reports.income(week(), TODAY).first())
+        }
+
+    @Test
+    fun `a transfer that stays among cards and cash, or among bank accounts, is in no figure`() =
+        runTest {
+            val card = account(AccountType.CARD)
+            val bank = account(AccountType.BANK)
+            transfer(on = MONDAY, amountMinor = 90_000, from = card, into = account(AccountType.CARD))
+            transfer(on = MONDAY, amountMinor = 6_000, from = card, into = account(AccountType.CASH))
+            transfer(on = MONDAY, amountMinor = 50_000, from = bank, into = account(AccountType.BANK))
+            transfer(on = MONDAY, amountMinor = 7_000, from = null, into = bank)
+            transfer(on = MONDAY, amountMinor = 8_000, from = bank, into = null)
+
+            assertEquals(Money(0, Money.CAD), reports.spending(week(), TODAY).first().total)
+            assertEquals(Money(0, Money.CAD), reports.income(week(), TODAY).first())
+        }
+
+    /**
+     * The rule is written twice, in SQL here and in `Transaction.signedAmount`
+     * for the ledger, and the two screens show the same month one tap apart.
+     */
+    @Test
+    fun `a report and the ledger agree to the cent on every pair of accounts`() =
+        runTest {
+            val kinds: List<AccountType?> = AccountType.entries + null
+            var amountMinor = 100L
+            for (from in kinds) {
+                for (into in kinds) {
+                    amountMinor *= 2
+                    transfer(
+                        on = MONDAY,
+                        amountMinor = amountMinor,
+                        from = from?.let { account(it) },
+                        into = into?.let { account(it) },
+                    )
+                }
+            }
+            spend(on = MONDAY, amountMinor = 1_000)
+            record(on = MONDAY, amountMinor = 150_000, kind = TransactionKind.INCOME, key = "pay")
+
+            val ledger = transactionRepository().confirmed().first().sumOf { it.signedAmount.minor }
+            val report =
+                reports.income(week(), TODAY).first().minor -
+                    reports
+                        .spending(week(), TODAY)
+                        .first()
+                        .total.minor
+
+            assertEquals(ledger, report)
         }
 
     @Test
@@ -184,6 +256,21 @@ class ReportRepositoryTest {
         }
 
     @Test
+    fun `a transfer into a bank account in another currency is counted as left out`() =
+        runTest {
+            transfer(
+                on = MONDAY,
+                amountMinor = 6_000,
+                from = account(AccountType.CARD),
+                into = account(AccountType.BANK),
+                currency = "USD",
+            )
+
+            assertEquals(Money(0, Money.CAD), reports.spending(week(), TODAY).first().total)
+            assertEquals(1, reports.otherCurrencyCount(week(), TODAY).first())
+        }
+
+    @Test
     fun `a month covers its own days and no neighbour's`() =
         runTest {
             spend(on = LocalDate.of(2026, 8, 31), amountMinor = 9_999)
@@ -225,6 +312,8 @@ class ReportRepositoryTest {
         merchantId: Long? = null,
         currency: String = Money.CAD,
         key: String = "tag-$on-$amountMinor",
+        accountId: Long? = null,
+        toAccountId: Long? = null,
     ) {
         database.transactionDao().insert(
             ExpenseTransactionEntity(
@@ -250,8 +339,36 @@ class ReportRepositoryTest {
                 cardLast4 = null,
                 note = null,
                 kind = kind,
+                accountId = accountId,
+                toAccountId = toAccountId,
             ),
         )
+    }
+
+    private suspend fun transfer(
+        on: LocalDate,
+        amountMinor: Long,
+        from: Long?,
+        into: Long?,
+        currency: String = Money.CAD,
+    ) = record(
+        on,
+        amountMinor,
+        kind = TransactionKind.TRANSFER,
+        currency = currency,
+        accountId = from,
+        toAccountId = into,
+    )
+
+    private suspend fun account(type: AccountType): Long =
+        database.accountDao().insert(
+            AccountEntity(name = null, type = type, issuerLabel = null, last4 = null, origin = AccountOrigin.USER),
+        )
+
+    private fun transactionRepository(): TransactionRepository {
+        val merchants = MerchantRepository(database.merchantDao())
+        val categories = CategoryRepository(database.categoryDao(), database.merchantDao(), database.accountDao())
+        return TransactionRepository(database, database.transactionDao(), merchants, categories, Provider { ZONE })
     }
 
     private suspend fun merchant(
@@ -267,6 +384,7 @@ class ReportRepositoryTest {
 
         /** Well after every period read here, so today's bound narrows none of them. */
         val TODAY: LocalDate = LocalDate.of(2026, 12, 31)
+        val ZONE: ZoneId = ZoneId.of("America/Toronto")
         const val MILLIS_IN_DAY = 86_400_000L
     }
 }

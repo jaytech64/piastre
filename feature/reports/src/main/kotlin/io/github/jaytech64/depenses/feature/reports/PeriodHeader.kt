@@ -143,7 +143,7 @@ private fun BalanceCard(
                         amount = Formatters.money(state.total, locale),
                         supporting =
                             listOfNotNull(
-                                { PurchaseCount(state.purchaseCount) },
+                                { SpendingCount(state.spendingCount) },
                                 state.comparison?.let { comparison ->
                                     { ComparisonLine(comparison, state.period.unit, judged = true) }
                                 },
@@ -156,12 +156,12 @@ private fun BalanceCard(
 }
 
 @Composable
-private fun PurchaseCount(count: Int) {
+private fun SpendingCount(count: Int) {
     Text(
         if (count == 0) {
             stringResource(R.string.reports_nothing_spent)
         } else {
-            pluralStringResource(R.plurals.reports_purchases, count, count)
+            pluralStringResource(R.plurals.reports_transactions, count, count)
         },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,

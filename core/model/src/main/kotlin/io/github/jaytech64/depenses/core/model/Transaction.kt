@@ -50,7 +50,7 @@ enum class AliasOrigin { AUTO, USER }
 /**
  * Which way the money went. Amounts are stored as magnitudes whichever it is;
  * the kind decides whether a transaction adds to a balance, takes from it, or
- * only moves money between two accounts of yours.
+ * moves money between two accounts of yours.
  */
 enum class TransactionKind { EXPENSE, INCOME, TRANSFER }
 
@@ -93,17 +93,35 @@ data class Transaction(
     val displayMerchant: String? get() = merchantName ?: merchantRaw
 
     /**
-     * The amount as it moves a balance: income adds to it, an expense takes from
-     * it, and a transfer moves your own money, so it moves the balance by nothing.
-     * Counting one would charge you twice for the purchases a card payment settles.
+     * The amount as it moves the ledger as a whole: income adds to it and an
+     * expense takes from it.
+     *
+     * A transfer counts by the two accounts it joins (ADR-0017). A bank account
+     * is outside what the ledger spends from — a mortgage, a loan, savings — so
+     * money moved into one has left and money moved out of one has come back.
+     * Between cards and cash it is your own money changing pockets and moves
+     * nothing: counting a card payment would charge you twice for the purchases
+     * it settles. So does one between two bank accounts, and one with an account
+     * missing, since nobody said where that money went.
      */
     val signedAmount: Money
         get() =
             when (kind) {
                 TransactionKind.INCOME -> amount
                 TransactionKind.EXPENSE -> -amount
-                TransactionKind.TRANSFER -> Money(0, amount.currency)
+                TransactionKind.TRANSFER -> transferredAcrossTheLedgersEdge()
             }
+
+    private fun transferredAcrossTheLedgersEdge(): Money {
+        val from = accountType
+        val into = toAccountType
+        return when {
+            from == null || into == null -> Money(0, amount.currency)
+            into == AccountType.BANK && from != AccountType.BANK -> -amount
+            from == AccountType.BANK && into != AccountType.BANK -> amount
+            else -> Money(0, amount.currency)
+        }
+    }
 }
 
 /**
