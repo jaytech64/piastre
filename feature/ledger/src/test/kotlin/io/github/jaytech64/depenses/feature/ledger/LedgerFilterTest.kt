@@ -265,6 +265,83 @@ class LedgerFilterTest : LedgerTest() {
         }
 
     @Test
+    fun `a ledger opened on a category of a report shows that category between the report's days`() =
+        runTest {
+            val power = category("Électricité")
+            insert(amountMinor = 6_400, day = TODAY, categoryId = power)
+            insert(amountMinor = 3_200, day = TODAY.minusDays(40), categoryId = power)
+            insert(amountMinor = 4_000, day = TODAY, categoryId = category("Épicerie"))
+
+            val opened =
+                ledgerViewModel(
+                    SavedStateHandle(
+                        mapOf(
+                            OPENED_ON_ARG to OPENED_ON_CATEGORY,
+                            OPENED_ID_ARG to power,
+                            OPENED_FROM_ARG to TODAY.minusDays(6).toEpochDay(),
+                            OPENED_TO_ARG to TODAY.toEpochDay(),
+                        ),
+                    ),
+                )
+            val state = opened.uiState.first { it.filter.category != null }
+
+            assertEquals("Électricité", (state.filter.category as CategoryChoice.Named).category.name)
+            assertEquals(TODAY.minusDays(6), state.filter.from)
+            assertEquals(TODAY, state.filter.to)
+            assertEquals(Money(6_400, Money.CAD), state.headline.expenses)
+        }
+
+    @Test
+    fun `a ledger opened on a group or on no category is narrowed to it`() =
+        runTest {
+            val home = categoryGroupRepository().named("Maison")!!
+            val days = mapOf(OPENED_FROM_ARG to TODAY.toEpochDay(), OPENED_TO_ARG to TODAY.toEpochDay())
+            insert(amountMinor = 6_400, day = TODAY, categoryId = categoryRepository().named("Électricité", home))
+            insert(amountMinor = 4_000, day = TODAY)
+
+            val onGroup =
+                ledgerViewModel(SavedStateHandle(days + mapOf(OPENED_ON_ARG to OPENED_ON_GROUP, OPENED_ID_ARG to home)))
+            val onNone =
+                ledgerViewModel(
+                    SavedStateHandle(days + mapOf(OPENED_ON_ARG to OPENED_ON_NO_CATEGORY, OPENED_ID_ARG to 0L)),
+                )
+
+            assertEquals(
+                Money(6_400, Money.CAD),
+                onGroup.uiState
+                    .first { it.filter.category is CategoryChoice.InGroup }
+                    .headline.expenses,
+            )
+            assertEquals(
+                Money(4_000, Money.CAD),
+                onNone.uiState
+                    .first { it.filter.category == CategoryChoice.Uncategorised }
+                    .headline.expenses,
+            )
+        }
+
+    @Test
+    fun `clearing the filter a ledger was opened on does not bring it back`() =
+        runTest {
+            val power = category("Électricité")
+            insert(amountMinor = 6_400, day = TODAY, categoryId = power)
+            val state =
+                SavedStateHandle(
+                    mapOf(
+                        OPENED_ON_ARG to OPENED_ON_CATEGORY,
+                        OPENED_ID_ARG to power,
+                        OPENED_FROM_ARG to TODAY.toEpochDay(),
+                        OPENED_TO_ARG to TODAY.toEpochDay(),
+                    ),
+                )
+            ledgerViewModel(state).filters.onFiltersCleared()
+
+            val rebuilt = ledgerViewModel(state).uiState.first { it.days.isNotEmpty() }
+
+            assertEquals(LedgerFilter(), rebuilt.filter)
+        }
+
+    @Test
     fun `the categories offered are the ones in use, unsorted rows first, then the most used`() =
         runTest {
             val groceries = category("Épicerie")
