@@ -84,7 +84,11 @@ data class Transaction(
     val categoryName: String? = null,
     /** The schedule this belongs to while it lasts, or null. See [RecurringTransaction]. */
     val recurringId: Long? = null,
+    /** What the amount is divided into, or empty when it is not split; then [categoryId] is null. */
+    val parts: List<TransactionPart> = emptyList(),
 ) {
+    val isSplit: Boolean get() = parts.isNotEmpty()
+
     /**
      * What to put on screen. The canonical merchant if the raw string resolved to
      * one, the raw string if it did not, and null only when the notification

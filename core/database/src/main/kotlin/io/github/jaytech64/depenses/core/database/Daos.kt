@@ -683,6 +683,9 @@ interface CategoryClearing {
 
     @Query("UPDATE transaction_template SET categoryId = NULL WHERE categoryId = :id")
     suspend fun clearFromTemplates(id: Long)
+
+    @Query("UPDATE transaction_part SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromParts(id: Long)
 }
 
 @Dao
@@ -842,8 +845,8 @@ interface CategoryDao : CategoryClearing {
     ): Flow<Int>
 
     /**
-     * Removes a category and every trace of it: the transactions that carried it
-     * are left with none, and merchants, accounts, recurring transactions and
+     * Removes a category and every trace of it: the transactions and the parts that
+     * carried it are left with none, and merchants, accounts, recurring transactions and
      * templates stop giving it. A category moves no balance, so this loses a label and never an
      * amount.
      */
@@ -854,6 +857,7 @@ interface CategoryDao : CategoryClearing {
         clearFromAccounts(id)
         clearFromRecurring(id)
         clearFromTemplates(id)
+        clearFromParts(id)
         deleteRow(id)
     }
 
