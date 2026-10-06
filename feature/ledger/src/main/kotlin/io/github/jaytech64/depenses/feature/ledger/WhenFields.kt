@@ -53,7 +53,7 @@ internal fun WhenSection(
     onPick: (Picking) -> Unit,
 ) {
     WhenRow(state = state, onDateChange = viewModel::onDateChange, onPick = onPick)
-    if (state.canRepeat || state.isSchedule) {
+    if (state.offersRepeat) {
         RepeatFields(
             state,
             onRhythmChange = viewModel.repeat::onRhythmChange,

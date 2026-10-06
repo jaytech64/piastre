@@ -99,12 +99,16 @@ internal fun FormDialog(
             )
         }
 
-        Picking.ADD_CATEGORY -> {
+        Picking.ADD_CATEGORY, Picking.ADD_PART_CATEGORY -> {
             val groups by viewModel.category.groups.collectAsStateWithLifecycle()
             CategoryDialog(
                 name = null,
                 onSave = { name, groupId ->
-                    viewModel.category.add(name, groupId)
+                    if (picking == Picking.ADD_PART_CATEGORY) {
+                        viewModel.category.add(name, groupId, viewModel.split::onCategoryAdded)
+                    } else {
+                        viewModel.category.add(name, groupId)
+                    }
                     onClose()
                 },
                 onDismiss = onClose,
@@ -165,6 +169,7 @@ internal enum class Picking {
     ADD_ACCOUNT,
     ADD_DESTINATION,
     ADD_CATEGORY,
+    ADD_PART_CATEGORY,
     TEMPLATES,
 }
 

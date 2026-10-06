@@ -88,12 +88,14 @@ class CategoryPicker internal constructor(
     /**
      * Adds the category missing from the list, in [groupId], and picks it; or
      * picks the one you already have under that name, which stays in its group.
+     * [onAdded] takes it instead when it was added for a part of a split.
      */
     fun add(
         name: String,
         groupId: Long?,
+        onAdded: (Long) -> Unit = ::onPick,
     ) {
-        scope.launch { categories.named(name, groupId)?.let(::onPick) }
+        scope.launch { categories.named(name, groupId)?.let(onAdded) }
     }
 
     /**

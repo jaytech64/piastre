@@ -128,12 +128,24 @@ private fun EntryForm(
         AccountFields(state, accounts, viewModel, onAddFor = { slot -> onPick(slot.picking()) })
 
         // After the accounts, because a transfer's category is about where it goes.
-        CategorySection(
-            state.categoryId,
-            viewModel.category,
-            offers = !state.isSchedule && !state.isTemplate,
-            onAddCategory = { onPick(Picking.ADD_CATEGORY) },
-        )
+        if (state.isSplit) {
+            SplitSection(
+                state,
+                viewModel.split,
+                viewModel.category,
+                onAddCategory = { onPick(Picking.ADD_PART_CATEGORY) },
+            )
+        } else {
+            CategorySection(
+                state.categoryId,
+                viewModel.category,
+                offers = !state.isSchedule && !state.isTemplate,
+                onAddCategory = { onPick(Picking.ADD_CATEGORY) },
+            )
+            if (state.offersSplit) {
+                TextButton(onClick = viewModel.split::start) { Text(stringResource(R.string.form_split)) }
+            }
+        }
 
         // A template says what a transaction is, never when — only whether it has an hour at all.
         if (state.isTemplate) {

@@ -87,6 +87,13 @@
     <string name="form_add_category">Nouvelle catégorie…</string>
     <string name="form_category_recent">Récentes</string>
     <string name="form_category_ungrouped">Sans groupe</string>
+    <string name="form_split">Répartir</string>
+    <string name="form_split_title">Répartition</string>
+    <string name="form_split_add">Ajouter une partie</string>
+    <string name="form_split_left">Reste à répartir\u00A0: %s</string>
+    <string name="form_split_over">%s en trop</string>
+    <string name="form_split_stop">Ne plus répartir</string>
+    <string name="form_split_remove">Retirer cette partie</string>
     <plurals name="category_offer_others_expense">
         <item quantity="one">Aussi l\'autre achat chez %2$s sans catégorie</item>
         <item quantity="other">Aussi les %1$d autres achats chez %2$s sans catégorie</item>

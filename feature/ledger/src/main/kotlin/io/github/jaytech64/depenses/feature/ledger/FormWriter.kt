@@ -66,7 +66,7 @@ internal class FormWriter(
             )
             return
         }
-        val rhythm = state.rhythm?.takeIf { state.canRepeat }
+        val rhythm = state.rhythm?.takeIf { state.canRepeat && !state.isSplit }
         // Made to repeat, it becomes its schedule's first row, which only a typed row can.
         val recurring = state.recurring && rhythm == null
         val id =
@@ -82,6 +82,7 @@ internal class FormWriter(
                     categoryId = state.categoryId,
                     reach = reach,
                     recurring = recurring,
+                    parts = state.partsToSave,
                 )
             } else {
                 editor.edit(
@@ -96,6 +97,7 @@ internal class FormWriter(
                     categoryId = state.categoryId,
                     reach = reach,
                     recurring = recurring,
+                    parts = state.partsToSave,
                 )
                 original.id
             }
