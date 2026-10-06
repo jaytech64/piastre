@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -23,16 +25,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.designsystem.rememberLongestWord
@@ -145,6 +152,41 @@ private fun ActionButtons(onAct: (SelectionAction) -> Unit) {
 }
 
 /**
+ * Selects every row on screen. It heads the rows, under what is still to come,
+ * the size of a row's mark and starting where one does, so it reads as the
+ * mark of all of them; the padding is what its touch target takes beyond the
+ * circle.
+ *
+ * Not [enabled] once every row is selected, when it has nothing left to add.
+ */
+@Composable
+internal fun SelectAllButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier =
+            Modifier
+                .padding(start = ROW_PADDING - (BUTTON_SIZE - ROW_MARK) / 2)
+                .alpha(if (enabled) 1f else DISABLED_ALPHA)
+                .semantics { role = Role.Button },
+        enabled = enabled,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_done_all),
+            contentDescription = stringResource(R.string.ledger_selection_all),
+            Modifier
+                .size(ROW_MARK)
+                .padding(8.dp),
+        )
+    }
+}
+
+/**
  * The categories the selection can be given. A category every selected row
  * already carries is checked, and one only some of them carry says how many, so
  * a pick shows what it replaces before it is made — there is no undo after.
@@ -244,6 +286,13 @@ private val BUTTON_SIZE = 48.dp
 private const val BUTTON_COUNT = 3
 
 private val LABEL_PADDING = 8.dp
+
+/** Where a transaction row starts, and the circle it starts with. */
+private val ROW_PADDING = 16.dp
+private val ROW_MARK = 36.dp
+
+/** Material's opacity for a disabled control. */
+private const val DISABLED_ALPHA = 0.38f
 
 /** A key no category id can take: ids start at 1. */
 private const val NO_CATEGORY_KEY = -1L

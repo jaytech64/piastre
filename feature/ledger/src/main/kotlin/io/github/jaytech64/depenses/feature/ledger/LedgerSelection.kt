@@ -38,6 +38,9 @@ class LedgerSelection internal constructor(
         select(if (id in selected) selected - id else selected + id)
     }
 
+    /** Selects every row on screen, which leaves out what is still to come. */
+    fun all() = select(shown())
+
     fun end() = select(emptySet())
 
     /** Gives [categoryId], or none, to the selected rows and nothing else, then ends the selection. */

@@ -194,6 +194,9 @@ data class LedgerUiState(
 
     val isSelecting: Boolean get() = selected.isNotEmpty()
 
+    /** Every row that can be selected is: all but what is still to come. */
+    val allSelected: Boolean get() = selected.size == days.sumOf { it.transactions.size }
+
     /** How many transactions the filters leave on the ledger. */
     val shownCount: Int get() = days.sumOf { it.transactions.size } + upcoming.size
 }

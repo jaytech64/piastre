@@ -106,6 +106,7 @@
         <item quantity="other">%d selected</item>
     </plurals>
     <string name="ledger_select">Select</string>
+    <string name="ledger_selection_all">Select all</string>
     <string name="ledger_selection_end">End selection</string>
     <string name="ledger_selection_categorise">Categorise</string>
     <string name="ledger_selection_category_title_single">Category for this transaction</string>
