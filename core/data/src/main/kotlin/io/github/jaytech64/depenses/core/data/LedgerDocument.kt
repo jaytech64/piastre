@@ -15,8 +15,17 @@ import kotlinx.serialization.Serializable
  * templates — left it at 2, and default to null or empty for a file written before them. A reader
  * from before recurring transactions refuses a file holding a row one wrote, on
  * its source, rather than guessing what that source means.
+ *
+ * Version 3 lets a transaction be divided into parts, and on such a transaction
+ * a null `categoryId` stopped meaning that nobody has said what it was for. A
+ * version-2 reader skips keys it does not know, so it would have imported a
+ * split as an uncategorised purchase without a word; the new number makes it
+ * refuse instead. Nothing was removed, so a version-2 file is still read.
  */
-internal const val LEDGER_FORMAT_VERSION = 2
+internal const val LEDGER_FORMAT_VERSION = 3
+
+/** The versions [decodeExport] reads: this one, and the one before it, which only lacks parts. */
+internal val READABLE_FORMAT_VERSIONS = setOf(2, LEDGER_FORMAT_VERSION)
 
 /**
  * The JSON export, and what an import reads back.
@@ -184,4 +193,15 @@ internal data class ExportedTransaction(
     val categoryName: String? = null,
     /** The recurring transaction in the file this belongs to, when it does. */
     val recurringId: Long? = null,
+    /** What the amount is divided into, in order; empty unless it is split, and then [categoryId] is null. */
+    val parts: List<ExportedPart> = emptyList(),
+)
+
+/** One share of a split transaction's amount, in that transaction's currency, and what it was for. */
+@Serializable
+internal data class ExportedPart(
+    val amountMinor: Long,
+    val categoryId: Long? = null,
+    val categoryName: String? = null,
+    val note: String? = null,
 )

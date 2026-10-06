@@ -33,7 +33,7 @@ internal fun decodeExport(text: String): ExportDocument {
     val version = ((root as? JsonObject)?.get("version") as? JsonPrimitive)?.intOrNull
     when (version) {
         null -> refuse(ImportProblem.NotAnExport)
-        LEDGER_FORMAT_VERSION -> Unit
+        in READABLE_FORMAT_VERSIONS -> Unit
         else -> refuse(ImportProblem.UnsupportedVersion(version))
     }
     return try {
@@ -64,6 +64,7 @@ internal fun ExportDocument.check() {
     transactions.forEach { transaction ->
         transaction.checkCodes()
         transaction.checkReferences(accountIds, merchantIds)
+        transaction.checkParts()
         if (transaction.recurringId != null && transaction.recurringId !in recurringIds) {
             inconsistent("transaction ${transaction.sourceKey} belongs to a recurring transaction not in the file")
         }
@@ -87,6 +88,12 @@ private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
     }
     val named =
         transactions.map { it.categoryId to "transaction ${it.sourceKey}" } +
+            transactions.flatMap { owner ->
+                owner.parts.map {
+                    it.categoryId to
+                        "a part of transaction ${owner.sourceKey}"
+                }
+            } +
             merchants.map { it.categoryId to "merchant ${it.id}" } +
             accounts.map { it.categoryId to "account ${it.id}" } +
             recurring.map { it.categoryId to "recurring transaction ${it.id}" } +
@@ -130,6 +137,25 @@ private fun ExportedTransaction.checkReferences(
             toAccountId != null && toAccountId !in accountIds -> "a destination account not in the file"
             isTransferMissingAnAccount -> "a transfer missing an account"
             merchantId != null && merchantId !in merchantIds -> "a merchant not in the file"
+            else -> return
+        }
+    inconsistent("transaction $sourceKey has $problem")
+}
+
+/**
+ * A split is refused unless it is one the app itself would have written: two
+ * parts or more, each a real share, adding up to the amount, on a transaction
+ * with no category of its own. Anything else would put a total out by the
+ * difference, or count the transaction under a category twice.
+ */
+private fun ExportedTransaction.checkParts() {
+    if (parts.isEmpty()) return
+    val problem =
+        when {
+            parts.size < 2 -> "a single part"
+            parts.any { it.amountMinor <= 0 } -> "a part of nothing"
+            parts.sumOf { it.amountMinor } != amountMinor -> "parts that do not add up to its amount"
+            categoryId != null -> "both parts and a category of its own"
             else -> return
         }
     inconsistent("transaction $sourceKey has $problem")

@@ -8,6 +8,7 @@ import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantAliasEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.database.RawNotificationEventEntity
+import io.github.jaytech64.depenses.core.database.TransactionPartEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.AliasOrigin
@@ -53,6 +54,7 @@ class LedgerExportTest {
                 categoryGroups = database.categoryGroupDao(),
                 recurring = database.recurringTransactionDao(),
                 templates = database.transactionTemplateDao(),
+                parts = database.transactionPartDao(),
                 clock = Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
             )
     }
@@ -121,6 +123,37 @@ class LedgerExportTest {
             assertTrue(rows.toString(), rows.any { "PROPRIO" in it && it.endsWith(";Logement;") })
         }
 
+    @Test
+    fun `the csv gives a split a line per part, and the amounts still add up to the transaction`() =
+        runTest {
+            val categories = database.categoryRepository()
+            val groceries = categories.named("Épicerie", database.categoryGroupRepository().named("Maison"))!!
+            store(merchantName = "COSTCO", amountMinor = 187_42)
+            split(1L, Triple(120_00L, groceries, null), Triple(67_42L, null, "Ampoules"))
+
+            val rows = write(ExportFormat.CSV).lines().filter { "COSTCO" in it }
+
+            assertEquals(2, rows.size)
+            assertTrue(rows.toString(), rows[0].contains(";120,00;CAD;") && rows[0].endsWith(";Épicerie;Maison"))
+            assertTrue(rows.toString(), rows[1].contains(";67,42;CAD;") && rows[1].contains(";Ampoules;"))
+            assertTrue(rows.toString(), rows[1].endsWith(";;"))
+        }
+
+    @Test
+    fun `the json carries a split's parts under the transaction, which keeps its whole amount`() =
+        runTest {
+            val groceries = database.categoryRepository().named("Épicerie")!!
+            store(merchantName = "COSTCO", amountMinor = 187_42)
+            split(1L, Triple(120_00L, groceries, null), Triple(67_42L, null, "Ampoules"))
+
+            val json = write(ExportFormat.JSON).filterNot(Char::isWhitespace)
+
+            assertTrue(json, "\"version\":3" in json)
+            assertTrue(json, "\"amountMinor\":18742" in json)
+            assertTrue(json, "{\"amountMinor\":12000,\"categoryId\":$groceries,\"categoryName\":\"Épicerie\"" in json)
+            assertTrue(json, "\"note\":\"Ampoules\"" in json)
+        }
+
     /** The names you give your accounts are data about you, so they leave with the rest. */
     @Test
     fun `the json carries your accounts and the account of each transaction`() =
@@ -129,7 +162,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 2" in json)
+            assertTrue(json, "\"version\": 3" in json)
             assertTrue(json, "\"name\": \"Débit Desrives\"" in json)
             assertTrue(json, "\"type\": \"CARD\"" in json)
             assertTrue(json, "\"issuerLabel\": \"Carte d'accès Desrives\"" in json)
@@ -137,7 +170,7 @@ class LedgerExportTest {
             assertTrue(json, "\"accountName\": \"Débit Desrives\"" in json)
         }
 
-    /** Added within version 2: nothing was removed, so the version stays and older files read as having none. */
+    /** Added within version 2: nothing was removed, so it did not change the version, and older files read as having none. */
     @Test
     fun `the json carries each account's opening balance, and null where none was given`() =
         runTest {
@@ -146,7 +179,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 2" in json)
+            assertTrue(json, "\"version\": 3" in json)
             assertTrue(json, "\"openingBalanceMinor\": -64025" in json)
             assertTrue(json, "\"openingBalanceMinor\": null" in json)
         }
@@ -200,7 +233,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 2" in json)
+            assertTrue(json, "\"version\": 3" in json)
             assertTrue(json, "\"sourceKey\": \"tag-1\"" in json)
             assertTrue(json, "\"sourcePackage\": \"com.google.android.apps.walletnfcrel\"" in json)
             assertTrue(json, "\"normalisedName\": \"MARCHE ST DAVID\"" in json)
@@ -226,6 +259,22 @@ class LedgerExportTest {
 
             assertEquals(1, csv.trim().lines().size)
         }
+
+    private suspend fun split(
+        transactionId: Long,
+        vararg parts: Triple<Long, Long?, String?>,
+    ) = database.transactionPartDao().replace(
+        transactionId,
+        parts.map { (amountMinor, categoryId, note) ->
+            TransactionPartEntity(
+                transactionId = transactionId,
+                position = 0,
+                amountMinor = amountMinor,
+                categoryId = categoryId,
+                note = note,
+            )
+        },
+    )
 
     private suspend fun write(format: ExportFormat): String {
         val bytes = ByteArrayOutputStream()
