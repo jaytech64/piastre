@@ -93,9 +93,9 @@ class CategoryPicker internal constructor(
     fun add(
         name: String,
         groupId: Long?,
-        onAdded: (Long) -> Unit = ::onPick,
+        onAdded: ((Long) -> Unit)? = null,
     ) {
-        scope.launch { categories.named(name, groupId)?.let(onAdded) }
+        scope.launch { categories.named(name, groupId)?.let(onAdded ?: ::onPick) }
     }
 
     /**

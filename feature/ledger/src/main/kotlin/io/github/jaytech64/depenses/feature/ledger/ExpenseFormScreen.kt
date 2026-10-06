@@ -128,24 +128,7 @@ private fun EntryForm(
         AccountFields(state, accounts, viewModel, onAddFor = { slot -> onPick(slot.picking()) })
 
         // After the accounts, because a transfer's category is about where it goes.
-        if (state.isSplit) {
-            SplitSection(
-                state,
-                viewModel.split,
-                viewModel.category,
-                onAddCategory = { onPick(Picking.ADD_PART_CATEGORY) },
-            )
-        } else {
-            CategorySection(
-                state.categoryId,
-                viewModel.category,
-                offers = !state.isSchedule && !state.isTemplate,
-                onAddCategory = { onPick(Picking.ADD_CATEGORY) },
-            )
-            if (state.offersSplit) {
-                TextButton(onClick = viewModel.split::start) { Text(stringResource(R.string.form_split)) }
-            }
-        }
+        WhatFor(state, viewModel, onPick)
 
         // A template says what a transaction is, never when — only whether it has an hour at all.
         if (state.isTemplate) {
@@ -173,6 +156,36 @@ private fun EntryForm(
             onCancel = onCancel,
             onDelete = { onPick(Picking.DELETE) },
         )
+    }
+}
+
+/**
+ * What the amount was for: one category, with the way to divide it under the
+ * field, or the parts it is divided into.
+ */
+@Composable
+private fun WhatFor(
+    state: ExpenseFormUiState,
+    viewModel: ExpenseFormViewModel,
+    onPick: (Picking) -> Unit,
+) {
+    if (state.isSplit) {
+        SplitSection(
+            state,
+            viewModel.split,
+            viewModel.category,
+            onAddCategory = { onPick(Picking.ADD_PART_CATEGORY) },
+        )
+        return
+    }
+    CategorySection(
+        state.categoryId,
+        viewModel.category,
+        offers = !state.isSchedule && !state.isTemplate,
+        onAddCategory = { onPick(Picking.ADD_CATEGORY) },
+    )
+    if (state.offersSplit) {
+        TextButton(onClick = viewModel.split::start) { Text(stringResource(R.string.form_split)) }
     }
 }
 

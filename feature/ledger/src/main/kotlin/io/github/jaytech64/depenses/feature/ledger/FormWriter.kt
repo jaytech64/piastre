@@ -7,6 +7,7 @@ import io.github.jaytech64.depenses.core.data.RecurringRepository
 import io.github.jaytech64.depenses.core.data.TemplateRepository
 import io.github.jaytech64.depenses.core.data.TransactionEditor
 import io.github.jaytech64.depenses.core.data.TransactionRepository
+import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TemplateContent
 import io.github.jaytech64.depenses.core.model.Transaction
 import java.time.ZoneId
@@ -69,41 +70,50 @@ internal class FormWriter(
         val rhythm = state.rhythm?.takeIf { state.canRepeat && !state.isSplit }
         // Made to repeat, it becomes its schedule's first row, which only a typed row can.
         val recurring = state.recurring && rhythm == null
-        val id =
-            if (original == null) {
-                transactions.addManual(
-                    amount = amount,
-                    merchantName = state.merchantText,
-                    occurredAt = state.occurredAt(zoneId()),
-                    note = state.note,
-                    kind = state.kind,
-                    accountId = state.accountId,
-                    toAccountId = state.destinationToSave,
-                    categoryId = state.categoryId,
-                    reach = reach,
-                    recurring = recurring,
-                    parts = state.partsToSave,
-                )
-            } else {
-                editor.edit(
-                    id = original.id,
-                    amount = amount,
-                    kind = state.kind,
-                    merchantName = state.merchantText,
-                    occurredAt = state.occurredAtLike(original),
-                    note = state.note,
-                    accountId = state.accountId,
-                    toAccountId = state.destinationToSave,
-                    categoryId = state.categoryId,
-                    reach = reach,
-                    recurring = recurring,
-                    parts = state.partsToSave,
-                )
-                original.id
-            }
+        val id = writeTransaction(state, original, amount, reach, recurring)
         state.appliedTemplateId?.let { templates.markUsed(it) }
         if (state.savesAsTemplate) templates.save(state.asTemplate())
         rhythm?.let { this.recurring.repeat(id, it, state.lastDate) }
+    }
+
+    /** Adds the transaction on the form, or rewrites [original] with it, and returns its id. */
+    private suspend fun writeTransaction(
+        state: ExpenseFormUiState,
+        original: Transaction?,
+        amount: Money,
+        reach: CategoryReach?,
+        recurring: Boolean,
+    ): Long {
+        if (original == null) {
+            return transactions.addManual(
+                amount = amount,
+                merchantName = state.merchantText,
+                occurredAt = state.occurredAt(zoneId()),
+                note = state.note,
+                kind = state.kind,
+                accountId = state.accountId,
+                toAccountId = state.destinationToSave,
+                categoryId = state.categoryId,
+                reach = reach,
+                recurring = recurring,
+                parts = state.partsToSave,
+            )
+        }
+        editor.edit(
+            id = original.id,
+            amount = amount,
+            kind = state.kind,
+            merchantName = state.merchantText,
+            occurredAt = state.occurredAtLike(original),
+            note = state.note,
+            accountId = state.accountId,
+            toAccountId = state.destinationToSave,
+            categoryId = state.categoryId,
+            reach = reach,
+            recurring = recurring,
+            parts = state.partsToSave,
+        )
+        return original.id
     }
 
     private suspend fun writeTemplate(

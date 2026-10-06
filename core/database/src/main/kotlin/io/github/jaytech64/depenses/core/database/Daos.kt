@@ -130,8 +130,20 @@ interface RawNotificationEventDao {
 private const val NOT_SPLIT =
     "NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = expense_transaction.id)"
 
+/** A transaction's row and its parts, which leave together. */
+interface RowWithParts {
+    @Query("SELECT EXISTS (SELECT 1 FROM transaction_part WHERE transactionId = :id)")
+    suspend fun isSplit(id: Long): Boolean
+
+    @Query("DELETE FROM expense_transaction WHERE id = :id")
+    suspend fun deleteRow(id: Long)
+
+    @Query("DELETE FROM transaction_part WHERE transactionId = :id")
+    suspend fun deletePartsOf(id: Long)
+}
+
 @Dao
-interface TransactionDao {
+interface TransactionDao : RowWithParts {
     /**
      * Records a parsed transaction, replacing the parser's earlier reading of the
      * same purchase.
@@ -172,9 +184,6 @@ interface TransactionDao {
         )
         return existing.id
     }
-
-    @Query("SELECT EXISTS (SELECT 1 FROM transaction_part WHERE transactionId = :id)")
-    suspend fun isSplit(id: Long): Boolean
 
     @Insert
     suspend fun insert(transaction: ExpenseTransactionEntity): Long
@@ -330,12 +339,6 @@ interface TransactionDao {
         deletePartsOf(id)
         deleteRow(id)
     }
-
-    @Query("DELETE FROM expense_transaction WHERE id = :id")
-    suspend fun deleteRow(id: Long)
-
-    @Query("DELETE FROM transaction_part WHERE transactionId = :id")
-    suspend fun deletePartsOf(id: Long)
 
     /**
      * Gives [categoryId], or none, to exactly the rows [ids] names, and returns how

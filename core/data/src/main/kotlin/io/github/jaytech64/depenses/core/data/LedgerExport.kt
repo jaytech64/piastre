@@ -233,19 +233,6 @@ class LedgerExport
             return "$sign$units,${cents.toString().padStart(2, '0')}"
         }
 
-        /**
-         * Quoted only when it has to be, and never left able to break the row.
-         *
-         * A merchant string arrives from a notification, so it can hold a
-         * semicolon, a newline or a quote; a note is typed, so it certainly can.
-         */
-        private fun quote(field: String): String =
-            if (field.any { it in CHARACTERS_NEEDING_QUOTES }) {
-                "\"" + field.replace("\"", "\"\"") + "\""
-            } else {
-                field
-            }
-
         private suspend fun writeJson(
             out: OutputStream,
             rows: List<TransactionWithMerchant>,
@@ -346,7 +333,6 @@ class LedgerExport
         private companion object {
             const val BYTE_ORDER_MARK = "\uFEFF"
             const val FIELD_SEPARATOR = ";"
-            const val CHARACTERS_NEEDING_QUOTES = ";\"\n\r"
             const val MINOR_UNITS = 100L
 
             val DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -391,3 +377,18 @@ private fun TemplateWithNames.toExported() =
         lastUsedAtUtcMillis = template.lastUsedAtUtcMillis,
         recurring = template.recurring,
     )
+
+/**
+ * Quoted only when it has to be, and never left able to break the row.
+ *
+ * A merchant string arrives from a notification, so it can hold a
+ * semicolon, a newline or a quote; a note is typed, so it certainly can.
+ */
+private fun quote(field: String): String =
+    if (field.any { it in CHARACTERS_NEEDING_QUOTES }) {
+        "\"" + field.replace("\"", "\"\"") + "\""
+    } else {
+        field
+    }
+
+private const val CHARACTERS_NEEDING_QUOTES = ";\"\n\r"

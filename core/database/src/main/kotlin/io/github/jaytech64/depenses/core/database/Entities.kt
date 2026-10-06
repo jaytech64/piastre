@@ -149,7 +149,7 @@ data class ExpenseTransactionEntity(
  *
  * While a transaction has parts its own [ExpenseTransactionEntity.categoryId] is
  * null, and the parts' amounts add up to its amount to the minor unit; both are
- * held by the one place that writes them, `TransactionParts` in `:core:data`.
+ * held by the one place that writes them, `settleCategory` in `:core:data`.
  * A part is in the currency of its transaction, so it carries none.
  *
  * [categoryId] is written onto the part, as it is onto a transaction, and null

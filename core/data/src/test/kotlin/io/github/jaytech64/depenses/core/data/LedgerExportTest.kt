@@ -170,7 +170,7 @@ class LedgerExportTest {
             assertTrue(json, "\"accountName\": \"Débit Desrives\"" in json)
         }
 
-    /** Added within version 2: nothing was removed, so it did not change the version, and older files read as having none. */
+    /** Added within version 2, which it left unchanged: older files read as having none. */
     @Test
     fun `the json carries each account's opening balance, and null where none was given`() =
         runTest {

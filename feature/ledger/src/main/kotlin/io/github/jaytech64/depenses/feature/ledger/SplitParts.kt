@@ -98,10 +98,13 @@ class SplitParts internal constructor(
         awaitingCategory = key
     }
 
-    fun onCategoryAdded(categoryId: Long) {
-        awaitingCategory?.let { onCategoryChange(it, categoryId) }
-        awaitingCategory = null
-    }
+    /**
+     * Where a category just added goes: onto the part that asked for it when
+     * [forPart], and otherwise nowhere but the form's own field, which is the
+     * picker's default.
+     */
+    fun takingCategory(forPart: Boolean): ((Long) -> Unit)? =
+        awaitingCategory?.takeIf { forPart }?.let { key -> { categoryId -> onCategoryChange(key, categoryId) } }
 
     private fun change(
         key: Long,
