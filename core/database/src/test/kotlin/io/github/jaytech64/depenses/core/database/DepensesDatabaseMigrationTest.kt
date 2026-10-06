@@ -381,6 +381,19 @@ class DepensesDatabaseMigrationTest {
         assertEquals(0, migrated.singleInt("SELECT recurring FROM transaction_template WHERE uuid = 't-1'"))
     }
 
+    @Test
+    fun `migrating to schema 17 keeps the ledger and splits nothing`() {
+        helper.createDatabase(NAME, 16).use { database ->
+            database.insertTransaction()
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 17, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(1, migrated.count("expense_transaction"))
+        assertEquals(6554, migrated.singleInt("SELECT amountMinor FROM expense_transaction"))
+        assertEquals(0, migrated.count("transaction_part"))
+    }
+
     private fun SupportSQLiteDatabase.singleString(sql: String): String =
         query(sql).use { cursor ->
             cursor.moveToFirst()

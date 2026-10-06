@@ -311,8 +311,18 @@ interface TransactionDao {
     )
     suspend fun withMerchantById(id: Long): TransactionWithMerchant?
 
+    /** Deletes a transaction with its parts, so no part is ever left dividing an amount that is gone. */
+    @Transaction
+    suspend fun deleteById(id: Long) {
+        deletePartsOf(id)
+        deleteRow(id)
+    }
+
     @Query("DELETE FROM expense_transaction WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    suspend fun deleteRow(id: Long)
+
+    @Query("DELETE FROM transaction_part WHERE transactionId = :id")
+    suspend fun deletePartsOf(id: Long)
 
     /**
      * Gives [categoryId], or none, to exactly the rows [ids] names, and returns how
@@ -371,6 +381,65 @@ interface TransactionDao {
         const val NOTHING_RECORDED: Long = 0
     }
 }
+
+/** The parts a split transaction's amount is divided into: see [TransactionPartEntity]. */
+@Dao
+interface TransactionPartDao {
+    @Insert
+    suspend fun insertAll(parts: List<TransactionPartEntity>)
+
+    @Query("DELETE FROM transaction_part WHERE transactionId = :transactionId")
+    suspend fun deleteOf(transactionId: Long)
+
+    /**
+     * Makes [parts] the whole of what [transactionId] is divided into, in the
+     * order given. An empty list leaves the transaction with no parts, which is
+     * a transaction that is not split.
+     */
+    @Transaction
+    suspend fun replace(
+        transactionId: Long,
+        parts: List<TransactionPartEntity>,
+    ) {
+        deleteOf(transactionId)
+        insertAll(
+            parts.mapIndexed { position, part ->
+                part.copy(id = 0, transactionId = transactionId, position = position)
+            },
+        )
+    }
+
+    /** Every part with its category's name, each transaction's together and in the order typed. */
+    @Query(
+        """
+        SELECT p.*, c.name AS categoryName
+        FROM transaction_part p
+        LEFT JOIN category c ON c.id = p.categoryId
+        ORDER BY p.transactionId, p.position
+        """,
+    )
+    fun allWithNames(): Flow<List<PartWithCategory>>
+
+    @Query(
+        """
+        SELECT p.*, c.name AS categoryName
+        FROM transaction_part p
+        LEFT JOIN category c ON c.id = p.categoryId
+        WHERE p.transactionId = :transactionId
+        ORDER BY p.position
+        """,
+    )
+    suspend fun ofTransaction(transactionId: Long): List<PartWithCategory>
+
+    @Query("SELECT * FROM transaction_part ORDER BY transactionId, position")
+    suspend fun allOnce(): List<TransactionPartEntity>
+}
+
+/** A part with the name of its category, or none. */
+data class PartWithCategory(
+    @Embedded val part: TransactionPartEntity,
+    val categoryName: String?,
+)
 
 @Dao
 interface MerchantDao {
