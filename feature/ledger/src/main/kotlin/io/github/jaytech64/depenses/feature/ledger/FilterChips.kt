@@ -51,7 +51,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.ButtonsRow
 import io.github.jaytech64.depenses.core.designsystem.Formatters
@@ -62,33 +61,6 @@ import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.containsTyped
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-
-/**
- * The filters that are on and, ahead of them while rows are selected, the
- * button that selects every row: it stands in the rows' own column of marks,
- * so it reads as the mark of all of them.
- */
-@Composable
-internal fun FiltersLine(
-    state: LedgerUiState,
-    today: LocalDate,
-    filterActions: FilterActions,
-    onSelectAll: () -> Unit,
-) {
-    if (!state.filter.isActive && !state.isSelecting) return
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (state.isSelecting) {
-            SelectAllButton(enabled = !state.allSelected, onClick = onSelectAll)
-        }
-        FilterChips(
-            state.filter,
-            today,
-            filterActions,
-            enabled = !state.isSelecting,
-            startPadding = if (state.isSelecting) SELECT_ALL_TO_CHIPS else 16.dp,
-        )
-    }
-}
 
 /**
  * The filters that are on, a removable chip each, in one line that scrolls
@@ -103,7 +75,6 @@ internal fun FilterChips(
     today: LocalDate,
     actions: FilterActions,
     enabled: Boolean,
-    startPadding: Dp = 16.dp,
 ) {
     val dates = datesLabel(filter, today)
     val amounts = amountsLabel(filter)
@@ -113,7 +84,7 @@ internal fun FilterChips(
     LaunchedEffect(filter) { scroll.scrollToItem(0) }
     LazyRow(
         state = scroll,
-        contentPadding = PaddingValues(start = startPadding, end = 16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         filter.account?.let { account ->

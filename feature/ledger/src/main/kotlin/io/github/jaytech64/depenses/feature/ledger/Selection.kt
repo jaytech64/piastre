@@ -152,8 +152,10 @@ private fun ActionButtons(onAct: (SelectionAction) -> Unit) {
 }
 
 /**
- * Selects every row on screen. It is the size of a row's mark and starts where
- * one does; the padding is what its touch target takes beyond the circle.
+ * Selects every row on screen. It heads the rows, under what is still to come,
+ * the size of a row's mark and starting where one does, so it reads as the
+ * mark of all of them; the padding is what its touch target takes beyond the
+ * circle.
  *
  * Not [enabled] once every row is selected, when it has nothing left to add.
  */
@@ -291,9 +293,6 @@ private val ROW_MARK = 36.dp
 
 /** Material's opacity for a disabled control. */
 private const val DISABLED_ALPHA = 0.38f
-
-/** The gap a row leaves after its mark, less what the button's touch target already takes of it. */
-internal val SELECT_ALL_TO_CHIPS = 12.dp - (BUTTON_SIZE - ROW_MARK) / 2
 
 /** A key no category id can take: ids start at 1. */
 private const val NO_CATEGORY_KEY = -1L

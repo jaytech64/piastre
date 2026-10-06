@@ -88,8 +88,8 @@ fun LedgerScreen(
                 onFiltersClick = { choosingFilters = true },
                 onReviewClick = onReviewClick,
             )
-            if (today != null) {
-                FiltersLine(state, today, filterActions, onSelectAll = viewModel.selection::all)
+            if (state.filter.isActive && today != null) {
+                FilterChips(state.filter, today, filterActions, enabled = !state.isSelecting)
             }
 
             when {
@@ -105,6 +105,7 @@ fun LedgerScreen(
                             if (state.isSelecting) viewModel.selection.toggle(id) else onTransactionClick(id)
                         },
                         onLongClick = viewModel.selection::toggle,
+                        onSelectAll = viewModel.selection::all,
                         onToggleUpcoming = viewModel.upcoming::toggle,
                         onOpenUpcoming = { line ->
                             line.scheduleId?.let(onRecurringClick) ?: onTransactionClick(line.transaction.id)
@@ -321,6 +322,7 @@ private fun DayList(
     today: LocalDate,
     onClick: (Long) -> Unit,
     onLongClick: (Long) -> Unit,
+    onSelectAll: () -> Unit,
     onToggleUpcoming: () -> Unit,
     onOpenUpcoming: (UpcomingLine) -> Unit,
 ) {
@@ -334,6 +336,9 @@ private fun DayList(
 
     LazyColumn(contentPadding = PaddingValues(bottom = ADD_BUTTON_CLEARANCE)) {
         upcomingGroup(state, today, labels, onToggleUpcoming, onOpenUpcoming)
+        if (state.isSelecting) {
+            item(key = SELECT_ALL_KEY) { SelectAllButton(enabled = !state.allSelected, onClick = onSelectAll) }
+        }
         state.days.forEach { day ->
             item(key = day.date.toEpochDay()) {
                 DayHeader(
@@ -420,6 +425,8 @@ private fun EmptyLedger(filter: LedgerFilter) {
  */
 @Composable
 internal fun currentLocale(): Locale = LocalConfiguration.current.locales[0]
+
+private const val SELECT_ALL_KEY = "selectAll"
 
 /**
  * Room below the last row for the floating add button: its 56 dp height, its
