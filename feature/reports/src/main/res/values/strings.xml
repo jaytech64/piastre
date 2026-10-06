@@ -18,7 +18,10 @@
     <string name="reports_vs_nothing_week">nothing last week</string>
     <string name="reports_vs_nothing_month">nothing last month</string>
     <string name="reports_change">%1$d %% %2$s</string>
-    <string name="reports_top_merchants">Top merchants</string>
+    <string name="reports_top_categories">Top categories</string>
+    <string name="reports_no_category">%1$s with no category</string>
+    <string name="reports_show_categories">Show categories in %1$s</string>
+    <string name="reports_hide_categories">Hide categories in %1$s</string>
     <string name="reports_heat_less">less</string>
     <string name="reports_heat_more">more</string>
     <string name="reports_nothing">Nothing in this period</string>

@@ -6,8 +6,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jaytech64.depenses.core.data.CategorySpending
 import io.github.jaytech64.depenses.core.data.LocalDateTicker
-import io.github.jaytech64.depenses.core.data.MerchantSpending
 import io.github.jaytech64.depenses.core.data.ReportRepository
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.model.Money
@@ -24,14 +24,30 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import javax.inject.Inject
 
-/** A merchant's place in the period, with the share of it that went there. */
-data class MerchantShare(
-    val merchantId: Long,
+/** A category's place in the period, with the share of it that went there. */
+data class CategoryShare(
+    val categoryId: Long,
     val name: String,
     val total: Money,
     val count: Int,
-    /** Of the period's total, in `0f..1f`. A bar drawn to this says something true. */
+    /** Of the period's spending, in `0f..1f`, so a group's categories add up to its own bar. */
     val share: Float,
+)
+
+/**
+ * A row of the ranking: a group with the categories money went to in it, or a
+ * category that is in no group, which ranks under its own name and has nothing
+ * to open.
+ */
+data class RankedSpending(
+    /** Null for a category in no group. */
+    val groupId: Long?,
+    val name: String,
+    val total: Money,
+    /** Of the period's spending, in `0f..1f`. A bar drawn to this says something true. */
+    val share: Float,
+    /** Heaviest first, and empty for a category in no group. */
+    val categories: List<CategoryShare> = emptyList(),
 )
 
 /**
@@ -77,7 +93,15 @@ data class ReportsUiState(
      * nothing about the money.
      */
     val incomeComparison: Comparison? = null,
-    val merchants: List<MerchantShare> = emptyList(),
+    /** The five heaviest groups, and categories in no group, of [total]. */
+    val ranking: List<RankedSpending> = emptyList(),
+    /**
+     * What went out with no category. It ranks nowhere and is said under the
+     * ranking, as any breakdown that leaves rows out says so beside itself (ADR-0002).
+     */
+    val uncategorised: Money = Money(0, Money.CAD),
+    /** The group whose categories are shown, while it is in [ranking]. */
+    val openGroupId: Long? = null,
     /** Every day of [period]'s month that money was spent on. Absent days had none. */
     val monthTotals: Map<LocalDate, Money> = emptyMap(),
     /** The transactions in the period that no figure here counted, because they were in another currency. */
@@ -130,6 +154,9 @@ class ReportsViewModel
                 val on = anchorDay?.let(LocalDate::ofEpochDay) ?: today
                 ReportPeriod.containing(selectedUnit, on) to today
             }.flatMapLatest { (period, today) -> report(period, today, transactions.needsReviewCount()) }
+                .combine(
+                    savedState.getStateFlow<Long?>(OPEN_GROUP, null),
+                ) { state, open -> state.copy(openGroupId = open) }
                 .stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -147,10 +174,10 @@ class ReportsViewModel
             return combine(
                 combine(reports.spending(period, today), reports.total(period.previous(), today), ::Pair),
                 combine(reports.income(period, today), previousIncome, ::Pair),
-                reports.topMerchants(period, today, TOP_MERCHANTS),
+                reports.categorySpending(period, today),
                 reports.dailyTotals(month, today),
                 combine(reports.otherCurrencyCount(period, today), needsReview, ::Pair),
-            ) { (spending, before), (income, incomeBefore), merchants, monthTotals, (otherCurrency, review) ->
+            ) { (spending, before), (income, incomeBefore), categories, monthTotals, (otherCurrency, review) ->
                 ReportsUiState(
                     period = period,
                     today = today,
@@ -159,7 +186,11 @@ class ReportsViewModel
                     comparison = if (spending.count == 0) null else compare(spending.total, before),
                     income = income,
                     incomeComparison = incomeBefore?.let { compare(income, it) },
-                    merchants = merchants.shareOf(spending.total),
+                    ranking = categories.rankedWithin(spending.total),
+                    uncategorised =
+                        categories
+                            .filter { it.category == null }
+                            .fold(Money(0, Money.CAD)) { sum, spent -> sum + spent.total },
                     monthTotals = monthTotals,
                     otherCurrencyCount = otherCurrency,
                     needsReviewCount = review,
@@ -196,6 +227,15 @@ class ReportsViewModel
             anchorOn(date)
         }
 
+        /**
+         * One group is open at a time, and tapping the open one closes it. It lives
+         * in saved state beside the period, so stepping to the next month keeps the
+         * same group open to compare.
+         */
+        fun onGroupTapped(groupId: Long) {
+            savedState[OPEN_GROUP] = groupId.takeIf { it != savedState.get<Long?>(OPEN_GROUP) }
+        }
+
         private fun anchorOn(date: LocalDate) {
             savedState[ANCHOR_EPOCH_DAY] = date.toEpochDay()
         }
@@ -217,34 +257,61 @@ class ReportsViewModel
             }
 
         /**
-         * A share of the period rather than of the leading merchant: a bar filled to
+         * Categories roll up into the group each is in, a category in no group
+         * stands as itself, and the five heaviest of those are kept. What has no
+         * category is in none of them.
+         */
+        private fun List<CategorySpending>.rankedWithin(periodTotal: Money): List<RankedSpending> {
+            val categorised = mapNotNull { spent -> spent.category?.let { it to spent } }
+            val alone =
+                categorised.filter { (_, spent) -> spent.group == null }.map { (category, spent) ->
+                    RankedSpending(null, category.name, spent.total, spent.total.shareOf(periodTotal))
+                }
+            val grouped =
+                categorised
+                    .mapNotNull { (category, spent) -> spent.group?.let { it to (category to spent) } }
+                    .groupBy({ it.first }, { it.second })
+                    .map { (group, within) ->
+                        val total = within.fold(Money(0, periodTotal.currency)) { sum, (_, spent) -> sum + spent.total }
+                        RankedSpending(
+                            groupId = group.id,
+                            name = group.name,
+                            total = total,
+                            share = total.shareOf(periodTotal),
+                            categories =
+                                within
+                                    .sortedByDescending { (_, spent) -> spent.total.minor }
+                                    .map { (category, spent) ->
+                                        CategoryShare(
+                                            categoryId = category.id,
+                                            name = category.name,
+                                            total = spent.total,
+                                            count = spent.count,
+                                            share = spent.total.shareOf(periodTotal),
+                                        )
+                                    },
+                        )
+                    }
+            return (grouped + alone).sortedByDescending { it.total.minor }.take(TOP_RANKED)
+        }
+
+        /**
+         * A share of the period rather than of the leading row: a bar filled to
          * 35 % then means 35 % of what the period cost, which is a fact. Scaled to
          * the leader it would only mean "second place", and would fill the screen
          * identically whether the leader took half the period or a twentieth of it.
          */
-        private fun List<MerchantSpending>.shareOf(periodTotal: Money): List<MerchantShare> =
-            map { merchant ->
-                MerchantShare(
-                    merchantId = merchant.merchantId,
-                    name = merchant.name,
-                    total = merchant.total,
-                    count = merchant.count,
-                    share =
-                        if (periodTotal.minor == 0L) {
-                            0f
-                        } else {
-                            merchant.total.minor.toFloat() / periodTotal.minor
-                        },
-                )
-            }
+        private fun Money.shareOf(periodTotal: Money): Float =
+            if (periodTotal.minor == 0L) 0f else minor.toFloat() / periodTotal.minor
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L
             const val UNIT = "periodUnit"
             const val ANCHOR_EPOCH_DAY = "periodAnchorEpochDay"
+            const val OPEN_GROUP = "openGroupId"
             const val PERCENT = 100L
 
-            /** Five is what fits above the fold beside the calendar, and what "top merchants" means. */
-            const val TOP_MERCHANTS = 5
+            /** Five is what fits above the fold beside the calendar. */
+            const val TOP_RANKED = 5
         }
     }

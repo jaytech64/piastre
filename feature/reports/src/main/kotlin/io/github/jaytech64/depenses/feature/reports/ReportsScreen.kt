@@ -53,7 +53,7 @@ fun ReportsScreen(viewModel: ReportsViewModel = hiltViewModel()) {
             onStepForward = viewModel::onStepForward,
         )
 
-        MerchantRanking(state.merchants, locale)
+        CategoryRanking(state, locale, viewModel::onGroupTapped)
 
         MonthHeatGrid(
             month = state.period.month,
