@@ -88,8 +88,8 @@ fun LedgerScreen(
                 onFiltersClick = { choosingFilters = true },
                 onReviewClick = onReviewClick,
             )
-            if (state.filter.isActive && today != null) {
-                FilterChips(state.filter, today, filterActions, enabled = !state.isSelecting)
+            if (today != null) {
+                FiltersLine(state, today, filterActions, onSelectAll = viewModel.selection::all)
             }
 
             when {

@@ -34,6 +34,26 @@ class LedgerSelectionTest : LedgerTest() {
         }
 
     @Test
+    fun `selecting all takes every row the filter shows and nothing still to come`() =
+        runTest {
+            val internet = category("Internet")
+            val bill = insert(amountMinor = 8_500, day = TODAY, categoryId = internet)
+            val earlier = insert(amountMinor = 8_500, day = YESTERDAY, categoryId = internet)
+            insert(amountMinor = 6_000, day = TODAY)
+            insert(amountMinor = 8_500, day = TOMORROW, categoryId = internet)
+            viewModel.filters.onCategorySelected(CategoryChoice.Named(Category(internet, "Internet")))
+            viewModel.uiState.first { it.filter.category != null }
+            viewModel.selection.toggle(bill)
+            assertFalse(viewModel.uiState.first { it.isSelecting }.allSelected)
+
+            viewModel.selection.all()
+
+            val state = viewModel.uiState.first { it.selected.size > 1 }
+            assertEquals(setOf(bill, earlier), state.selected)
+            assertTrue(state.allSelected)
+        }
+
+    @Test
     fun `a filter narrows the selection to the rows it still shows`() =
         runTest {
             val internet = category("Internet")

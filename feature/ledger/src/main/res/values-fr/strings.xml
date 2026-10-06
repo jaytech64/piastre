@@ -108,6 +108,7 @@
         <item quantity="other">%d sélectionnées</item>
     </plurals>
     <string name="ledger_select">Sélectionner</string>
+    <string name="ledger_selection_all">Tout sélectionner</string>
     <string name="ledger_selection_end">Terminer la sélection</string>
     <string name="ledger_selection_categorise">Catégoriser</string>
     <string name="ledger_selection_category_title_single">Catégorie de cette transaction</string>
