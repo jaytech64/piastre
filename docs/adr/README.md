@@ -16,7 +16,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0004](0004-capture-health-banner-without-a-notification.md) | A banner for broken capture, and no notification | Accepted, revised twice — implemented |
 | [0005](0005-import-merges-and-never-replaces.md) | Import merges into the ledger and never replaces it | Accepted — implemented |
 | [0006](0006-a-filtered-total-answers-for-one-account.md) | A filtered total answers for one account | Accepted — amended by 0017 |
-| [0007](0007-a-report-counts-spending-not-the-balance.md) | A report counts spending, not the balance | Accepted — amended by 0009 and 0017 |
+| [0007](0007-a-report-counts-spending-not-the-balance.md) | A report counts spending, not the balance | Accepted, revised once — amended by 0009 and 0017 |
 | [0008](0008-the-ledger-header-says-what-the-balance-is-made-of.md) | The ledger header says what the balance is made of | Accepted — amended by 0017 |
 | [0009](0009-a-report-says-what-its-balance-is-made-of.md) | A report says what its balance is made of | Accepted — amended by 0017 |
 | [0010](0010-a-merchants-category-is-written-onto-each-purchase.md) | A merchant's category is written onto each purchase, not read through | Accepted — implemented |
@@ -25,7 +25,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0013](0013-a-recurring-transaction-is-written-on-its-day.md) | A recurring transaction is written on its day, never projected | Accepted, revised three times — implemented |
 | [0014](0014-a-dated-filters-headline-is-the-balance-of-its-dates.md) | A dated filter's headline is the balance of its dates | Accepted, revised once — implemented |
 | [0015](0015-a-transaction-counts-from-its-day.md) | A transaction counts from its day | Accepted — implemented |
-| [0016](0016-a-categorys-group-is-read-through.md) | A category's group is read through, never written onto the row | Accepted — implemented |
+| [0016](0016-a-categorys-group-is-read-through.md) | A category's group is read through, never written onto the row | Accepted, revised once — implemented |
 | [0017](0017-a-transfer-counts-by-the-accounts-it-joins.md) | A transfer counts by the accounts it joins | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan in `.lavish/phase-2-capture-mvp.html`.

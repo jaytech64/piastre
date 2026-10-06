@@ -43,6 +43,12 @@ A screen that reported it would be a second screen, not a column on this one.
 Someone who reads both numbers without reading the word between them will think one of them is a bug.
 That is the real price, it was accepted knowingly, and this record is half of the mitigation.
 
+## Revision — 2026-10-05
+
+The ranking is no longer of merchants.
+A report ranks the five heaviest category groups, with a category in no group ranking beside them, and a group opens in place onto its categories (`.lavish/report-top-categories.html`).
+It is still built from the rows the figure above it counts, so the three figures still agree by construction; what went out with no category is said in a line under the ranking rather than left as a gap.
+
 ## Where this lives in the code
 
 - `ReportDao` in `core/database/src/main/kotlin/.../Daos.kt` — four queries, each filtering `status = 'CONFIRMED' AND kind = 'EXPENSE'`.

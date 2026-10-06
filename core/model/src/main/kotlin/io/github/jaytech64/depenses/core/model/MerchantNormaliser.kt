@@ -13,10 +13,10 @@ data class MerchantName(
 /**
  * Turns the payment network's merchant string into a merchant.
  *
- * "Top 5 merchants" is meaningless if one chain appears once per storefront, so
+ * A merchant is meaningless if one chain appears once per storefront, so
  * numbered branches collapse: `MARCHE ST JOSEPH  1234` and `MARCHE ST JOSEPH
- * 3011` are the same merchant, and the ranking answers "where does my money go"
- * rather than "which door did I walk through". The branch is not lost —
+ * 3011` are the same merchant, and the ledger's merchant filter answers "what
+ * did I spend there" rather than "which door did I walk through". The branch is not lost —
  * `merchantRaw` keeps it on every transaction, so a per-location view later needs
  * no migration.
  *

@@ -42,6 +42,12 @@ The JSON gains `categoryGroups` and a `groupId` on each category, inside format 
 
 Reports still do not read categories, so they read no group either.
 
+## Revision — 2026-10-05
+
+Reports now read categories, and so they read groups: a report ranks groups and opens one onto its categories (`.lavish/report-top-categories.html`).
+The group is joined when the report is read, in `ReportDao.categoryTotals`, so a category moved to another group takes its place in every past report with it — the decision above, applied to one more screen.
+`` `a category moved to another group takes what went to it along` `` in `ReportRepositoryTest` holds it.
+
 ## Where this lives in the code
 
 - `CategoryGroupRepository` in `core/data/src/main/kotlin/.../CategoryGroupRepository.kt` — the groups, and which category sits in which.
