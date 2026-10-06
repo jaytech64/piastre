@@ -34,6 +34,19 @@ data class CategoryShare(
     val share: Float,
 )
 
+/** What a tap in the ranking asks to see the transactions of, over the period the report is on. */
+sealed interface SpendingOf {
+    data class OneCategory(
+        val categoryId: Long,
+    ) : SpendingOf
+
+    data class OneGroup(
+        val groupId: Long,
+    ) : SpendingOf
+
+    data object NoCategory : SpendingOf
+}
+
 /**
  * A row of the ranking: a group with the categories money went to in it, or a
  * category that is in no group, which ranks under its own name and has nothing
@@ -42,6 +55,8 @@ data class CategoryShare(
 data class RankedSpending(
     /** Null for a category in no group. */
     val groupId: Long?,
+    /** The category itself when it is in no group, and null for a group. */
+    val categoryId: Long?,
     val name: String,
     val total: Money,
     /** Of the period's spending, in `0f..1f`. A bar drawn to this says something true. */
@@ -265,7 +280,7 @@ class ReportsViewModel
             val categorised = mapNotNull { spent -> spent.category?.let { it to spent } }
             val alone =
                 categorised.filter { (_, spent) -> spent.group == null }.map { (category, spent) ->
-                    RankedSpending(null, category.name, spent.total, spent.total.shareOf(periodTotal))
+                    RankedSpending(null, category.id, category.name, spent.total, spent.total.shareOf(periodTotal))
                 }
             val grouped =
                 categorised
@@ -275,6 +290,7 @@ class ReportsViewModel
                         val total = within.fold(Money(0, periodTotal.currency)) { sum, (_, spent) -> sum + spent.total }
                         RankedSpending(
                             groupId = group.id,
+                            categoryId = null,
                             name = group.name,
                             total = total,
                             share = total.shareOf(periodTotal),

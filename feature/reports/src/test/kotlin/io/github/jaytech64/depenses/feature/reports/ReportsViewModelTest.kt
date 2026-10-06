@@ -269,6 +269,7 @@ class ReportsViewModelTest {
 
             assertEquals(listOf("Cadeaux", "Maison"), state.ranking.map { it.name })
             assertEquals(listOf(null, home), state.ranking.map { it.groupId })
+            assertEquals(listOf(gifts, null), state.ranking.map { it.categoryId })
             assertEquals(0.5f, state.ranking[0].share, TOLERANCE)
             assertEquals(emptyList<CategoryShare>(), state.ranking[0].categories)
             assertEquals(Money(4_000, Money.CAD), state.ranking[1].total)

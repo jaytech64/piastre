@@ -22,6 +22,9 @@
     <string name="reports_no_category">%1$s with no category</string>
     <string name="reports_show_categories">Show categories in %1$s</string>
     <string name="reports_hide_categories">Hide categories in %1$s</string>
+    <string name="reports_see_transactions">See transactions in %1$s</string>
+    <string name="reports_see_all_transactions">See all transactions in %1$s</string>
+    <string name="reports_see_uncategorised">See transactions with no category</string>
     <string name="reports_heat_less">less</string>
     <string name="reports_heat_more">more</string>
     <string name="reports_nothing">Nothing in this period</string>

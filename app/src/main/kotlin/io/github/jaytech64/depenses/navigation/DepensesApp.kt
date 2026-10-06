@@ -67,6 +67,11 @@ private enum class Destination(
     REPORTS("reports", R.string.nav_reports, { painterResource(R.drawable.ic_nav_reports) }),
     REVIEW("review", R.string.nav_review, { painterResource(R.drawable.ic_nav_review) }),
     SETTINGS("settings", R.string.nav_settings, { rememberVectorPainter(Icons.Default.Settings) }),
+    ;
+
+    /** The pages that are not this tab and still belong under it, because back from them returns to it. */
+    val pagesOverIt: Set<String>
+        get() = if (this == REPORTS) setOf(REPORT_TRANSACTIONS_ROUTE) else emptySet()
 }
 
 /**
@@ -113,13 +118,20 @@ private fun MainShell() {
                 navController = navController,
                 startDestination = Destination.LEDGER.route,
             ) {
-                composable(Destination.LEDGER.route) {
-                    LedgerScreen(
-                        onReviewClick = { open(Destination.REVIEW) },
-                        onAddClick = { navController.navigate(ADD_EXPENSE_ROUTE) },
-                        onTransactionClick = { id -> navController.navigate(editExpenseRoute(id)) },
-                        onRecurringClick = { id -> navController.navigate(editRecurringRoute(id)) },
-                    )
+                // The tab, and the ledger a report opens over itself: one screen,
+                // told apart only by the arguments the second is opened with.
+                listOf(
+                    Destination.LEDGER.route to emptyList(),
+                    REPORT_TRANSACTIONS_ROUTE to reportTransactionsArguments,
+                ).forEach { (route, arguments) ->
+                    composable(route, arguments) {
+                        LedgerScreen(
+                            onReviewClick = { open(Destination.REVIEW) },
+                            onAddClick = { navController.navigate(ADD_EXPENSE_ROUTE) },
+                            onTransactionClick = { id -> navController.navigate(editExpenseRoute(id)) },
+                            onRecurringClick = { id -> navController.navigate(editRecurringRoute(id)) },
+                        )
+                    }
                 }
                 composable(ADD_EXPENSE_ROUTE) {
                     ExpenseFormScreen(onDone = { navController.popBackStack() })
@@ -130,7 +142,13 @@ private fun MainShell() {
                 ) {
                     ExpenseFormScreen(onDone = { navController.popBackStack() })
                 }
-                composable(Destination.REPORTS.route) { ReportsScreen() }
+                composable(Destination.REPORTS.route) {
+                    ReportsScreen(
+                        onOpenTransactions = { of, period ->
+                            navController.navigate(reportTransactionsRoute(of, period))
+                        },
+                    )
+                }
                 composable(Destination.REVIEW.route) { ReviewScreen() }
                 settingsPages(navController)
             }
@@ -215,7 +233,7 @@ private fun DestinationBar(
         NavigationBar {
             Destination.entries.forEachIndexed { index, destination ->
                 NavigationBarItem(
-                    selected = currentRoute == destination.route,
+                    selected = currentRoute == destination.route || currentRoute in destination.pagesOverIt,
                     onClick = { onOpen(destination) },
                     icon = { DestinationIcon(destination, labels[index], labelled) },
                     label = if (labelled) ({ Text(labels[index], maxLines = 1) }) else null,

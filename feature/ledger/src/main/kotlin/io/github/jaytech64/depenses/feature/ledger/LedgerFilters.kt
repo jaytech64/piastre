@@ -11,6 +11,20 @@ import java.time.LocalDate
 import kotlin.math.abs
 
 /**
+ * The navigation arguments of a ledger opened on something a report showed:
+ * which of [OPENED_ON_CATEGORY], [OPENED_ON_GROUP] or [OPENED_ON_NO_CATEGORY]
+ * it is narrowed to, the id of that category or group, and its first and last
+ * day. A ledger opened without them starts unfiltered, as the tab does.
+ */
+const val OPENED_ON_ARG = "openedOn"
+const val OPENED_ID_ARG = "openedId"
+const val OPENED_FROM_ARG = "openedFromEpochDay"
+const val OPENED_TO_ARG = "openedToEpochDay"
+const val OPENED_ON_CATEGORY = "category"
+const val OPENED_ON_GROUP = "group"
+const val OPENED_ON_NO_CATEGORY = "none"
+
+/**
  * What the filter controls last set, as saved-state keys. A class of its own,
  * as [LedgerSelection] is, so the ledger's view model stays about what the
  * ledger shows; the view model resolves these keys against what exists.
@@ -46,6 +60,28 @@ class LedgerFilters internal constructor(
             savedState.getStateFlow(NOTE_TYPED, ""),
             ::FilterKeys,
         )
+
+    init {
+        applyOpening()
+    }
+
+    /**
+     * What the ledger was opened on becomes its filter once, and from there it
+     * is a filter like any other: clearing it must not bring it back when the
+     * screen is rebuilt from the same saved state.
+     */
+    private fun applyOpening() {
+        val openedOn = savedState.get<String>(OPENED_ON_ARG)
+        if (openedOn == null || savedState.get<Boolean>(OPENING_APPLIED) == true) return
+
+        val id = savedState.get<Long>(OPENED_ID_ARG)
+        savedState[UNCATEGORISED_ONLY] = openedOn == OPENED_ON_NO_CATEGORY
+        savedState[SELECTED_CATEGORY_ID] = id.takeIf { openedOn == OPENED_ON_CATEGORY }
+        savedState[SELECTED_CATEGORY_GROUP_ID] = id.takeIf { openedOn == OPENED_ON_GROUP }
+        savedState[FROM_EPOCH_DAY] = savedState.get<Long>(OPENED_FROM_ARG)
+        savedState[TO_EPOCH_DAY] = savedState.get<Long>(OPENED_TO_ARG)
+        savedState[OPENING_APPLIED] = true
+    }
 
     /** Null shows every account again. */
     fun onAccountSelected(id: Long?) {
@@ -112,6 +148,7 @@ class LedgerFilters internal constructor(
         const val AT_LEAST_TYPED = "atLeastTyped"
         const val AT_MOST_TYPED = "atMostTyped"
         const val NOTE_TYPED = "noteTyped"
+        const val OPENING_APPLIED = "openingApplied"
     }
 }
 
