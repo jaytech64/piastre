@@ -1102,14 +1102,6 @@ data class CategoryTotal(
     val count: Int,
 )
 
-/** A merchant's share of a period. */
-data class MerchantTotal(
-    val merchantId: Long,
-    val name: String,
-    val totalMinor: Long,
-    val count: Int,
-)
-
 /**
  * A transfer counts by the two accounts it joins, and these are that rule in
  * SQL: `Transaction.signedAmount` is the same rule in Kotlin, and
@@ -1133,7 +1125,7 @@ private const val MONEY_IN =
  * week.
  *
  * They are about what went out, so every one but [incomeForRange] keeps to
- * [MONEY_OUT]: a paycheque ranked beside the grocer would make the ranking
+ * [MONEY_OUT]: a paycheque ranked beside the groceries would make the ranking
  * wrong, and a card payment counted as spending would charge you twice for the
  * purchases it settles.
  */
@@ -1191,28 +1183,6 @@ interface ReportDao {
         toDay: Int,
         currency: String,
     ): Flow<Long?>
-
-    @Query(
-        """
-        SELECT m.id AS merchantId, m.displayName AS name,
-               SUM(t.amountMinor) AS totalMinor, COUNT(*) AS count
-        FROM expense_transaction t
-        JOIN merchant m ON m.id = t.merchantId
-        WHERE t.status = 'CONFIRMED'
-          AND t.kind = 'EXPENSE'
-          AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
-        GROUP BY m.id
-        ORDER BY totalMinor DESC
-        LIMIT :limit
-        """,
-    )
-    fun topMerchants(
-        fromDay: Int,
-        toDay: Int,
-        currency: String,
-        limit: Int,
-    ): Flow<List<MerchantTotal>>
 
     /**
      * What [dailyTotals] counts, by category instead of by day, so the rows add up

@@ -7,7 +7,6 @@ import io.github.jaytech64.depenses.core.database.CategoryEntity
 import io.github.jaytech64.depenses.core.database.CategoryGroupEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
-import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
@@ -203,39 +202,7 @@ class ReportRepositoryTest {
             assertEquals(Money(0, Money.CAD), reports.total(week(), TODAY).first())
             assertEquals(Money(0, Money.CAD), reports.income(week(), TODAY).first())
             assertTrue(reports.dailyTotals(week(), TODAY).first().isEmpty())
-            assertTrue(reports.topMerchants(week(), TODAY, limit = 5).first().isEmpty())
-        }
-
-    @Test
-    fun `merchants rank heaviest first, and a purchase with no merchant ranks nowhere`() =
-        runTest {
-            val grocer = merchant("Metro Plus", "METRO PLUS")
-            val cafe = merchant("Café Olimpico", "CAFE OLIMPICO")
-            spend(on = MONDAY, amountMinor = 2_342, merchantId = grocer, key = "a")
-            spend(on = SUNDAY, amountMinor = 4_078, merchantId = grocer, key = "b")
-            spend(on = MONDAY, amountMinor = 625, merchantId = cafe, key = "c")
-            spend(on = MONDAY, amountMinor = 5_000, merchantId = null, key = "nameless")
-
-            val ranking = reports.topMerchants(week(), TODAY, limit = 5).first()
-
-            assertEquals(listOf("Metro Plus", "Café Olimpico"), ranking.map { it.name })
-            assertEquals(Money(6_420, Money.CAD), ranking.first().total)
-            assertEquals(2, ranking.first().count)
-        }
-
-    @Test
-    fun `the ranking stops at the limit it was asked for`() =
-        runTest {
-            repeat(6) { index ->
-                spend(
-                    on = MONDAY,
-                    amountMinor = (index + 1) * 1_000L,
-                    merchantId = merchant("Merchant $index", "MERCHANT $index"),
-                    key = "m$index",
-                )
-            }
-
-            assertEquals(5, reports.topMerchants(week(), TODAY, limit = 5).first().size)
+            assertTrue(reports.categorySpending(week(), TODAY).first().isEmpty())
         }
 
     @Test
@@ -377,18 +344,16 @@ class ReportRepositoryTest {
     private suspend fun spend(
         on: LocalDate,
         amountMinor: Long,
-        merchantId: Long? = null,
         currency: String = Money.CAD,
         key: String = "tag-$on-$amountMinor",
         categoryId: Long? = null,
-    ) = record(on, amountMinor, merchantId = merchantId, currency = currency, key = key, categoryId = categoryId)
+    ) = record(on, amountMinor, currency = currency, key = key, categoryId = categoryId)
 
     private suspend fun record(
         on: LocalDate,
         amountMinor: Long,
         kind: TransactionKind = TransactionKind.EXPENSE,
         status: TransactionStatus = TransactionStatus.CONFIRMED,
-        merchantId: Long? = null,
         currency: String = Money.CAD,
         key: String = "tag-$on-$amountMinor",
         accountId: Long? = null,
@@ -403,7 +368,7 @@ class ReportRepositoryTest {
                 occurredAtUtcMillis = on.toEpochDay() * MILLIS_IN_DAY,
                 zoneId = "America/Toronto",
                 localDateEpochDay = on.toEpochDay().toInt(),
-                merchantId = merchantId,
+                merchantId = null,
                 merchantRaw = null,
                 categoryId = categoryId,
                 source = TransactionSource.MANUAL,
@@ -464,11 +429,6 @@ class ReportRepositoryTest {
         val categories = CategoryRepository(database.categoryDao(), database.merchantDao(), database.accountDao())
         return TransactionRepository(database, database.transactionDao(), merchants, categories, Provider { ZONE })
     }
-
-    private suspend fun merchant(
-        displayName: String,
-        normalisedName: String,
-    ): Long = database.merchantDao().insert(MerchantEntity(displayName = displayName, normalisedName = normalisedName))
 
     private fun week() = ReportPeriod.containing(PeriodUnit.WEEK, MONDAY)
 

@@ -180,23 +180,21 @@ class ParsePipelineTest {
             assertEquals(MERCHANTS, database.merchantDao().allOnce().size)
         }
 
-    /**
-     * The question "where does my money go" is about chains, not storefronts, so a
-     * ranking that listed each branch separately would answer the wrong one.
-     */
+    /** A chain is one merchant however many storefronts it was paid at, and nothing is lost in the gathering. */
     @Test
-    fun `the ranking sums the chain rather than the storefront`() =
+    fun `the purchases of a chain add up under one merchant`() =
         runTest {
             captureAll(corpus())
 
-            val ranking = database.reportDao().topMerchants(0, MAX_DAY, Money.CAD, limit = MERCHANTS).first()
+            val byMerchant =
+                database
+                    .transactionDao()
+                    .all()
+                    .first()
+                    .groupBy { it.merchantId }
 
-            assertEquals(MERCHANTS, ranking.size)
-            assertEquals(TOTAL_MINOR, ranking.sumOf { it.totalMinor })
-            assertTrue(
-                "a ranking must be ordered",
-                ranking.map { it.totalMinor } == ranking.map { it.totalMinor }.sortedDescending(),
-            )
+            assertEquals(MERCHANTS, byMerchant.size)
+            assertEquals(TOTAL_MINOR, byMerchant.values.sumOf { purchases -> purchases.sumOf { it.amountMinor } })
         }
 
     @Test

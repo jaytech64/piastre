@@ -13,14 +13,6 @@ import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** A merchant's share of a period, with how many purchases make it up. */
-data class MerchantSpending(
-    val merchantId: Long,
-    val name: String,
-    val total: Money,
-    val count: Int,
-)
-
 /**
  * What went to one category over a period. A null [category] is everything that
  * was given none; a null [group] is a category in no group.
@@ -127,32 +119,6 @@ class ReportRepository
             reports
                 .incomeForRange(period.start.epochDay, period.lastDayThrough(today), currency)
                 .map { Money(it ?: 0L, currency) }
-
-        /**
-         * The merchants a period went to, heaviest first.
-         *
-         * A purchase whose merchant never resolved is counted in [spending] and
-         * absent here, because a ranking cannot rank something with no name. The
-         * ranking is a top [limit] and never claims to sum to the period.
-         */
-        fun topMerchants(
-            period: ReportPeriod,
-            today: LocalDate,
-            limit: Int,
-            currency: String = Money.CAD,
-        ): Flow<List<MerchantSpending>> =
-            reports
-                .topMerchants(period.start.epochDay, period.lastDayThrough(today), currency, limit)
-                .map { rows ->
-                    rows.map {
-                        MerchantSpending(
-                            merchantId = it.merchantId,
-                            name = it.name,
-                            total = Money(it.totalMinor, currency),
-                            count = it.count,
-                        )
-                    }
-                }
 
         /**
          * What [spending] counts, by category, in no particular order: the rows add
