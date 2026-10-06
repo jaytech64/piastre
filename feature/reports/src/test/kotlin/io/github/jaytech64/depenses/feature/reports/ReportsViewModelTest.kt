@@ -9,9 +9,10 @@ import io.github.jaytech64.depenses.core.data.MerchantRepository
 import io.github.jaytech64.depenses.core.data.ReportRepository
 import io.github.jaytech64.depenses.core.data.TransactionRepository
 import io.github.jaytech64.depenses.core.database.AccountEntity
+import io.github.jaytech64.depenses.core.database.CategoryEntity
+import io.github.jaytech64.depenses.core.database.CategoryGroupEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
-import io.github.jaytech64.depenses.core.database.MerchantEntity
 import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Money
@@ -253,18 +254,99 @@ class ReportsViewModelTest {
         }
 
     @Test
-    fun `merchants rank heaviest first, each carrying its share of the period`() =
+    fun `groups rank heaviest first with their categories inside, and a category in no group ranks as itself`() =
         runTest {
-            val grocer = merchant("Metro Plus", "METRO PLUS")
-            val cafe = merchant("Café Olimpico", "CAFE OLIMPICO")
-            spend(7_500, TODAY, merchantId = grocer)
-            spend(2_500, TODAY, merchantId = cafe)
+            val home = group("Maison")
+            val power = category("Électricité", home)
+            val upkeep = category("Entretien", home)
+            val gifts = category("Cadeaux", null)
+            spend(1_000, TODAY, categoryId = power)
+            spend(3_000, TODAY, categoryId = upkeep)
+            spend(5_000, TODAY, categoryId = gifts)
+            spend(1_000, TODAY)
 
-            val ranking = settled().merchants
+            val state = settled()
 
-            assertEquals(listOf("Metro Plus", "Café Olimpico"), ranking.map { it.name })
-            assertEquals(0.75f, ranking.first().share, TOLERANCE)
-            assertEquals(0.25f, ranking.last().share, TOLERANCE)
+            assertEquals(listOf("Cadeaux", "Maison"), state.ranking.map { it.name })
+            assertEquals(listOf(null, home), state.ranking.map { it.groupId })
+            assertEquals(0.5f, state.ranking[0].share, TOLERANCE)
+            assertEquals(emptyList<CategoryShare>(), state.ranking[0].categories)
+            assertEquals(Money(4_000, Money.CAD), state.ranking[1].total)
+            assertEquals(0.4f, state.ranking[1].share, TOLERANCE)
+            assertEquals(listOf("Entretien", "Électricité"), state.ranking[1].categories.map { it.name })
+            assertEquals(0.3f, state.ranking[1].categories[0].share, TOLERANCE)
+            assertEquals(0.1f, state.ranking[1].categories[1].share, TOLERANCE)
+            assertEquals(Money(1_000, Money.CAD), state.uncategorised)
+        }
+
+    @Test
+    fun `the ranking keeps the five heaviest, and never more than what was spent`() =
+        runTest {
+            (1..6).forEach { spend(it * 1_000L, TODAY, categoryId = category("Catégorie $it", null)) }
+
+            val state = settled()
+
+            assertEquals((6 downTo 2).map { "Catégorie $it" }, state.ranking.map { it.name })
+            assertTrue(state.ranking.sumOf { it.total.minor } <= state.total.minor)
+        }
+
+    @Test
+    fun `a mortgage paid by transfer ranks in its group, and the group never exceeds what was spent`() =
+        runTest {
+            val home = group("Maison")
+            spend(4_000, TODAY, categoryId = category("Électricité", home))
+            record(
+                120_000,
+                TODAY,
+                kind = TransactionKind.TRANSFER,
+                accountId = account(AccountType.CARD),
+                toAccountId = account(AccountType.BANK),
+                categoryId = category("Hypothèque", home),
+            )
+
+            val state = settled()
+
+            assertEquals(Money(124_000, Money.CAD), state.ranking.single().total)
+            assertEquals(state.total, state.ranking.single().total)
+            assertEquals(
+                listOf("Hypothèque", "Électricité"),
+                state.ranking
+                    .single()
+                    .categories
+                    .map { it.name },
+            )
+        }
+
+    @Test
+    fun `tapping a group opens it, tapping it again closes it, and another takes its place`() =
+        runTest {
+            val home = group("Maison")
+            val car = group("Auto")
+            spend(1_000, TODAY, categoryId = category("Électricité", home))
+            spend(2_000, TODAY, categoryId = category("Essence", car))
+            settled()
+
+            viewModel.onGroupTapped(home)
+            assertEquals(home, viewModel.uiState.first { it.openGroupId != null }.openGroupId)
+
+            viewModel.onGroupTapped(car)
+            assertEquals(car, viewModel.uiState.first { it.openGroupId != home }.openGroupId)
+
+            viewModel.onGroupTapped(car)
+            assertNull(viewModel.uiState.first { it.openGroupId != car }.openGroupId)
+        }
+
+    @Test
+    fun `the open group stays open on the period you step to`() =
+        runTest {
+            val home = group("Maison")
+            spend(1_000, TODAY, categoryId = category("Électricité", home))
+            settled()
+            viewModel.onGroupTapped(home)
+
+            viewModel.onStepBack()
+
+            assertEquals(home, shownFor(THIS_WEEK.previous()).openGroupId)
         }
 
     @Test
@@ -367,19 +449,19 @@ class ReportsViewModelTest {
     private suspend fun spend(
         amountMinor: Long,
         on: LocalDate,
-        merchantId: Long? = null,
         currency: String = Money.CAD,
-    ) = record(amountMinor, on, merchantId = merchantId, currency = currency)
+        categoryId: Long? = null,
+    ) = record(amountMinor, on, currency = currency, categoryId = categoryId)
 
     private suspend fun record(
         amountMinor: Long,
         on: LocalDate,
         kind: TransactionKind = TransactionKind.EXPENSE,
         status: TransactionStatus = TransactionStatus.CONFIRMED,
-        merchantId: Long? = null,
         currency: String = Money.CAD,
         accountId: Long? = null,
         toAccountId: Long? = null,
+        categoryId: Long? = null,
     ) {
         database.transactionDao().insert(
             ExpenseTransactionEntity(
@@ -394,9 +476,9 @@ class ReportsViewModelTest {
                         .toEpochMilli(),
                 zoneId = ZONE.id,
                 localDateEpochDay = on.toEpochDay().toInt(),
-                merchantId = merchantId,
+                merchantId = null,
                 merchantRaw = null,
-                categoryId = null,
+                categoryId = categoryId,
                 source = TransactionSource.MANUAL,
                 status = status,
                 reviewReason = null,
@@ -405,7 +487,7 @@ class ReportsViewModelTest {
                 parserId = null,
                 parserVersion = null,
                 sourcePackage = "manual",
-                sourceKey = "tag-$amountMinor-${on.toEpochDay()}-$kind-$status-$currency-$merchantId",
+                sourceKey = "tag-$amountMinor-${on.toEpochDay()}-$kind-$status-$currency-$categoryId",
                 cardLabel = null,
                 cardLast4 = null,
                 note = null,
@@ -421,10 +503,16 @@ class ReportsViewModelTest {
             AccountEntity(name = null, type = type, issuerLabel = null, last4 = null, origin = AccountOrigin.USER),
         )
 
-    private suspend fun merchant(
-        displayName: String,
-        normalisedName: String,
-    ): Long = database.merchantDao().insert(MerchantEntity(displayName = displayName, normalisedName = normalisedName))
+    private suspend fun group(name: String): Long =
+        database.categoryGroupDao().insert(CategoryGroupEntity(name = name, normalisedName = name.uppercase()))
+
+    private suspend fun category(
+        name: String,
+        groupId: Long?,
+    ): Long =
+        database
+            .categoryDao()
+            .insert(CategoryEntity(name = name, normalisedName = name.uppercase(), groupId = groupId))
 
     private companion object {
         val ZONE: ZoneId = ZoneId.of("America/Toronto")

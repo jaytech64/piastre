@@ -3,6 +3,8 @@
 package io.github.jaytech64.depenses.core.data
 
 import io.github.jaytech64.depenses.core.database.ReportDao
+import io.github.jaytech64.depenses.core.model.Category
+import io.github.jaytech64.depenses.core.model.CategoryGroup
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.ReportPeriod
 import kotlinx.coroutines.flow.Flow
@@ -11,10 +13,13 @@ import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** A merchant's share of a period, with how many purchases make it up. */
-data class MerchantSpending(
-    val merchantId: Long,
-    val name: String,
+/**
+ * What went to one category over a period. A null [category] is everything that
+ * was given none; a null [group] is a category in no group.
+ */
+data class CategorySpending(
+    val category: Category?,
+    val group: CategoryGroup?,
     val total: Money,
     val count: Int,
 )
@@ -116,27 +121,40 @@ class ReportRepository
                 .map { Money(it ?: 0L, currency) }
 
         /**
-         * The merchants a period went to, heaviest first.
-         *
-         * A purchase whose merchant never resolved is counted in [spending] and
-         * absent here, because a ranking cannot rank something with no name. The
-         * ranking is a top [limit] and never claims to sum to the period.
+         * What [spending] counts, by category, in no particular order: the rows add
+         * up to its total and its count. Each category comes with the group it is
+         * in now, so a report follows a category that was moved (ADR-0016).
          */
-        fun topMerchants(
+        fun categorySpending(
             period: ReportPeriod,
             today: LocalDate,
-            limit: Int,
             currency: String = Money.CAD,
-        ): Flow<List<MerchantSpending>> =
+        ): Flow<List<CategorySpending>> =
             reports
-                .topMerchants(period.start.epochDay, period.lastDayThrough(today), currency, limit)
+                .categoryTotals(period.start.epochDay, period.lastDayThrough(today), currency)
                 .map { rows ->
-                    rows.map {
-                        MerchantSpending(
-                            merchantId = it.merchantId,
-                            name = it.name,
-                            total = Money(it.totalMinor, currency),
-                            count = it.count,
+                    rows.map { row ->
+                        val groupId = row.groupId
+                        val groupName = row.groupName
+                        val categoryId = row.categoryId
+                        val categoryName = row.categoryName
+                        CategorySpending(
+                            category =
+                                if (categoryId != null && categoryName != null) {
+                                    Category(categoryId, categoryName, groupId)
+                                } else {
+                                    null
+                                },
+                            group =
+                                if (groupId != null &&
+                                    groupName != null
+                                ) {
+                                    CategoryGroup(groupId, groupName)
+                                } else {
+                                    null
+                                },
+                            total = Money(row.totalMinor, currency),
+                            count = row.count,
                         )
                     }
                 }

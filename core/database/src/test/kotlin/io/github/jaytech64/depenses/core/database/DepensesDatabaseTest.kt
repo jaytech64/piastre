@@ -80,7 +80,7 @@ class DepensesDatabaseTest {
             )
         }
 
-    /** A paycheque is not spending: it must not rank as a merchant or cancel out a week of coffee. */
+    /** A paycheque is not spending: it must not rank beside the groceries or cancel out a week of coffee. */
     @Test
     fun `reports count what went out, never what came in`() =
         runTest {
@@ -102,23 +102,7 @@ class DepensesDatabaseTest {
 
             assertEquals(listOf(1_000L), reports.dailyTotals(19_999, 20_001, Money.CAD).first().map { it.totalMinor })
             assertEquals(1_000L, reports.totalForRange(19_999, 20_001, Money.CAD).first())
-            assertEquals(emptyList<MerchantTotal>(), reports.topMerchants(0, 99_999, Money.CAD, limit = 5).first())
-        }
-
-    @Test
-    fun `a merchant ranking sums over the merchant, not the raw string`() =
-        runTest {
-            val merchant = MerchantEntity(displayName = "Marché St-Joseph", normalisedName = "MARCHE ST JOSEPH")
-            val id = database.merchantDao().insert(merchant)
-            val dao = database.transactionDao()
-            dao.insertOrUpdate(transaction("a", amountMinor = 3_667, merchantId = id))
-            dao.insertOrUpdate(transaction("b", amountMinor = 6_554, merchantId = id))
-
-            val top = database.reportDao().topMerchants(0, 99_999, Money.CAD, limit = 5).first()
-
-            assertEquals(1, top.size)
-            assertEquals(10_221L, top.single().totalMinor)
-            assertEquals(2, top.single().count)
+            assertEquals(listOf(1_000L), reports.categoryTotals(0, 99_999, Money.CAD).first().map { it.totalMinor })
         }
 
     @Test
