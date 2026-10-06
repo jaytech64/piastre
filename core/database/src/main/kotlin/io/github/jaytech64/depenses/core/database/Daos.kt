@@ -1088,6 +1088,20 @@ data class DailyTotal(
     val count: Int,
 )
 
+/**
+ * What went to one category over a period, with the group the category is in
+ * now. Every name is null on the row for what has no category, and the group's
+ * are null for a category in none.
+ */
+data class CategoryTotal(
+    val categoryId: Long?,
+    val categoryName: String?,
+    val groupId: Long?,
+    val groupName: String?,
+    val totalMinor: Long,
+    val count: Int,
+)
+
 /** A merchant's share of a period. */
 data class MerchantTotal(
     val merchantId: Long,
@@ -1199,6 +1213,32 @@ interface ReportDao {
         currency: String,
         limit: Int,
     ): Flow<List<MerchantTotal>>
+
+    /**
+     * What [dailyTotals] counts, by category instead of by day, so the rows add up
+     * to the period's total. The group is joined here rather than stored on the
+     * transaction: moving a category moves its history (ADR-0016).
+     */
+    @Query(
+        """
+        SELECT c.id AS categoryId, c.name AS categoryName, g.id AS groupId, g.name AS groupName,
+               SUM(t.amountMinor) AS totalMinor, COUNT(*) AS count
+        FROM expense_transaction t
+        """ + TRANSFER_ENDS + """
+        LEFT JOIN category c ON c.id = t.categoryId
+        LEFT JOIN category_group g ON g.id = c.groupId
+        WHERE t.status = 'CONFIRMED'
+          AND """ + MONEY_OUT + """
+          AND t.currency = :currency
+          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
+        GROUP BY c.id
+        """,
+    )
+    fun categoryTotals(
+        fromDay: Int,
+        toDay: Int,
+        currency: String,
+    ): Flow<List<CategoryTotal>>
 
     /**
      * How many rows in the range the figures above would have counted, and left

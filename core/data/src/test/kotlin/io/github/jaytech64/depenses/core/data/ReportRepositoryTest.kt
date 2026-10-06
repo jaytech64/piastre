@@ -3,6 +3,8 @@
 package io.github.jaytech64.depenses.core.data
 
 import io.github.jaytech64.depenses.core.database.AccountEntity
+import io.github.jaytech64.depenses.core.database.CategoryEntity
+import io.github.jaytech64.depenses.core.database.CategoryGroupEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.depenses.core.database.MerchantEntity
@@ -237,6 +239,82 @@ class ReportRepositoryTest {
         }
 
     @Test
+    fun `what went to each category adds up to the period, with what has no category on a row of its own`() =
+        runTest {
+            val home = group("Maison")
+            val power = category("Électricité", home)
+            val gifts = category("Cadeaux", null)
+            spend(on = MONDAY, amountMinor = 6_400, categoryId = power, key = "hydro")
+            spend(on = SUNDAY, amountMinor = 2_010, categoryId = power, key = "hydro again")
+            spend(on = MONDAY, amountMinor = 9_000, categoryId = gifts)
+            spend(on = MONDAY, amountMinor = 8_000)
+            spend(on = SUNDAY.plusDays(1), amountMinor = 9_999, categoryId = power, key = "next week")
+
+            val spending = reports.categorySpending(week(), TODAY).first().associateBy { it.category?.name }
+
+            assertEquals(setOf("Électricité", "Cadeaux", null), spending.keys)
+            assertEquals(Money(8_410, Money.CAD), spending.getValue("Électricité").total)
+            assertEquals(2, spending.getValue("Électricité").count)
+            assertEquals("Maison", spending.getValue("Électricité").group?.name)
+            assertEquals(null, spending.getValue("Cadeaux").group)
+            assertEquals(Money(8_000, Money.CAD), spending.getValue(null).total)
+            assertEquals(
+                reports
+                    .spending(week(), TODAY)
+                    .first()
+                    .total.minor,
+                spending.values.sumOf { it.total.minor },
+            )
+        }
+
+    @Test
+    fun `a transfer into a bank account goes to its category, and a card payment to none`() =
+        runTest {
+            val card = account(AccountType.CARD)
+            val mortgage = category("Hypothèque", group("Maison"))
+            val payments = category("Paiements de carte", null)
+            transfer(
+                on = MONDAY,
+                amountMinor = 120_000,
+                from = card,
+                into = account(AccountType.BANK),
+                categoryId = mortgage,
+            )
+            transfer(
+                on = MONDAY,
+                amountMinor = 45_480,
+                from = card,
+                into = account(AccountType.CARD),
+                categoryId = payments,
+            )
+            record(on = MONDAY, amountMinor = 150_000, kind = TransactionKind.INCOME, key = "pay")
+
+            val spending = reports.categorySpending(week(), TODAY).first().single()
+
+            assertEquals("Hypothèque", spending.category?.name)
+            assertEquals(Money(120_000, Money.CAD), spending.total)
+        }
+
+    @Test
+    fun `a category moved to another group takes what went to it along`() =
+        runTest {
+            val power = category("Électricité", group("Maison"))
+            spend(on = MONDAY, amountMinor = 6_400, categoryId = power)
+
+            CategoryGroupRepository(database.categoryGroupDao(), database.categoryDao()).move(power, group("Services"))
+
+            assertEquals(
+                "Services",
+                reports
+                    .categorySpending(week(), TODAY)
+                    .first()
+                    .single()
+                    .group
+                    ?.name,
+            )
+        }
+
+    @Test
     fun `a purchase in another currency is in no total, and is counted so a screen can say so`() =
         runTest {
             spend(on = MONDAY, amountMinor = 1_000)
@@ -302,7 +380,8 @@ class ReportRepositoryTest {
         merchantId: Long? = null,
         currency: String = Money.CAD,
         key: String = "tag-$on-$amountMinor",
-    ) = record(on, amountMinor, merchantId = merchantId, currency = currency, key = key)
+        categoryId: Long? = null,
+    ) = record(on, amountMinor, merchantId = merchantId, currency = currency, key = key, categoryId = categoryId)
 
     private suspend fun record(
         on: LocalDate,
@@ -314,6 +393,7 @@ class ReportRepositoryTest {
         key: String = "tag-$on-$amountMinor",
         accountId: Long? = null,
         toAccountId: Long? = null,
+        categoryId: Long? = null,
     ) {
         database.transactionDao().insert(
             ExpenseTransactionEntity(
@@ -325,7 +405,7 @@ class ReportRepositoryTest {
                 localDateEpochDay = on.toEpochDay().toInt(),
                 merchantId = merchantId,
                 merchantRaw = null,
-                categoryId = null,
+                categoryId = categoryId,
                 source = TransactionSource.MANUAL,
                 status = status,
                 reviewReason = null,
@@ -351,14 +431,28 @@ class ReportRepositoryTest {
         from: Long?,
         into: Long?,
         currency: String = Money.CAD,
+        categoryId: Long? = null,
     ) = record(
         on,
         amountMinor,
         kind = TransactionKind.TRANSFER,
         currency = currency,
+        key = "transfer-$amountMinor",
         accountId = from,
         toAccountId = into,
+        categoryId = categoryId,
     )
+
+    private suspend fun group(name: String): Long =
+        database.categoryGroupDao().insert(CategoryGroupEntity(name = name, normalisedName = name.uppercase()))
+
+    private suspend fun category(
+        name: String,
+        groupId: Long?,
+    ): Long =
+        database
+            .categoryDao()
+            .insert(CategoryEntity(name = name, normalisedName = name.uppercase(), groupId = groupId))
 
     private suspend fun account(type: AccountType): Long =
         database.accountDao().insert(

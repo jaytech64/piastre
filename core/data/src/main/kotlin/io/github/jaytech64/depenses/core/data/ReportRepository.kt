@@ -3,6 +3,8 @@
 package io.github.jaytech64.depenses.core.data
 
 import io.github.jaytech64.depenses.core.database.ReportDao
+import io.github.jaytech64.depenses.core.model.Category
+import io.github.jaytech64.depenses.core.model.CategoryGroup
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.ReportPeriod
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +17,17 @@ import javax.inject.Singleton
 data class MerchantSpending(
     val merchantId: Long,
     val name: String,
+    val total: Money,
+    val count: Int,
+)
+
+/**
+ * What went to one category over a period. A null [category] is everything that
+ * was given none; a null [group] is a category in no group.
+ */
+data class CategorySpending(
+    val category: Category?,
+    val group: CategoryGroup?,
     val total: Money,
     val count: Int,
 )
@@ -137,6 +150,45 @@ class ReportRepository
                             name = it.name,
                             total = Money(it.totalMinor, currency),
                             count = it.count,
+                        )
+                    }
+                }
+
+        /**
+         * What [spending] counts, by category, in no particular order: the rows add
+         * up to its total and its count. Each category comes with the group it is
+         * in now, so a report follows a category that was moved (ADR-0016).
+         */
+        fun categorySpending(
+            period: ReportPeriod,
+            today: LocalDate,
+            currency: String = Money.CAD,
+        ): Flow<List<CategorySpending>> =
+            reports
+                .categoryTotals(period.start.epochDay, period.lastDayThrough(today), currency)
+                .map { rows ->
+                    rows.map { row ->
+                        val groupId = row.groupId
+                        val groupName = row.groupName
+                        val categoryId = row.categoryId
+                        val categoryName = row.categoryName
+                        CategorySpending(
+                            category =
+                                if (categoryId != null && categoryName != null) {
+                                    Category(categoryId, categoryName, groupId)
+                                } else {
+                                    null
+                                },
+                            group =
+                                if (groupId != null &&
+                                    groupName != null
+                                ) {
+                                    CategoryGroup(groupId, groupName)
+                                } else {
+                                    null
+                                },
+                            total = Money(row.totalMinor, currency),
+                            count = row.count,
                         )
                     }
                 }
