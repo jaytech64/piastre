@@ -85,6 +85,11 @@
     <string name="form_add_category">New category…</string>
     <string name="form_category_recent">Recent</string>
     <string name="form_category_ungrouped">Not in a group</string>
+    <string name="ledger_split_of">of %s</string>
+    <plurals name="ledger_selection_splits_stay">
+        <item quantity="one">%d split transaction will stay as it is</item>
+        <item quantity="other">%d split transactions will stay as they are</item>
+    </plurals>
     <string name="form_split">Split</string>
     <string name="form_split_title">Split</string>
     <string name="form_split_add">Add a part</string>

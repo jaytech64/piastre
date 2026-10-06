@@ -155,6 +155,7 @@ private fun SelectionDialog(
         SelectionAction.CATEGORISE -> {
             SelectionCategorySheet(
                 count = count,
+                splitCount = state.selectedSplitCount,
                 categories = state.selectionCategories,
                 onPick = {
                     viewModel.selection.categorise(it)
@@ -327,6 +328,7 @@ private fun DayList(
     onOpenUpcoming: (UpcomingLine) -> Unit,
 ) {
     val selected = state.selected
+    val wholes = state.wholes
     val locale = currentLocale()
     val labels =
         Formatters.RelativeDayLabels(
@@ -358,6 +360,7 @@ private fun DayList(
                         },
                     onClick = { onClick(transaction.id) },
                     onLongClick = { onLongClick(transaction.id) },
+                    whole = wholes[transaction.id],
                 )
             }
         }

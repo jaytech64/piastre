@@ -90,6 +90,13 @@ data class Transaction(
     val isSplit: Boolean get() = parts.isNotEmpty()
 
     /**
+     * Every category this transaction is under, null among them for what nobody
+     * has labelled: its own, or each one its parts carry, once. Whatever asks
+     * "is this in that category" asks here, so a split answers for all of them.
+     */
+    val categoryIds: List<Long?> get() = if (isSplit) parts.map { it.categoryId }.distinct() else listOf(categoryId)
+
+    /**
      * What to put on screen. The canonical merchant if the raw string resolved to
      * one, the raw string if it did not, and null only when the notification
      * carried no merchant at all — which is a case the review inbox owns.

@@ -87,6 +87,12 @@
     <string name="form_add_category">Nouvelle catégorie…</string>
     <string name="form_category_recent">Récentes</string>
     <string name="form_category_ungrouped">Sans groupe</string>
+    <string name="ledger_split_of">sur %s</string>
+    <plurals name="ledger_selection_splits_stay">
+        <item quantity="one">%d\u00A0transaction répartie restera telle quelle</item>
+        <item quantity="many">%d\u00A0de transactions réparties resteront telles quelles</item>
+        <item quantity="other">%d\u00A0transactions réparties resteront telles quelles</item>
+    </plurals>
     <string name="form_split">Répartir</string>
     <string name="form_split_title">Répartition</string>
     <string name="form_split_add">Ajouter une partie</string>
