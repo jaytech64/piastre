@@ -1,7 +1,7 @@
 # 14. A dated filter's headline is the balance of its dates
 
 - **Status:** Accepted, revised once — implemented.
-- **Decided:** 2026-09-29, while planning the amount, note and date filters (`.lavish/ledger-six-filters.html`, fork F2).
+- **Decided:** 2026-09-29, while planning the amount, note and date filters (fork F2).
 - **Touches:** `:feature:ledger` (`LedgerViewModel`, `LedgerScreen`).
 
 ## Context

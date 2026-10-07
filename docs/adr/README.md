@@ -29,7 +29,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0017](0017-a-transfer-counts-by-the-accounts-it-joins.md) | A transfer counts by the accounts it joins | Accepted — implemented |
 | [0018](0018-a-split-divides-one-transaction-among-categories.md) | A split divides one transaction among categories | Accepted — implemented |
 
-0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan in `.lavish/phase-2-capture-mvp.html`.
+0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan.
 Each record after them was written with the branch that made the decision.
 The engineering decisions that plan also records — parsing inline with a catch-up pass, the raw log's uniqueness rule, the `extrasJson` allowlist — are documented in the KDoc of the classes that implement them, where they are impossible to read the code without seeing.
 

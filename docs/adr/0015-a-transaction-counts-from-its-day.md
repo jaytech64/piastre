@@ -1,7 +1,7 @@
 # 15. A transaction counts from its day
 
 - **Status:** Accepted — implemented.
-- **Decided:** 2026-09-30, while planning upcoming transactions (`.lavish/upcoming-transactions.html`, forks A to F).
+- **Decided:** 2026-09-30, while planning upcoming transactions (forks A to F).
 - **Touches:** `:feature:ledger` (`LedgerViewModel`, `UpcomingLines`, `TransactionRow`), `:core:data` (`ReportRepository`, `AccountRepository`, `RecurringRepository`, `LocalDateTicker`), `:core:database` (`AccountDao.allWithCounts`), `:feature:reports`, `:feature:settings`, `:app`.
 
 ## Context

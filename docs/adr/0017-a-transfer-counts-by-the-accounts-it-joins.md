@@ -2,7 +2,7 @@
 
 - **Status:** Accepted — implemented.
   Supersedes [ADR-0011](0011-a-transfer-under-a-category-is-money-that-left.md); amends [ADR-0006](0006-a-filtered-total-answers-for-one-account.md), [ADR-0007](0007-a-report-counts-spending-not-the-balance.md), [ADR-0008](0008-the-ledger-header-says-what-the-balance-is-made-of.md) and [ADR-0009](0009-a-report-says-what-its-balance-is-made-of.md).
-- **Decided:** 2026-10-04, while planning a report's category ranking (`.lavish/transfers-count-by-account.html`).
+- **Decided:** 2026-10-04, while planning a report's category ranking.
 - **Touches:** `:core:model` (`Transaction.signedAmount`), `:feature:ledger` (`LedgerViewModel`, `SummaryFigures`), `:core:database` (`ReportDao`), `:core:data` (`ReportRepository`), `:feature:reports`.
 
 ## Context

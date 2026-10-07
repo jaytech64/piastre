@@ -1,7 +1,7 @@
 # 8. The ledger header says what the balance is made of
 
 - **Status:** Accepted — implemented; amended by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md).
-- **Decided:** 2026-09-23, while planning the ledger header (`.lavish/ledger-header-income-and-spending.html`).
+- **Decided:** 2026-09-23, while planning the ledger header.
 - **Touches:** `:feature:ledger` (`LedgerViewModel`, `SummaryFigures`).
 
 ## Context

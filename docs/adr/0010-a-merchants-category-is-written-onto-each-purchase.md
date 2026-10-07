@@ -1,7 +1,7 @@
 # 10. A merchant's category is written onto each purchase, not read through
 
 - **Status:** Accepted — implemented.
-- **Decided:** 2026-09-26, while planning categories (`.lavish/categories.html`).
+- **Decided:** 2026-09-26, while planning categories.
 - **Touches:** `:core:database` (`MerchantEntity`, `AccountEntity`, `CategoryDao`, `TransactionDao.insertOrUpdate`), `:core:data` (`CategoryRepository`, `ParsePipeline`, `TransactionEditor`, `ReviewRepository`), `:feature:ledger`.
 
 ## Context

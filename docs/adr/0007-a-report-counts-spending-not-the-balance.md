@@ -1,7 +1,7 @@
 # 7. A report counts spending, not the balance
 
 - **Status:** Accepted — implemented; amended by [ADR-0009](0009-a-report-says-what-its-balance-is-made-of.md), which puts the balance at the head of the screen while the breakdown stays spending, and by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md), which counts a transfer into a bank account as spending.
-- **Decided:** 2026-09-20, while planning Phase 3 (`.lavish/phase-3-reports.html`).
+- **Decided:** 2026-09-20, while planning Phase 3.
 - **Touches:** `:core:database` (`ReportDao`), `:core:data` (`ReportRepository`), `:feature:reports`.
 
 ## Context
@@ -46,7 +46,7 @@ That is the real price, it was accepted knowingly, and this record is half of th
 ## Revision — 2026-10-05
 
 The ranking is no longer of merchants.
-A report ranks the five heaviest category groups, with a category in no group ranking beside them, and a group opens in place onto its categories (`.lavish/report-top-categories.html`).
+A report ranks the five heaviest category groups, with a category in no group ranking beside them, and a group opens in place onto its categories.
 It is still built from the rows the figure above it counts, so the three figures still agree by construction; what went out with no category is said in a line under the ranking rather than left as a gap.
 
 ## Where this lives in the code

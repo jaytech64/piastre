@@ -1,7 +1,7 @@
 # 6. A filtered total answers for one account
 
 - **Status:** Accepted — implemented; amended by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md).
-- **Decided:** 2026-09-20, while building the ledger's account filter (`.lavish/ledger-account-filter.html`).
+- **Decided:** 2026-09-20, while building the ledger's account filter.
 - **Touches:** `:feature:ledger` (`LedgerViewModel`).
 
 ## Context

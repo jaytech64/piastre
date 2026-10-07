@@ -2,7 +2,7 @@
 
 - **Status:** Accepted — implemented.
   Its clause on transfers under a group filter is replaced by [ADR-0017](0017-a-transfer-counts-by-the-accounts-it-joins.md): a group still adds up to its categories, and a transfer counts in both by the accounts it joins.
-- **Decided:** 2026-10-02, while planning category groups (`.lavish/category-groups.html`, forks A to I).
+- **Decided:** 2026-10-02, while planning category groups (forks A to I).
 - **Touches:** `:core:database` (`CategoryGroupEntity`, `CategoryEntity.groupId`, `CategoryGroupDao`, `MIGRATION_13_14`), `:core:data` (`CategoryGroupRepository`, `LedgerExport`, `LedgerImport`), `:feature:settings`, `:feature:ledger`.
 
 ## Context
@@ -44,7 +44,7 @@ Reports still do not read categories, so they read no group either.
 
 ## Revision — 2026-10-05
 
-Reports now read categories, and so they read groups: a report ranks groups and opens one onto its categories (`.lavish/report-top-categories.html`).
+Reports now read categories, and so they read groups: a report ranks groups and opens one onto its categories.
 The group is joined when the report is read, in `ReportDao.categoryTotals`, so a category moved to another group takes its place in every past report with it — the decision above, applied to one more screen.
 `` `a category moved to another group takes what went to it along` `` in `ReportRepositoryTest` holds it.
 

@@ -1,7 +1,7 @@
 # 12. A total counts one currency
 
 - **Status:** Accepted — implemented.
-- **Decided:** 2026-09-27, while planning the selection's total (`.lavish/ledger-selection-total.html`, fork D).
+- **Decided:** 2026-09-27, while planning the selection's total (fork D).
 - **Touches:** `:feature:ledger` (`LedgerViewModel`, `SummaryFigures`), `:feature:reports` (unchanged, already followed it).
 
 ## Context

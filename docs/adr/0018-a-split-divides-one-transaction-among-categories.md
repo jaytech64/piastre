@@ -1,7 +1,7 @@
 # 18. A split divides one transaction among categories
 
 - **Status:** Accepted — implemented.
-- **Decided:** 2026-10-06, while planning split transactions (`.lavish/split-transactions.html`, forks A to I).
+- **Decided:** 2026-10-06, while planning split transactions (forks A to I).
 - **Touches:** `:core:model` (`TransactionPart`, `Transaction.parts`), `:core:database` (`TransactionPartEntity`, `TransactionPartDao`, `MIGRATION_16_17`, `ReportDao.categoryTotals`, `CategoryDao`), `:core:data` (`settleCategory`, `TransactionRepository`, `TransactionEditor`, `LedgerExport`, `LedgerImport`), `:feature:ledger`.
 
 ## Context

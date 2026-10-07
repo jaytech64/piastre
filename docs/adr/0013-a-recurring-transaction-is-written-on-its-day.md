@@ -1,7 +1,7 @@
 # 13. A recurring transaction is written on its day, never projected
 
 - **Status:** Accepted, revised three times — implemented.
-- **Decided:** 2026-09-27, while planning recurring transactions (`.lavish/recurring-transactions.html`, forks A, B, D and F).
+- **Decided:** 2026-09-27, while planning recurring transactions (forks A, B, D and F).
 - **Touches:** `:core:model` (`Recurrence`), `:core:database` (`recurring_transaction`, schema 12), `:core:data` (`RecurringPosting`, `RecurringRepository`, export and import), `:feature:ledger`, `:feature:settings`, `:app`, `:capture:listener`.
 
 ## Context
@@ -64,7 +64,7 @@ A schedule that starts after today now waits for its first day too, rather than 
 
 ## Revision — a row you type can be recurring
 
-- **Decided:** 2026-10-05 (`.lavish/typed-recurring.html`).
+- **Decided:** 2026-10-05.
 
 A bill whose amount is only known once it arrives cannot be written by a schedule, so it is typed each time.
 It had to be given an hour, and was given midnight to sit where the recurring rows sit.

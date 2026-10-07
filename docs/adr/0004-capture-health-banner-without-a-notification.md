@@ -42,7 +42,7 @@ The banner is the whole of this decision.
 
 ## Revision — the banner can shrink, not go away
 
-- **Decided:** 2026-09-23, while planning for large font sizes (`.lavish/large-font-banner-and-nav.html`).
+- **Decided:** 2026-09-23, while planning for large font sizes.
 
 At 200 % fonts, with an account filter on, the banner and the ledger header between them left room for about one row of the list.
 The first idea was to make the banner collapsible.
