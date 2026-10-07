@@ -38,7 +38,9 @@ class SplitParts internal constructor(
     private val form: MutableStateFlow<ExpenseFormUiState>,
 ) {
     private var awaitingCategory: Long? = null
-    private var awaitingAccount: Long? = null
+
+    /** The parts that go into another account. */
+    val transfers = TransferParts(form)
 
     /**
      * Starts dividing the amount. The category already chosen becomes the first
@@ -61,26 +63,7 @@ class SplitParts internal constructor(
         }
 
     /** Adds a part already holding what is left to divide, so the last one is never typed. */
-    fun add() = add(isTransfer = false)
-
-    /**
-     * Adds a part that goes into another account, still to pick: the share of an
-     * expense that was not spent but moved, as the capital of a mortgage payment
-     * is (ADR-0019).
-     */
-    fun addTransfer() = add(isTransfer = true)
-
-    private fun add(isTransfer: Boolean) =
-        form.update { state ->
-            val left = state.leftToSplit?.takeIf { it.minor > 0 }
-            val next =
-                PartDraft(
-                    key = state.parts.maxOf { it.key } + 1,
-                    amountText = left?.let(Formatters::amountInput).orEmpty(),
-                    isTransfer = isTransfer,
-                )
-            state.copy(parts = state.parts + next)
-        }
+    fun add() = form.update { it.withNewPart(isTransfer = false) }
 
     /**
      * Takes a part away. One part divides nothing, so when a single one would be
@@ -110,28 +93,6 @@ class SplitParts internal constructor(
         text: String,
     ) = change(key) { it.copy(note = text) }
 
-    /**
-     * Where a part goes. A part nobody has given a category takes
-     * [categoryOfAccount], the one every transfer into that account is given
-     * (ADR-0010); one that has a category keeps it.
-     */
-    fun onDestinationChange(
-        key: Long,
-        accountId: Long?,
-        categoryOfAccount: Long?,
-    ) = change(key) { it.copy(toAccountId = accountId, categoryId = it.categoryId ?: categoryOfAccount) }
-
-    /** Remembers which part the account about to be added from its list is for. */
-    fun awaitAccountFor(key: Long) {
-        awaitingAccount = key
-    }
-
-    /** The account just added goes onto the part that asked for it. It is new, so it gives no category. */
-    fun takeAccount(accountId: Long) {
-        awaitingAccount?.let { onDestinationChange(it, accountId, categoryOfAccount = null) }
-        awaitingAccount = null
-    }
-
     /** Remembers which part the category about to be added from its list is for. */
     fun awaitCategoryFor(key: Long) {
         awaitingCategory = key
@@ -148,7 +109,59 @@ class SplitParts internal constructor(
     private fun change(
         key: Long,
         change: (PartDraft) -> PartDraft,
-    ) = form.update { state -> state.copy(parts = state.parts.map { if (it.key == key) change(it) else it }) }
+    ) = form.changePart(key, change)
+}
+
+/**
+ * The parts of a split that go into another account: the share of an expense
+ * that was not spent but moved, as the capital of a mortgage payment is
+ * (ADR-0019). It writes the same form [SplitParts] does.
+ */
+class TransferParts internal constructor(
+    private val form: MutableStateFlow<ExpenseFormUiState>,
+) {
+    private var awaitingAccount: Long? = null
+
+    /** Adds a part holding what is left to divide, with the account it goes into still to pick. */
+    fun add() = form.update { it.withNewPart(isTransfer = true) }
+
+    /**
+     * Where a part goes. A part nobody has given a category takes
+     * [categoryOfAccount], the one every transfer into that account is given
+     * (ADR-0010); one that has a category keeps it.
+     */
+    fun onDestinationChange(
+        key: Long,
+        accountId: Long?,
+        categoryOfAccount: Long?,
+    ) = form.changePart(key) { it.copy(toAccountId = accountId, categoryId = it.categoryId ?: categoryOfAccount) }
+
+    /** Remembers which part the account about to be added from its list is for. */
+    fun awaitAccountFor(key: Long) {
+        awaitingAccount = key
+    }
+
+    /** The account just added goes onto the part that asked for it. It is new, so it gives no category. */
+    fun takeAccount(accountId: Long) {
+        awaitingAccount?.let { onDestinationChange(it, accountId, categoryOfAccount = null) }
+        awaitingAccount = null
+    }
+}
+
+private fun MutableStateFlow<ExpenseFormUiState>.changePart(
+    key: Long,
+    change: (PartDraft) -> PartDraft,
+) = update { state -> state.copy(parts = state.parts.map { if (it.key == key) change(it) else it }) }
+
+private fun ExpenseFormUiState.withNewPart(isTransfer: Boolean): ExpenseFormUiState {
+    val left = leftToSplit?.takeIf { it.minor > 0 }
+    val next =
+        PartDraft(
+            key = parts.maxOf { it.key } + 1,
+            amountText = left?.let(Formatters::amountInput).orEmpty(),
+            isTransfer = isTransfer,
+        )
+    return copy(parts = parts + next)
 }
 
 private fun ExpenseFormUiState.unsplitWith(part: PartDraft?): ExpenseFormUiState =

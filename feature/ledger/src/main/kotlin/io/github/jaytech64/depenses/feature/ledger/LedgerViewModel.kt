@@ -134,21 +134,23 @@ data class LedgerFilter(
      * shows.
      */
     fun shown(transaction: Transaction): Transaction? {
-        val placed =
-            transaction.isOn(account) &&
-                transaction.isIn(category) &&
-                (!transaction.isSplit || partsCounted(transaction).isNotEmpty()) &&
-                (merchant == null || transaction.merchantId == merchant.id) &&
-                (from == null || transaction.localDate >= from) &&
-                (to == null || transaction.localDate <= to) &&
-                (note == null || transaction.note?.containsTyped(note) == true)
-        if (!placed) return null
+        if (!places(transaction)) return null
         val shown = transaction.narrowed()
         val sized =
             (atLeast == null || shown.amount.minor >= atLeast.minor) &&
                 (atMost == null || shown.amount.minor <= atMost.minor)
         return shown.takeIf { sized }
     }
+
+    /** Whether the row is where and when this filter looks, whatever its amount. */
+    private fun places(transaction: Transaction): Boolean =
+        transaction.isOn(account) &&
+            transaction.isIn(category) &&
+            (!transaction.isSplit || partsCounted(transaction).isNotEmpty()) &&
+            (merchant == null || transaction.merchantId == merchant.id) &&
+            (from == null || transaction.localDate >= from) &&
+            (to == null || transaction.localDate <= to) &&
+            (note == null || transaction.note?.containsTyped(note) == true)
 
     /** The split with the amount of the parts this filter counts; anything else as it is. */
     private fun Transaction.narrowed(): Transaction =

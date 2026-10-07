@@ -35,22 +35,7 @@ import javax.inject.Provider
  * thing that crosses between them, exactly as it crosses between two phones.
  */
 @RunWith(RobolectricTestRunner::class)
-class LedgerImportTest {
-    private lateinit var source: DepensesDatabase
-    private lateinit var target: DepensesDatabase
-
-    @Before
-    fun open() {
-        source = inMemoryDatabase()
-        target = inMemoryDatabase()
-    }
-
-    @After
-    fun close() {
-        source.close()
-        target.close()
-    }
-
+class LedgerImportTest : LedgerImportFixture() {
     @Test
     fun `an export read into an empty ledger comes back whole, balances included`() =
         runTest {
@@ -132,109 +117,6 @@ class LedgerImportTest {
             val reading = target.reading(document(accountName = "Visa"))
 
             assertEquals(ImportReading.Refused(ImportProblem.AmbiguousAccount("Visa")), reading)
-            assertEquals(0, target.transactionDao().count().first())
-        }
-
-    @Test
-    fun `a split arrives split, each part under the category it had`() =
-        runTest {
-            val groceries = source.categoryRepository().named("Épicerie")!!
-            source.enterSplit(
-                TransactionPart(cad(120_00), groceries),
-                TransactionPart(cad(67_42), null, note = "Ampoules"),
-            )
-
-            target.importing(source.export())
-
-            val arrived =
-                target
-                    .transactions()
-                    .confirmed()
-                    .first()
-                    .single()
-            assertEquals(cad(187_42), arrived.amount)
-            assertNull(arrived.categoryId)
-            assertEquals(
-                listOf(Triple("Épicerie", cad(120_00), null), Triple(null, cad(67_42), "Ampoules")),
-                arrived.parts.map { Triple(it.categoryName, it.amount, it.note) },
-            )
-        }
-
-    @Test
-    fun `a part that goes into another account arrives going into it, and both accounts hold what they did`() =
-        runTest {
-            val chequing = source.accounts().add("Chèques", AccountType.CARD, last4 = "")
-            val mortgage = source.accounts().add("Hypothèque", AccountType.BANK, last4 = "")
-            source.enterSplit(
-                TransactionPart(cad(120_00), null),
-                TransactionPart(cad(67_42), null, toAccountId = mortgage),
-                accountId = chequing,
-            )
-
-            target.importing(source.export())
-
-            val arrived =
-                target
-                    .transactions()
-                    .confirmed()
-                    .first()
-                    .single()
-            assertEquals(listOf(null, "Hypothèque"), arrived.parts.map { it.toAccountName })
-            assertEquals(source.balances(), target.balances())
-        }
-
-    @Test
-    fun `a file written before a part could go into an account is still read`() =
-        runTest {
-            source.enterSplit(TransactionPart(cad(120_00), null), TransactionPart(cad(67_42), null))
-            val older = source.export().replace("\"version\": 4", "\"version\": 3")
-
-            target.importing(older)
-
-            assertEquals(
-                2,
-                target
-                    .transactions()
-                    .confirmed()
-                    .first()
-                    .single()
-                    .parts.size,
-            )
-        }
-
-    @Test
-    fun `a part into an account the file does not list refuses the file before anything is written`() =
-        runTest {
-            val chequing = source.accounts().add("Chèques", AccountType.CARD, last4 = "")
-            val mortgage = source.accounts().add("Hypothèque", AccountType.BANK, last4 = "")
-            source.enterSplit(
-                TransactionPart(cad(120_00), null),
-                TransactionPart(cad(67_42), null, toAccountId = mortgage),
-                accountId = chequing,
-            )
-            val file = source.export()
-            val tampered =
-                file.replace(
-                    Regex("\"toAccountId\": $mortgage,(\\s+)\"toAccountName\""),
-                    "\"toAccountId\": 99,$1\"toAccountName\"",
-                )
-
-            val reading = target.reading(tampered)
-
-            assertTrue(file != tampered)
-            assertTrue(reading.toString(), (reading as ImportReading.Refused).problem is ImportProblem.Inconsistent)
-            assertEquals(0, target.transactionDao().count().first())
-        }
-
-    @Test
-    fun `a file whose parts do not add up to their transaction is refused before anything is written`() =
-        runTest {
-            source.enterSplit(TransactionPart(cad(120_00), null), TransactionPart(cad(67_42), null))
-            val tampered = source.export().replace("12000", "11000")
-
-            val reading = target.reading(tampered)
-
-            assertTrue(reading.toString(), (reading as ImportReading.Refused).problem is ImportProblem.Inconsistent)
             assertEquals(0, target.transactionDao().count().first())
         }
 
@@ -632,41 +514,6 @@ class LedgerImportTest {
         return accountDao().allOnce().filter { it.categoryId != null }.map { it.name to names[it.categoryId] }
     }
 
-    private fun DepensesDatabase.accounts() = AccountRepository(accountDao())
-
-    private fun DepensesDatabase.transactions() =
-        TransactionRepository(
-            database = this,
-            transactions = transactionDao(),
-            merchants = MerchantRepository(merchantDao()),
-            categories = CategoryRepository(categoryDao(), merchantDao(), accountDao()),
-            zoneId = Provider { ZONE },
-        )
-
-    private fun DepensesDatabase.importer() =
-        LedgerImport(
-            database = this,
-            transactions = transactionDao(),
-            merchants = MerchantRepository(merchantDao()),
-            merchantRows = merchantDao(),
-            accounts = accountDao(),
-            categories = categoryRepository(),
-            categoryGroups = categoryGroupRepository(),
-            recurring = recurringTransactionDao(),
-            templates = transactionTemplateDao(),
-            posting = posting(),
-        )
-
-    private fun DepensesDatabase.posting() =
-        RecurringPosting(
-            this,
-            recurringTransactionDao(),
-            transactionDao(),
-            LocalDateTicker(Clock.fixed(EXPORTED_AT, ZONE), Provider { ZONE }),
-            Clock.fixed(EXPORTED_AT, ZONE),
-            Provider { ZONE },
-        )
-
     private fun DepensesDatabase.recurring() =
         RecurringRepository(
             this,
@@ -675,30 +522,6 @@ class LedgerImportTest {
             MerchantRepository(merchantDao()),
             posting(),
         )
-
-    private suspend fun DepensesDatabase.reading(file: String): ImportReading = importer().read(file.byteInputStream())
-
-    private suspend fun DepensesDatabase.importing(file: String): ImportOutcome {
-        val reading = reading(file)
-        assertTrue(reading.toString(), reading is ImportReading.Ready)
-        return importer().apply(reading as ImportReading.Ready)
-    }
-
-    private suspend fun DepensesDatabase.export(): String {
-        val bytes = ByteArrayOutputStream()
-        LedgerExport(
-            transactionDao(),
-            merchantDao(),
-            accountDao(),
-            categoryDao(),
-            categoryGroupDao(),
-            recurringTransactionDao(),
-            transactionTemplateDao(),
-            transactionPartDao(),
-            Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
-        ).write(bytes, ExportFormat.JSON, LABELS)
-        return bytes.toString(Charsets.UTF_8.name())
-    }
 
     private suspend fun DepensesDatabase.enter(
         minor: Long,
@@ -722,22 +545,6 @@ class LedgerImportTest {
         reach = CategoryReach(others = false, fromNowOn = fromNowOn).takeIf { fromNowOn },
     )
 
-    private suspend fun DepensesDatabase.enterSplit(
-        vararg parts: TransactionPart,
-        accountId: Long? = null,
-    ) = transactions().addManual(
-        amount = cad(187_42),
-        merchantName = "Costco",
-        occurredAt = OCCURRED_AT,
-        note = null,
-        kind = TransactionKind.EXPENSE,
-        accountId = accountId,
-        toAccountId = null,
-        categoryId = null,
-        reach = null,
-        parts = parts.toList(),
-    )
-
     /** Everything a person sees of a transaction; ids differ between two databases and are left out. */
     private suspend fun DepensesDatabase.ledger() =
         transactions()
@@ -756,19 +563,10 @@ class LedgerImportTest {
                 )
             }.sortedBy { it.toString() }
 
-    private suspend fun DepensesDatabase.balances() =
-        accounts()
-            .all(
-                LocalDate.of(2026, 12, 31),
-            ).first()
-            .map { listOf(it.name, it.type, it.openingBalance, it.balance) }
-
     private suspend fun DepensesDatabase.accountNames() =
         accounts().all(LocalDate.of(2026, 12, 31)).first().map { it.name }
 
     private fun refused(problem: ImportProblem) = ImportReading.Refused(problem)
-
-    private fun cad(minor: Long) = Money(minor, Money.CAD)
 
     /** Written without `openingBalanceMinor`, as a version-2 file from before opening balances was. */
     private fun document(
@@ -796,28 +594,4 @@ class LedgerImportTest {
           ]
         }
         """.trimIndent()
-
-    private companion object {
-        val ZONE: ZoneId = ZoneId.of("America/Toronto")
-        val EXPORTED_AT: Instant = Instant.parse("2026-09-12T20:00:00Z")
-        val OCCURRED_AT: Instant = Instant.parse("2026-09-08T21:17:00Z")
-
-        val LABELS =
-            CsvLabels(
-                date = "date",
-                time = "heure",
-                merchant = "marchand",
-                amount = "montant",
-                currency = "devise",
-                source = "source",
-                status = "statut",
-                card = "carte",
-                note = "note",
-                type = "type",
-                account = "compte",
-                toAccount = "compte de destination",
-                category = "catégorie",
-                categoryGroup = "groupe",
-            )
-    }
 }

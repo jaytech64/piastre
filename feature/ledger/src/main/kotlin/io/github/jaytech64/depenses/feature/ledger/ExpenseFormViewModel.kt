@@ -431,7 +431,7 @@ class ExpenseFormViewModel
         ) = when (slot) {
             AccountSlot.SOURCE -> _uiState.update { it.copy(accountId = id, accountChosen = true) }
             AccountSlot.DESTINATION -> _uiState.update { category.following(it.copy(toAccountId = id)) }
-            AccountSlot.PART -> id?.let(split::takeAccount)
+            AccountSlot.PART -> id?.let(split.transfers::takeAccount)
         }
 
         /** Adds the account missing from the list and picks it, so adding one never means leaving the form. */

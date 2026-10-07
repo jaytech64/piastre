@@ -238,7 +238,7 @@ class ExpenseFormSplitTest {
             openMortgagePayment(chequing)
             assertFalse(state.canSave)
 
-            viewModel.split.onDestinationChange(1, mortgage, categoryOfAccount = null)
+            viewModel.split.transfers.onDestinationChange(1, mortgage, categoryOfAccount = null)
 
             assertTrue(state.canSave)
             save()
@@ -257,11 +257,11 @@ class ExpenseFormSplitTest {
             val mortgage = account("Hypothèque", AccountType.BANK)
             openMortgagePayment(chequing)
 
-            viewModel.split.onDestinationChange(1, mortgage, categoryOfAccount = mortgageCategory)
+            viewModel.split.transfers.onDestinationChange(1, mortgage, categoryOfAccount = mortgageCategory)
             assertEquals(mortgageCategory, state.parts.last().categoryId)
 
             viewModel.split.onCategoryChange(1, savings)
-            viewModel.split.onDestinationChange(1, mortgage, categoryOfAccount = mortgageCategory)
+            viewModel.split.transfers.onDestinationChange(1, mortgage, categoryOfAccount = mortgageCategory)
             assertEquals(savings, state.parts.last().categoryId)
         }
 
@@ -272,10 +272,10 @@ class ExpenseFormSplitTest {
             val mortgage = account("Hypothèque", AccountType.BANK)
             openMortgagePayment(chequing)
 
-            viewModel.split.onDestinationChange(1, chequing, categoryOfAccount = null)
+            viewModel.split.transfers.onDestinationChange(1, chequing, categoryOfAccount = null)
             assertFalse(state.canSave)
 
-            viewModel.split.onDestinationChange(1, mortgage, categoryOfAccount = null)
+            viewModel.split.transfers.onDestinationChange(1, mortgage, categoryOfAccount = null)
             viewModel.onAccountChange(AccountSlot.SOURCE, null)
             assertFalse(state.canSave)
         }
@@ -286,7 +286,7 @@ class ExpenseFormSplitTest {
             val chequing = account("Chèques", AccountType.CARD)
             val mortgage = account("Hypothèque", AccountType.BANK)
             openMortgagePayment(chequing)
-            viewModel.split.onDestinationChange(1, mortgage, categoryOfAccount = null)
+            viewModel.split.transfers.onDestinationChange(1, mortgage, categoryOfAccount = null)
             assertTrue(state.offersTransferParts)
 
             viewModel.onKindChange(TransactionKind.INCOME)
@@ -303,7 +303,7 @@ class ExpenseFormSplitTest {
             val chequing = account("Chèques", AccountType.CARD)
             val mortgage = account("Hypothèque", AccountType.BANK)
             openMortgagePayment(chequing)
-            viewModel.split.onDestinationChange(1, mortgage, categoryOfAccount = null)
+            viewModel.split.transfers.onDestinationChange(1, mortgage, categoryOfAccount = null)
             save()
             val id = only().id
 
@@ -327,7 +327,7 @@ class ExpenseFormSplitTest {
             val chequing = account("Chèques", AccountType.CARD)
             openMortgagePayment(chequing)
 
-            viewModel.split.awaitAccountFor(1)
+            viewModel.split.transfers.awaitAccountFor(1)
             viewModel.addAccount("Hypothèque", AccountType.BANK, last4 = "", openingBalance = null, AccountSlot.PART)
             val added = viewModel.uiState.first { it.parts.last().toAccountId != null }
 
@@ -357,7 +357,7 @@ class ExpenseFormSplitTest {
         viewModel.onAccountChange(AccountSlot.SOURCE, chequing)
         viewModel.split.start()
         viewModel.split.onAmountChange(0, "700")
-        viewModel.split.addTransfer()
+        viewModel.split.transfers.add()
     }
 
     private suspend fun account(
