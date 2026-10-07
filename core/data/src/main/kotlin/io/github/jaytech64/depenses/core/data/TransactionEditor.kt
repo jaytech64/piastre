@@ -8,6 +8,7 @@ import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionPart
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.model.localDateEpochDay
@@ -36,6 +37,8 @@ class TransactionEditor
         private val categories: CategoryRepository,
         private val clock: Clock,
     ) {
+        private val parts = database.transactionPartDao()
+
         /**
          * Rewrites a purchase with what you say it was.
          *
@@ -55,6 +58,11 @@ class TransactionEditor
          * here — on a row a schedule wrote too, which stays that schedule's, under
          * the key that keeps its day from being written again. A captured row keeps
          * the hour its notification gave it, whatever is asked.
+         *
+         * [parts] replace whatever the amount was divided into before, as
+         * [TransactionRepository.addManual] takes them; none leaves it unsplit.
+         * Splitting a captured row is a ruling like any other edit, so the stamp
+         * that keeps a re-post out keeps the split too.
          */
         suspend fun edit(
             id: Long,
@@ -68,8 +76,10 @@ class TransactionEditor
             categoryId: Long?,
             reach: CategoryReach?,
             recurring: Boolean = false,
+            parts: List<TransactionPart> = emptyList(),
         ) = database.inTransaction {
             val row = transactions.withMerchantById(id) ?: return@inTransaction
+            val settled = settleCategory(amount, categoryId, parts)
             val existing = row.transaction
             val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
             val renamed = merchant != (row.merchantName ?: existing.merchantRaw)
@@ -94,10 +104,11 @@ class TransactionEditor
                     occurredAtUtcMillis = occurredAtMillis,
                     localDateEpochDay = localDateEpochDay(occurredAtMillis, zone),
                     note = note?.takeIf { it.isNotBlank() }?.trim(),
-                    categoryId = categoryId,
+                    categoryId = settled.categoryId,
                     reviewedAtUtcMillis = clock.millis(),
                 )
             transactions.update(edited)
+            this.parts.replace(id, settled.parts.map { it.toEntity() })
             categories.spreadFrom(edited, reach)
         }
 

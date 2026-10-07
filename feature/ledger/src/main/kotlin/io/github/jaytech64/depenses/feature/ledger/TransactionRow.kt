@@ -40,6 +40,9 @@ import java.util.Locale
  *
  * A selected row says so twice, with its tint and a check where its initials
  * were, so being picked never rests on colour alone.
+ *
+ * [whole] is given for a split shown for one of its categories: the amount is
+ * then that category's share, and the whole it is a share of is said under it.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -50,6 +53,7 @@ internal fun TransactionRow(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
     dayLabel: String? = null,
+    whole: Money? = null,
 ) {
     val selected = selection == RowSelection.SELECTED
     Row(
@@ -69,7 +73,7 @@ internal fun TransactionRow(
         if (selected) {
             SelectedMark()
         } else {
-            TitleInitials(transaction.categoryName ?: transaction.placeInitials())
+            TitleInitials(transaction.mark())
         }
 
         Column(Modifier.weight(1f)) {
@@ -91,7 +95,16 @@ internal fun TransactionRow(
             )
         }
 
-        KindAmount(transaction.kind, transaction.amount, locale)
+        Column(horizontalAlignment = Alignment.End) {
+            KindAmount(transaction.kind, transaction.amount, locale)
+            whole?.let {
+                Text(
+                    stringResource(R.string.ledger_split_of, Formatters.money(it, locale)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -223,3 +236,4 @@ private fun String?.initials(): String =
 
 internal const val SEPARATOR = " · "
 internal const val ARROW = "→"
+internal const val SPLIT_MARK = "÷"

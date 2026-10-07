@@ -14,14 +14,39 @@ import io.github.jaytech64.depenses.core.model.TransactionKind
  * apart at a glance. A row nobody has given a category leads with its place.
  */
 @Composable
-internal fun Transaction.title(): String = categoryName ?: place()
+internal fun Transaction.title(): String = categoryTitle() ?: place()
 
 /** The place under the category, when the category has taken the title; nothing more to say otherwise. */
 @Composable
-internal fun Transaction.placeUnderCategory(): String? = categoryName?.let { place() }
+internal fun Transaction.placeUnderCategory(): String? = categoryTitle()?.let { place() }
 
-/** The initials a row without a category shows: its merchant's, or an arrow for a transfer. */
-internal fun Transaction.placeInitials(): String? = if (kind == TransactionKind.TRANSFER) ARROW else displayMerchant
+/**
+ * The category as the title has it. A split has several, so it names each one
+ * its parts carry, in the order they were typed; a part with none adds nothing.
+ */
+private fun Transaction.categoryTitle(): String? =
+    if (isSplit) {
+        parts
+            .mapNotNull { it.categoryName }
+            .distinct()
+            .joinToString(SEPARATOR)
+            .ifEmpty { null }
+    } else {
+        categoryName
+    }
+
+/**
+ * What stands where a row's initials go: its category's, else its merchant's, or
+ * an arrow for a transfer. A split shows that it is one, since no one category's
+ * initials would be true of it.
+ */
+internal fun Transaction.mark(): String? =
+    when {
+        isSplit -> SPLIT_MARK
+        categoryName != null -> categoryName
+        kind == TransactionKind.TRANSFER -> ARROW
+        else -> displayMerchant
+    }
 
 /** Where the money went: the merchant, or — on a transfer — the two accounts of yours it moved between. */
 @Composable

@@ -18,6 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CategoryGroupEntity::class,
         RecurringTransactionEntity::class,
         TransactionTemplateEntity::class,
+        TransactionPartEntity::class,
     ],
     version = DepensesDatabase.VERSION,
     exportSchema = true,
@@ -41,8 +42,10 @@ abstract class DepensesDatabase : RoomDatabase() {
 
     abstract fun transactionTemplateDao(): TransactionTemplateDao
 
+    abstract fun transactionPartDao(): TransactionPartDao
+
     companion object {
-        const val VERSION: Int = 16
+        const val VERSION: Int = 17
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -65,6 +68,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_13_14,
                 MIGRATION_14_15,
                 MIGRATION_15_16,
+                MIGRATION_16_17,
             )
 
         const val NAME: String = "depenses.db"
@@ -505,6 +509,29 @@ private val MIGRATION_15_16 =
     object : Migration(15, 16) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE transaction_template ADD COLUMN recurring INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+/**
+ * Schema 17 lets a transaction's amount be divided among categories. Nothing
+ * existing is split, so the table starts empty and no transaction changes.
+ */
+private val MIGRATION_16_17 =
+    object : Migration(16, 17) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `transaction_part` (" +
+                    "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `transactionId` INTEGER NOT NULL, " +
+                    "`position` INTEGER NOT NULL, `amountMinor` INTEGER NOT NULL, `categoryId` INTEGER, `note` TEXT)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_transaction_part_transactionId` " +
+                    "ON `transaction_part` (`transactionId`)",
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_transaction_part_categoryId` " +
+                    "ON `transaction_part` (`categoryId`)",
+            )
         }
     }
 

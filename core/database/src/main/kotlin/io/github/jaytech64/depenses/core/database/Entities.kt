@@ -140,6 +140,36 @@ data class ExpenseTransactionEntity(
 )
 
 /**
+ * One share of a transaction's amount, and what that share was for.
+ *
+ * A split is still one transaction: its row in `expense_transaction` keeps the
+ * whole amount, the account, the day and the merchant, so every balance goes on
+ * reading that row and nothing else. The parts only divide the amount among
+ * categories, and only what reads a category reads them.
+ *
+ * While a transaction has parts its own [ExpenseTransactionEntity.categoryId] is
+ * null, and the parts' amounts add up to its amount to the minor unit; both are
+ * held by the one place that writes them, `settleCategory` in `:core:data`.
+ * A part is in the currency of its transaction, so it carries none.
+ *
+ * [categoryId] is written onto the part, as it is onto a transaction, and null
+ * is a share nobody has said anything about yet. [position] is the order you
+ * typed the parts in, from 0.
+ */
+@Entity(
+    tableName = "transaction_part",
+    indices = [Index("transactionId"), Index("categoryId")],
+)
+data class TransactionPartEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val transactionId: Long,
+    val position: Int,
+    val amountMinor: Long,
+    val categoryId: Long?,
+    val note: String?,
+)
+
+/**
  * An account money sits in: cash, a card Wallet named, a bank account you typed.
  *
  * A card is identified by the issuer's label together with the last four digits —

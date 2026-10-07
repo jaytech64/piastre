@@ -4,16 +4,19 @@ package io.github.jaytech64.depenses.core.data
 
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.database.ExpenseTransactionEntity
+import io.github.jaytech64.depenses.core.database.PartWithCategory
 import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionPart
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.model.localDateEpochDay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 import java.time.LocalDate
@@ -37,6 +40,8 @@ class TransactionRepository
         private val categories: CategoryRepository,
         private val zoneId: Provider<ZoneId>,
     ) {
+        private val parts = database.transactionPartDao()
+
         /**
          * What the ledger shows: purchases you have agreed to, newest first.
          *
@@ -46,9 +51,13 @@ class TransactionRepository
          * that admits it.
          */
         fun confirmed(): Flow<List<Transaction>> =
-            transactions
-                .withMerchantByStatus(TransactionStatus.CONFIRMED)
-                .map { rows -> rows.map(::toDomain) }
+            combine(
+                transactions.withMerchantByStatus(TransactionStatus.CONFIRMED),
+                parts.allWithNames(),
+            ) { rows, parts ->
+                val byTransaction = parts.groupBy { it.part.transactionId }
+                rows.map { toDomain(it, byTransaction[it.transaction.id].orEmpty()) }
+            }
 
         fun needsReview(): Flow<List<Transaction>> =
             transactions
@@ -93,6 +102,10 @@ class TransactionRepository
          * A [recurring] one comes back, at an amount only known once it has: it has
          * a day and no hour, and reads in the ledger as a row a schedule wrote. It
          * is still typed each time, and writes nothing to come.
+         *
+         * [parts] divide the amount among categories: see [settleCategory] for what
+         * they must be. A split carries no category of its own, so [categoryId] and
+         * [reach] are then set aside.
          */
         suspend fun addManual(
             amount: Money,
@@ -105,17 +118,29 @@ class TransactionRepository
             categoryId: Long?,
             reach: CategoryReach?,
             recurring: Boolean = false,
+            parts: List<TransactionPart> = emptyList(),
         ): Long =
             database.inTransaction {
+                val settled = settleCategory(amount, categoryId, parts)
                 val entry =
-                    manualEntry(amount, merchantName, occurredAt, note, kind, accountId, toAccountId, categoryId)
-                        .placed(recurring)
+                    manualEntry(
+                        amount,
+                        merchantName,
+                        occurredAt,
+                        note,
+                        kind,
+                        accountId,
+                        toAccountId,
+                        settled.categoryId,
+                    ).placed(recurring)
                 val id = transactions.insert(entry)
+                this.parts.replace(id, settled.parts.map { it.toEntity() })
                 categories.spreadFrom(entry.copy(id = id), reach)
                 id
             }
 
-        suspend fun byId(id: Long): Transaction? = transactions.withMerchantById(id)?.let(::toDomain)
+        suspend fun byId(id: Long): Transaction? =
+            transactions.withMerchantById(id)?.let { toDomain(it, parts.ofTransaction(id)) }
 
         private suspend fun manualEntry(
             amount: Money,
@@ -172,7 +197,10 @@ class TransactionRepository
         }
     }
 
-internal fun toDomain(row: TransactionWithMerchant): Transaction =
+internal fun toDomain(
+    row: TransactionWithMerchant,
+    parts: List<PartWithCategory> = emptyList(),
+): Transaction =
     with(row.transaction) {
         Transaction(
             id = id,
@@ -199,5 +227,6 @@ internal fun toDomain(row: TransactionWithMerchant): Transaction =
             categoryId = categoryId,
             categoryName = row.categoryName,
             recurringId = recurringId,
+            parts = parts.map { it.toDomain(currency) },
         )
     }

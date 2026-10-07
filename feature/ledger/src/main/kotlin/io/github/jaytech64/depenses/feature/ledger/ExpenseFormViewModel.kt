@@ -25,8 +25,10 @@ import io.github.jaytech64.depenses.core.model.RecurringTransaction
 import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionPart
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionTemplate
+import io.github.jaytech64.depenses.core.model.divide
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -99,6 +101,11 @@ data class ExpenseFormUiState(
      * the category in with the one that merchant gives.
      */
     val categoryChosen: Boolean = false,
+    /**
+     * What the amount is divided into, or empty when it is not split. While there
+     * are parts, [categoryId] is null and the parts carry the categories.
+     */
+    val parts: List<PartDraft> = emptyList(),
     /** Whether the offer's first box is ticked: the place's other transactions with no category. */
     val reachOthers: Boolean = false,
     /**
@@ -147,13 +154,43 @@ data class ExpenseFormUiState(
 
     /**
      * A transaction needs an amount; a transfer also needs two accounts, and two
-     * different ones; one that repeats cannot stop before it starts; and one also
-     * saved as a template needs that template's name.
+     * different ones; one that repeats cannot stop before it starts; one also
+     * saved as a template needs that template's name; and a split needs parts
+     * that add up.
      */
     private val transactionIsWhole: Boolean
         get() =
             amount != null && transferIsSettled && !endsBeforeItStarts &&
-                (!savesAsTemplate || templateName.isNotBlank())
+                (!savesAsTemplate || templateName.isNotBlank()) && splitIsSettled
+
+    val isSplit: Boolean get() = parts.isNotEmpty()
+
+    /**
+     * What the parts leave of the amount still to divide, negative by what they
+     * exceed it, or null while the amount itself cannot be read. A part whose
+     * amount is not typed yet counts for nothing.
+     */
+    val leftToSplit: Money?
+        get() = amount?.let { whole -> Money(whole.minor - parts.sumOf { it.amount?.minor ?: 0L }, whole.currency) }
+
+    /** The parts as a save takes them: none unless every one has an amount. */
+    val partsToSave: List<TransactionPart>
+        get() =
+            parts
+                .map { part -> part.amount?.let { TransactionPart(it, part.categoryId, note = part.note) } }
+                .takeIf { typed -> typed.none { it == null } }
+                ?.filterNotNull()
+                .orEmpty()
+
+    /** Save stays out of reach while something is left to divide, or the parts exceed the amount. */
+    private val splitIsSettled: Boolean
+        get() = !isSplit || amount?.let { partsToSave.divide(it) } == true
+
+    /** Only a transaction is divided: a schedule and a template say what one is, not what one was for. */
+    val offersSplit: Boolean get() = !isSchedule && !isTemplate
+
+    /** A split is one transaction's, so it is not offered to repeat. */
+    val offersRepeat: Boolean get() = (canRepeat && !isSplit) || isSchedule
 
     /**
      * A template needs only a name. Its amount can be left out, but not half
@@ -175,7 +212,7 @@ data class ExpenseFormUiState(
     val offersTemplates: Boolean get() = !isEditing && !isTemplate
 
     /** Any transaction can be kept as a template, captured or not. A schedule or a template is not a transaction. */
-    val offersSavingAsTemplate: Boolean get() = !isSchedule && !isTemplate
+    val offersSavingAsTemplate: Boolean get() = !isSchedule && !isTemplate && !isSplit
 
     /**
      * The day the rhythm counts from. A schedule left on its next day with the same
@@ -293,6 +330,9 @@ class ExpenseFormViewModel
         /** How often it comes back, and until when. */
         val repeat = RepeatChoice(_uiState)
 
+        /** What the amount is divided into, when it is split. */
+        val split = SplitParts(_uiState)
+
         /** The category, the list it is picked from, and the offer beside it. */
         val category =
             CategoryPicker(
@@ -405,7 +445,7 @@ class ExpenseFormViewModel
             val reach =
                 category.offer.value
                     ?.reach
-                    .takeUnless { state.isSchedule }
+                    .takeUnless { state.isSchedule || state.isSplit }
             _uiState.update { it.copy(saving = true, backfill = null) }
             viewModelScope.launch {
                 writer.write(state, original, FormTarget(scheduleId, templateId), reach)
@@ -520,7 +560,11 @@ private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseForm
         accountChosen = true,
         toAccountId = transaction.toAccountId,
         categoryId = transaction.categoryId,
-        categoryChosen = transaction.categoryId != null,
+        categoryChosen = transaction.categoryId != null || transaction.isSplit,
+        parts =
+            transaction.parts.mapIndexed { index, part ->
+                PartDraft(index.toLong(), Formatters.amountInput(part.amount), part.categoryId, part.note.orEmpty())
+            },
         isCaptured = transaction.source == TransactionSource.NOTIFICATION,
         canRepeat = transaction.source == TransactionSource.MANUAL && transaction.recurringId == null,
         capturedAccountLabel = Formatters.accountName(transaction.accountName, transaction.cardLast4),

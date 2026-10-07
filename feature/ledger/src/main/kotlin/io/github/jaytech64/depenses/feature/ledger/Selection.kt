@@ -190,6 +190,8 @@ internal fun SelectAllButton(
  * The categories the selection can be given. A category every selected row
  * already carries is checked, and one only some of them carry says how many, so
  * a pick shows what it replaces before it is made — there is no undo after.
+ * A split among them was divided by hand, so no pick reaches it, and the sheet
+ * says how many will stay as they are.
  *
  * Picking applies at once, as the filter sheet does.
  */
@@ -197,6 +199,7 @@ internal fun SelectAllButton(
 @Composable
 internal fun SelectionCategorySheet(
     count: Int,
+    splitCount: Int,
     categories: List<SelectionCategory>,
     onPick: (Long?) -> Unit,
     onAddCategory: () -> Unit,
@@ -220,6 +223,13 @@ internal fun SelectionCategorySheet(
                 },
                 style = MaterialTheme.typography.titleLarge,
             )
+            if (splitCount > 0) {
+                Text(
+                    pluralStringResource(R.plurals.ledger_selection_splits_stay, splitCount, splitCount),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             LazyColumn {
                 items(categories, key = { it.category?.id ?: NO_CATEGORY_KEY }) { option ->
                     ChoiceLine(

@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
+import io.github.jaytech64.depenses.core.database.CategoryEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionPart
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionStatus
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
@@ -486,6 +488,162 @@ class TransactionEditorTest {
             assertEquals(TransactionSource.NOTIFICATION, stored?.source)
             assertEquals(occurredAt(), stored?.occurredAt)
         }
+
+    @Test
+    fun `a split is saved with its parts and no category of its own`() =
+        runTest {
+            val groceries = category("Épicerie")
+            val home = category("Maison")
+
+            val id = addSplit(part(12_000, groceries), part(6_742, home, note = "Ampoules"))
+
+            val stored = repository.confirmed().first().single()
+            assertEquals(id, stored.id)
+            assertEquals(18_742L, stored.amount.minor)
+            assertNull(stored.categoryId)
+            assertEquals(
+                listOf("Épicerie" to 12_000L, "Maison" to 6_742L),
+                stored.parts.map {
+                    it.categoryName to
+                        it.amount.minor
+                },
+            )
+            assertEquals("Ampoules", stored.parts.last().note)
+        }
+
+    @Test
+    fun `parts that do not add up are refused and nothing is written`() =
+        runTest {
+            val refused = runCatching { addSplit(part(12_000, null), part(6_000, null)) }
+
+            assertTrue(refused.exceptionOrNull() is IllegalArgumentException)
+            assertEquals(0, repository.confirmed().first().size)
+            assertEquals(0, database.transactionPartDao().allOnce().size)
+        }
+
+    @Test
+    fun `a single part is not a split, and gives the transaction its category`() =
+        runTest {
+            val groceries = category("Épicerie")
+
+            val id = addSplit(part(18_742, groceries))
+
+            val stored = repository.byId(id)
+            assertEquals(groceries, stored?.categoryId)
+            assertEquals(false, stored?.isSplit)
+        }
+
+    @Test
+    fun `an edit with no parts leaves a split an ordinary transaction again`() =
+        runTest {
+            val groceries = category("Épicerie")
+            val id = addSplit(part(12_000, groceries), part(6_742, null))
+
+            editCostco(id, categoryId = groceries, parts = emptyList())
+
+            val stored = repository.byId(id)
+            assertEquals(groceries, stored?.categoryId)
+            assertEquals(false, stored?.isSplit)
+            assertEquals(0, database.transactionPartDao().allOnce().size)
+        }
+
+    @Test
+    fun `splitting a captured purchase survives Wallet posting it again`() =
+        runTest {
+            val groceries = category("Épicerie")
+            captureCoffee()
+            val id = capturedId()
+            val amount = checkNotNull(repository.byId(id)).amount
+
+            editor.edit(
+                id,
+                amount,
+                TransactionKind.EXPENSE,
+                MERCHANT_RAW,
+                occurredAt(),
+                note = null,
+                accountId = null,
+                toAccountId = null,
+                categoryId = null,
+                reach = null,
+                parts = listOf(part(amount.minor - 100, groceries), part(100, null)),
+            )
+            captureCoffee(postedAt = POSTED_AT + RE_POST_DELAY_MILLIS)
+
+            val stored = repository.confirmed().first().single()
+            assertEquals(listOf(amount.minor - 100, 100L), stored.parts.map { it.amount.minor })
+            assertNull(stored.categoryId)
+        }
+
+    @Test
+    fun `removing a typed split takes its parts with it`() =
+        runTest {
+            val id = addSplit(part(12_000, null), part(6_742, null))
+
+            editor.remove(id)
+
+            assertEquals(0, database.transactionPartDao().allOnce().size)
+        }
+
+    @Test
+    fun `deleting a category leaves its part with its amount and no category`() =
+        runTest {
+            val groceries = category("Épicerie")
+            val id = addSplit(part(12_000, groceries), part(6_742, null))
+
+            database.categoryDao().delete(groceries)
+
+            assertEquals(
+                listOf(null to 12_000L, null to 6_742L),
+                repository.byId(id)?.parts?.map {
+                    it.categoryId to
+                        it.amount.minor
+                },
+            )
+        }
+
+    private suspend fun category(name: String): Long =
+        database.categoryDao().insert(
+            CategoryEntity(name = name, normalisedName = name.uppercase()),
+        )
+
+    private fun part(
+        minor: Long,
+        categoryId: Long?,
+        note: String? = null,
+    ) = TransactionPart(Money(minor, Money.CAD), categoryId, note = note)
+
+    private suspend fun addSplit(vararg parts: TransactionPart): Long =
+        repository.addManual(
+            Money(18_742, Money.CAD),
+            "Costco",
+            occurredAt(),
+            note = null,
+            kind = TransactionKind.EXPENSE,
+            accountId = null,
+            toAccountId = null,
+            categoryId = null,
+            reach = null,
+            parts = parts.toList(),
+        )
+
+    private suspend fun editCostco(
+        id: Long,
+        categoryId: Long?,
+        parts: List<TransactionPart>,
+    ) = editor.edit(
+        id,
+        Money(18_742, Money.CAD),
+        TransactionKind.EXPENSE,
+        "Costco",
+        occurredAt(),
+        note = null,
+        accountId = null,
+        toAccountId = null,
+        categoryId = categoryId,
+        reach = null,
+        parts = parts,
+    )
 
     private suspend fun editAt(
         id: Long,

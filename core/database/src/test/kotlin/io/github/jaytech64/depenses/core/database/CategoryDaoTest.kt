@@ -197,6 +197,110 @@ class CategoryDaoTest {
         }
 
     @Test
+    fun `giving a merchant's purchases a category leaves a split there alone`() =
+        runTest {
+            val groceries = category("Épicerie")
+            val costco = merchant("COSTCO")
+            val split = transactions.insert(row("split", merchantId = costco))
+            splitInTwo(split)
+            transactions.insert(row("plain", merchantId = costco))
+
+            val waiting = categories.uncategorisedAtMerchant(costco, TransactionKind.EXPENSE, exceptId = null).first()
+            val changed = categories.categoriseAtMerchant(costco, TransactionKind.EXPENSE, groceries, exceptId = null)
+
+            assertEquals(1, waiting)
+            assertEquals(1, changed)
+            assertNull(transactions.byId(split)?.categoryId)
+        }
+
+    @Test
+    fun `giving the transfers into an account a category leaves a split one alone`() =
+        runTest {
+            val mortgage = category("Hypothèque")
+            val bank = account("Hypothèque")
+            val split = transactions.insert(transfer("split", from = account("Chèques"), to = bank))
+            splitInTwo(split)
+
+            val waiting = categories.uncategorisedTransfersInto(bank, exceptId = null).first()
+            val changed = categories.categoriseTransfersInto(bank, mortgage, exceptId = null)
+
+            assertEquals(0, waiting)
+            assertEquals(0, changed)
+            assertNull(transactions.byId(split)?.categoryId)
+        }
+
+    @Test
+    fun `categorising rows picked by hand leaves a split among them alone`() =
+        runTest {
+            val groceries = category("Épicerie")
+            val split = transactions.insert(row("split"))
+            splitInTwo(split)
+            val plain = transactions.insert(row("plain"))
+
+            val changed = transactions.categorise(listOf(split, plain), groceries)
+
+            assertEquals(1, changed)
+            assertNull(transactions.byId(split)?.categoryId)
+            assertEquals(groceries, transactions.byId(plain)?.categoryId)
+        }
+
+    @Test
+    fun `a re-post of a split purchase does not give it its merchant's category`() =
+        runTest {
+            val groceries = category("Épicerie")
+            val split = transactions.insert(row("costco"))
+            splitInTwo(split)
+
+            transactions.insertOrUpdate(row("costco", categoryId = groceries))
+
+            assertNull(transactions.byId(split)?.categoryId)
+        }
+
+    private suspend fun splitInTwo(transactionId: Long) =
+        database.transactionPartDao().replace(
+            transactionId,
+            List(2) {
+                TransactionPartEntity(
+                    transactionId = transactionId,
+                    position = it,
+                    amountMinor = 100,
+                    categoryId = null,
+                    note = null,
+                )
+            },
+        )
+
+    @Test
+    fun `a split is a use of each category its parts carry, once`() =
+        runTest {
+            val groceries = category("Épicerie")
+            val home = category("Maison")
+            val bar = category("Bar")
+            val costco = transactions.insert(row("costco"))
+            database.transactionPartDao().replace(
+                costco,
+                listOf(groceries, groceries, home).map { categoryId ->
+                    TransactionPartEntity(
+                        transactionId = costco,
+                        position = 0,
+                        amountMinor = 100,
+                        categoryId = categoryId,
+                        note = null,
+                    )
+                },
+            )
+            transactions.insert(row("iga", categoryId = groceries))
+
+            val counts = categories.allWithCounts().first().associate { it.category.id to it.transactionCount }
+            val order = categories.byUse(TransactionKind.EXPENSE, sinceEpochDay = 0).first().map { it.id }
+            val recent = categories.recentlyUsed(TransactionKind.EXPENSE, sinceEpochDay = 0, limit = 5).first()
+
+            assertEquals(mapOf(groceries to 2, home to 1, bar to 0), counts)
+            assertEquals(listOf(groceries, home, bar), order)
+            assertEquals(listOf(groceries, home), recent.map { it.id })
+        }
+
+    @Test
     fun `deleting a group leaves its categories in none, and every transaction keeps its category`() =
         runTest {
             val home = group("Maison")

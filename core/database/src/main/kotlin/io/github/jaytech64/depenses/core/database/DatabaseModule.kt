@@ -66,4 +66,7 @@ object DatabaseModule {
 
     @Provides
     fun transactionTemplateDao(database: DepensesDatabase): TransactionTemplateDao = database.transactionTemplateDao()
+
+    @Provides
+    fun transactionPartDao(database: DepensesDatabase): TransactionPartDao = database.transactionPartDao()
 }

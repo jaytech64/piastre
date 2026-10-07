@@ -120,15 +120,38 @@ data class LedgerFilter(
 
     val isActive: Boolean get() = hasDates || countBesideDates > 0
 
-    fun admits(transaction: Transaction): Boolean =
-        transaction.isOn(account) &&
-            transaction.isIn(category) &&
-            (merchant == null || transaction.merchantId == merchant.id) &&
-            (from == null || transaction.localDate >= from) &&
-            (to == null || transaction.localDate <= to) &&
-            (atLeast == null || transaction.amount.minor >= atLeast.minor) &&
-            (atMost == null || transaction.amount.minor <= atMost.minor) &&
-            (note == null || transaction.note?.containsTyped(note) == true)
+    fun admits(transaction: Transaction): Boolean = shown(transaction) != null
+
+    /**
+     * The row as this filter shows it, or null when it leaves it out.
+     *
+     * Narrowed to a category, a split counts for the parts that match and no
+     * more: its amount here is theirs, so the rows add up to what a report says
+     * went to that category (ADR-0018). The amounts are compared with that
+     * number, the one the row shows.
+     */
+    fun shown(transaction: Transaction): Transaction? {
+        val placed =
+            transaction.isOn(account) &&
+                transaction.isIn(category) &&
+                (merchant == null || transaction.merchantId == merchant.id) &&
+                (from == null || transaction.localDate >= from) &&
+                (to == null || transaction.localDate <= to) &&
+                (note == null || transaction.note?.containsTyped(note) == true)
+        if (!placed) return null
+        val shown = transaction.narrowedTo(category)
+        val sized =
+            (atLeast == null || shown.amount.minor >= atLeast.minor) &&
+                (atMost == null || shown.amount.minor <= atMost.minor)
+        return shown.takeIf { sized }
+    }
+
+    /** The split with the amount of its parts under [category]; anything else as it is. */
+    private fun Transaction.narrowedTo(category: CategoryChoice?): Transaction {
+        if (category == null || !isSplit) return this
+        val matching = parts.filter { category.holds(it.categoryId) }
+        return copy(amount = Money(matching.sumOf { it.amount.minor }, amount.currency))
+    }
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
@@ -138,14 +161,18 @@ data class LedgerFilter(
     private fun Transaction.isOn(account: Account?): Boolean =
         account == null || accountId == account.id || toAccountId == account.id
 
+    /** A split is in every category its parts carry. */
     private fun Transaction.isIn(category: CategoryChoice?): Boolean =
-        when (category) {
-            null -> true
-            CategoryChoice.Uncategorised -> categoryId == null
-            is CategoryChoice.Named -> categoryId == category.category.id
-            is CategoryChoice.InGroup -> categoryId in category.categoryIds
-        }
+        category == null || categoryIds.any(category::holds)
 }
+
+/** Whether a row or a part carrying [categoryId], or none, is what this choice narrows to. */
+private fun CategoryChoice.holds(categoryId: Long?): Boolean =
+    when (this) {
+        CategoryChoice.Uncategorised -> categoryId == null
+        is CategoryChoice.Named -> categoryId == category.id
+        is CategoryChoice.InGroup -> categoryId in categoryIds
+    }
 
 /** A category the selection can be given, with how many selected rows already carry it. */
 data class SelectionCategory(
@@ -182,8 +209,15 @@ data class LedgerUiState(
     val typedNote: String = "",
     /** *At least* is above *At most*, so neither narrows anything until one is changed. */
     val amountsCrossed: Boolean = false,
+    /**
+     * The whole amount of each split shown for less than it, because the ledger
+     * is narrowed to a category only some of its parts carry.
+     */
+    val wholes: Map<Long, Money> = emptyMap(),
     /** The rows picked by a long press, and only those still on screen. */
     val selected: Set<Long> = emptySet(),
+    /** How many of them are splits, which categorising the selection leaves as they are. */
+    val selectedSplitCount: Int = 0,
     /** What the selected rows add up to, counted as the day and month totals are; null while nothing is selected. */
     val selectionSummary: BalanceSummary? = null,
     /** What the selection can be given, *No category* first; empty while nothing is selected. */
@@ -251,7 +285,8 @@ class LedgerViewModel
                 filtering,
             ) { (transactions, nextRows), needsReview, today, known, (keys, rowIds, upcomingOpen) ->
                 val filter = known.resolve(keys)
-                val (typedAhead, happened) = transactions.filter(filter::admits).partition { it.localDate > today }
+                val (typedAhead, happened) = transactions.mapNotNull(filter::shown).partition { it.localDate > today }
+                val amounts = transactions.associate { it.id to it.amount }
                 val ahead =
                     (
                         typedAhead.map(::UpcomingLine) +
@@ -278,7 +313,12 @@ class LedgerViewModel
                     typedAtMost = keys.amounts.atMost,
                     typedNote = keys.note,
                     amountsCrossed = keys.amounts.crossed,
+                    wholes =
+                        happened
+                            .filter { it.isSplit && it.amount != amounts[it.id] }
+                            .associate { it.id to amounts.getValue(it.id) },
                     selected = selected.mapTo(mutableSetOf()) { it.id },
+                    selectedSplitCount = selected.count { it.isSplit },
                     selectionSummary = selected.takeIf { it.isNotEmpty() }?.summaryOf(filter),
                     selectionCategories = transactions.categoriesFor(selected, known.categories, today),
                     loading = false,
@@ -298,12 +338,12 @@ class LedgerViewModel
             today: LocalDate,
             known: List<CategoryUsage>,
         ): List<FilterOption<CategoryChoice>> {
-            val uncategorised = count { it.categoryId == null }
+            val uncategorised = count { null in it.categoryIds }
             val byId = known.associate { it.category.id to it.category }
             val named =
                 optionsBy(today, name = { it.category.name }) { row ->
-                    row.categoryId?.let { id ->
-                        CategoryChoice.Named(byId[id] ?: Category(id, row.categoryName.orEmpty()))
+                    row.categoryIds.filterNotNull().map { id ->
+                        CategoryChoice.Named(byId[id] ?: Category(id, row.categoryNamed(id).orEmpty()))
                     }
                 }
             return listOfNotNull(
@@ -315,7 +355,8 @@ class LedgerViewModel
         private fun List<Transaction>.groupOptions(known: Known): List<FilterOption<CategoryChoice.InGroup>> =
             known.groups.mapNotNull { group ->
                 val choice = known.inGroup(group)
-                FilterOption(choice, count { it.categoryId in choice.categoryIds }).takeIf { it.count > 0 }
+                FilterOption(choice, count { row -> row.categoryIds.any { it in choice.categoryIds } })
+                    .takeIf { it.count > 0 }
             }
 
         /** Named as the merchant is called now, which a row read before a rename may not be. */
@@ -324,7 +365,7 @@ class LedgerViewModel
             known: List<Merchant>,
         ): List<FilterOption<Merchant>> {
             val byId = known.associateBy { it.id }
-            return optionsBy(today, name = { it.displayName }) { row -> row.merchantId?.let(byId::get) }
+            return optionsBy(today, name = { it.displayName }) { row -> listOfNotNull(row.merchantId?.let(byId::get)) }
         }
 
         /**
@@ -416,18 +457,19 @@ class LedgerViewModel
     }
 
 /**
- * Each value [key] gives a row, with how many rows gave it: the ones used most
+ * Each value [keys] gives a row, with how many rows gave it: the ones used most
  * in the last [RECENT_DAYS] first, then the one used last, then by name — the
  * order the form's merchant and category suggestions already follow, so a place
- * you go every week is near the top wherever it is offered.
+ * you go every week is near the top wherever it is offered. A split gives each
+ * of its categories, and counts once under each.
  */
 private fun <T : Any> List<Transaction>.optionsBy(
     today: LocalDate,
     name: (T) -> String,
-    key: (Transaction) -> T?,
+    keys: (Transaction) -> List<T>,
 ): List<FilterOption<T>> {
     val since = today.minusDays(RECENT_DAYS)
-    return mapNotNull { row -> key(row)?.let { it to row } }
+    return flatMap { row -> keys(row).map { it to row } }
         .groupBy({ it.first }, { it.second })
         .entries
         .sortedWith(
@@ -470,7 +512,8 @@ private fun List<Transaction>.inHomeCurrency(): List<Transaction> = filter { it.
 
 /**
  * Every category the [selected] rows could be given, *No category* first, each
- * with how many of them carry it already, so a pick shows what it replaces.
+ * with how many of them carry it already, so a pick shows what it replaces. A
+ * split among them is counted under none: no pick reaches it.
  *
  * The rest follow the form's order for the kinds selected — used most in the
  * last [RECENT_DAYS] first, then used last, then by name — which puts
@@ -485,8 +528,11 @@ private fun List<Transaction>.categoriesFor(
     if (selected.isEmpty()) return emptyList()
     val kinds = selected.mapTo(mutableSetOf()) { it.kind }
     val since = today.minusDays(RECENT_DAYS)
-    val used = filter { it.kind in kinds && it.categoryId != null }.groupBy { it.categoryId }
-    val carried = selected.groupingBy { it.categoryId }.eachCount()
+    val used =
+        filter { it.kind in kinds }
+            .flatMap { row -> row.categoryIds.filterNotNull().map { it to row } }
+            .groupBy({ it.first }, { it.second })
+    val carried = selected.filterNot { it.isSplit }.groupingBy { it.categoryId }.eachCount()
     val named =
         known
             .map { it.category }
@@ -511,3 +557,7 @@ private fun List<Transaction>.categoriesFor(
  * transfer is worth [Transaction.signedAmount] wherever it is read (ADR-0017).
  */
 private fun Transaction.movedOn(account: Account): Money = if (accountId == account.id) -amount else amount
+
+/** The name the row has for a category it carries, on itself or on one of its parts. */
+private fun Transaction.categoryNamed(id: Long): String? =
+    if (isSplit) parts.firstOrNull { it.categoryId == id }?.categoryName else categoryName

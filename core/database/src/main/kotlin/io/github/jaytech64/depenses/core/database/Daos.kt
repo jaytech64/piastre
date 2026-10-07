@@ -121,8 +121,29 @@ interface RawNotificationEventDao {
     }
 }
 
+/**
+ * Keeps a write of a category off a split. A split's row carries none because
+ * its parts do, so `categoryId IS NULL` is true of it without meaning "nobody
+ * has said": every write that gives rows a category in bulk must add this, or
+ * the split would be counted under that category on top of its parts (ADR-0018).
+ */
+private const val NOT_SPLIT =
+    "NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = expense_transaction.id)"
+
+/** A transaction's row and its parts, which leave together. */
+interface RowWithParts {
+    @Query("SELECT EXISTS (SELECT 1 FROM transaction_part WHERE transactionId = :id)")
+    suspend fun isSplit(id: Long): Boolean
+
+    @Query("DELETE FROM expense_transaction WHERE id = :id")
+    suspend fun deleteRow(id: Long)
+
+    @Query("DELETE FROM transaction_part WHERE transactionId = :id")
+    suspend fun deletePartsOf(id: Long)
+}
+
 @Dao
-interface TransactionDao {
+interface TransactionDao : RowWithParts {
     /**
      * Records a parsed transaction, replacing the parser's earlier reading of the
      * same purchase.
@@ -136,7 +157,8 @@ interface TransactionDao {
      * Fields the user owns — their note, their category, whether it was income —
      * survive a re-parse. A row with no category yet takes the one the new reading
      * carries, which is its merchant's, so a category given to a merchant since
-     * the first reading reaches a purchase Wallet re-posts.
+     * the first reading reaches a purchase Wallet re-posts. A split never does: its
+     * parts already say what it was for.
      * Everything the parser owns is overwritten, which is what makes fixing a
      * parser repair history.
      *
@@ -156,7 +178,7 @@ interface TransactionDao {
             transaction.copy(
                 id = existing.id,
                 note = existing.note,
-                categoryId = existing.categoryId ?: transaction.categoryId,
+                categoryId = existing.categoryId ?: transaction.categoryId.takeUnless { isSplit(existing.id) },
                 kind = existing.kind,
             ),
         )
@@ -311,8 +333,12 @@ interface TransactionDao {
     )
     suspend fun withMerchantById(id: Long): TransactionWithMerchant?
 
-    @Query("DELETE FROM expense_transaction WHERE id = :id")
-    suspend fun deleteById(id: Long)
+    /** Deletes a transaction with its parts, so no part is ever left dividing an amount that is gone. */
+    @Transaction
+    suspend fun deleteById(id: Long) {
+        deletePartsOf(id)
+        deleteRow(id)
+    }
 
     /**
      * Gives [categoryId], or none, to exactly the rows [ids] names, and returns how
@@ -321,7 +347,7 @@ interface TransactionDao {
      * Unlike [CategoryDao.categoriseAtMerchant], a row that already has a
      * category takes the new one: these rows were picked one by one, often
      * precisely because the category they carry is wrong. A dismissed row is left
-     * out, as there.
+     * out, as there, and so is a split, which was divided by hand part by part.
      *
      * The review time is not stamped, for the reason
      * [CategoryDao.categoriseAtMerchant] gives. [ids] is a selection made by hand,
@@ -331,7 +357,7 @@ interface TransactionDao {
     @Query(
         """
         UPDATE expense_transaction SET categoryId = :categoryId
-        WHERE id IN (:ids) AND status != 'DISMISSED'
+        WHERE id IN (:ids) AND status != 'DISMISSED' AND """ + NOT_SPLIT + """
         """,
     )
     suspend fun categorise(
@@ -371,6 +397,65 @@ interface TransactionDao {
         const val NOTHING_RECORDED: Long = 0
     }
 }
+
+/** The parts a split transaction's amount is divided into: see [TransactionPartEntity]. */
+@Dao
+interface TransactionPartDao {
+    @Insert
+    suspend fun insertAll(parts: List<TransactionPartEntity>)
+
+    @Query("DELETE FROM transaction_part WHERE transactionId = :transactionId")
+    suspend fun deleteOf(transactionId: Long)
+
+    /**
+     * Makes [parts] the whole of what [transactionId] is divided into, in the
+     * order given. An empty list leaves the transaction with no parts, which is
+     * a transaction that is not split.
+     */
+    @Transaction
+    suspend fun replace(
+        transactionId: Long,
+        parts: List<TransactionPartEntity>,
+    ) {
+        deleteOf(transactionId)
+        insertAll(
+            parts.mapIndexed { position, part ->
+                part.copy(id = 0, transactionId = transactionId, position = position)
+            },
+        )
+    }
+
+    /** Every part with its category's name, each transaction's together and in the order typed. */
+    @Query(
+        """
+        SELECT p.*, c.name AS categoryName
+        FROM transaction_part p
+        LEFT JOIN category c ON c.id = p.categoryId
+        ORDER BY p.transactionId, p.position
+        """,
+    )
+    fun allWithNames(): Flow<List<PartWithCategory>>
+
+    @Query(
+        """
+        SELECT p.*, c.name AS categoryName
+        FROM transaction_part p
+        LEFT JOIN category c ON c.id = p.categoryId
+        WHERE p.transactionId = :transactionId
+        ORDER BY p.position
+        """,
+    )
+    suspend fun ofTransaction(transactionId: Long): List<PartWithCategory>
+
+    @Query("SELECT * FROM transaction_part ORDER BY transactionId, position")
+    suspend fun allOnce(): List<TransactionPartEntity>
+}
+
+/** A part with the name of its category, or none. */
+data class PartWithCategory(
+    @Embedded val part: TransactionPartEntity,
+    val categoryName: String?,
+)
 
 @Dao
 interface MerchantDao {
@@ -614,7 +699,23 @@ interface CategoryClearing {
 
     @Query("UPDATE transaction_template SET categoryId = NULL WHERE categoryId = :id")
     suspend fun clearFromTemplates(id: Long)
+
+    @Query("UPDATE transaction_part SET categoryId = NULL WHERE categoryId = :id")
+    suspend fun clearFromParts(id: Long)
 }
+
+/**
+ * Every use of a category, once per transaction: the one a transaction carries,
+ * and each one its parts carry. A split is a use of every category it touches,
+ * and two parts under one category are still one transaction using it.
+ */
+private const val CATEGORISED =
+    "(SELECT t.id AS transactionId, t.categoryId, t.kind, t.status, t.localDateEpochDay, t.occurredAtUtcMillis " +
+        "FROM expense_transaction t WHERE t.categoryId IS NOT NULL " +
+        "UNION " +
+        "SELECT t.id, p.categoryId, t.kind, t.status, t.localDateEpochDay, t.occurredAtUtcMillis " +
+        "FROM transaction_part p JOIN expense_transaction t ON t.id = p.transactionId " +
+        "WHERE p.categoryId IS NOT NULL)"
 
 @Dao
 interface CategoryDao : CategoryClearing {
@@ -641,7 +742,8 @@ interface CategoryDao : CategoryClearing {
     /**
      * Every category, the ones you use most for [kind] first: by how many confirmed
      * rows carried it on or after [sinceEpochDay], then by when it was last used,
-     * then by name — the order [MerchantDao.byUse] gives merchants.
+     * then by name — the order [MerchantDao.byUse] gives merchants. A split counts
+     * for every category its parts carry.
      *
      * The name breaks ties on its folded form, so an unused Épicerie sits among
      * the E's rather than after Z where SQLite's byte order would put it.
@@ -649,7 +751,7 @@ interface CategoryDao : CategoryClearing {
     @Query(
         """
         SELECT c.* FROM category c
-        LEFT JOIN expense_transaction t
+        LEFT JOIN """ + CATEGORISED + """ t
             ON t.categoryId = c.id AND t.kind = :kind AND t.status = 'CONFIRMED'
         GROUP BY c.id
         ORDER BY SUM(t.localDateEpochDay >= :sinceEpochDay) DESC,
@@ -670,7 +772,7 @@ interface CategoryDao : CategoryClearing {
     @Query(
         """
         SELECT c.* FROM category c
-        JOIN expense_transaction t
+        JOIN """ + CATEGORISED + """ t
             ON t.categoryId = c.id AND t.kind = :kind AND t.status = 'CONFIRMED'
             AND t.localDateEpochDay >= :sinceEpochDay
         GROUP BY c.id
@@ -685,13 +787,14 @@ interface CategoryDao : CategoryClearing {
     ): Flow<List<CategoryEntity>>
 
     /**
-     * Confirmed transactions only, as an account counts them, and the merchants
-     * and accounts that give it automatically.
+     * Confirmed transactions only, as an account counts them, a split among them
+     * for each category it touches, and the merchants and accounts that give it
+     * automatically.
      */
     @Query(
         """
         SELECT c.*,
-            (SELECT COUNT(*) FROM expense_transaction t
+            (SELECT COUNT(*) FROM """ + CATEGORISED + """ t
              WHERE t.categoryId = c.id AND t.status = 'CONFIRMED') AS transactionCount,
             (SELECT COUNT(*) FROM merchant m WHERE m.categoryId = c.id) AS merchantCount,
             (SELECT COUNT(*) FROM account a WHERE a.categoryId = c.id) AS accountCount
@@ -708,7 +811,7 @@ interface CategoryDao : CategoryClearing {
      *
      * A row that already has a category keeps it: it may be the one purchase
      * there you filed elsewhere on purpose. A dismissed row is left out, since it
-     * is in no list and no total.
+     * is in no list and no total, and so is a split, whose parts carry its categories.
      *
      * The review time is deliberately not stamped. It is what locks the parser out
      * of a row, and labelling forty purchases must not stop a parser fix from
@@ -719,7 +822,7 @@ interface CategoryDao : CategoryClearing {
         """
         UPDATE expense_transaction SET categoryId = :categoryId
         WHERE merchantId = :merchantId AND kind = :kind AND categoryId IS NULL
-          AND status != 'DISMISSED' AND id IS NOT :exceptId
+          AND status != 'DISMISSED' AND id IS NOT :exceptId AND """ + NOT_SPLIT + """
         """,
     )
     suspend fun categoriseAtMerchant(
@@ -734,7 +837,7 @@ interface CategoryDao : CategoryClearing {
         """
         SELECT COUNT(*) FROM expense_transaction
         WHERE merchantId = :merchantId AND kind = :kind AND categoryId IS NULL
-          AND status != 'DISMISSED' AND id IS NOT :exceptId
+          AND status != 'DISMISSED' AND id IS NOT :exceptId AND """ + NOT_SPLIT + """
         """,
     )
     fun uncategorisedAtMerchant(
@@ -751,7 +854,7 @@ interface CategoryDao : CategoryClearing {
         """
         UPDATE expense_transaction SET categoryId = :categoryId
         WHERE toAccountId = :accountId AND kind = 'TRANSFER' AND categoryId IS NULL
-          AND status != 'DISMISSED' AND id IS NOT :exceptId
+          AND status != 'DISMISSED' AND id IS NOT :exceptId AND """ + NOT_SPLIT + """
         """,
     )
     suspend fun categoriseTransfersInto(
@@ -764,7 +867,7 @@ interface CategoryDao : CategoryClearing {
         """
         SELECT COUNT(*) FROM expense_transaction
         WHERE toAccountId = :accountId AND kind = 'TRANSFER' AND categoryId IS NULL
-          AND status != 'DISMISSED' AND id IS NOT :exceptId
+          AND status != 'DISMISSED' AND id IS NOT :exceptId AND """ + NOT_SPLIT + """
         """,
     )
     fun uncategorisedTransfersInto(
@@ -773,8 +876,8 @@ interface CategoryDao : CategoryClearing {
     ): Flow<Int>
 
     /**
-     * Removes a category and every trace of it: the transactions that carried it
-     * are left with none, and merchants, accounts, recurring transactions and
+     * Removes a category and every trace of it: the transactions and the parts that
+     * carried it are left with none, and merchants, accounts, recurring transactions and
      * templates stop giving it. A category moves no balance, so this loses a label and never an
      * amount.
      */
@@ -785,6 +888,7 @@ interface CategoryDao : CategoryClearing {
         clearFromAccounts(id)
         clearFromRecurring(id)
         clearFromTemplates(id)
+        clearFromParts(id)
         deleteRow(id)
     }
 
@@ -1119,6 +1223,11 @@ private const val MONEY_OUT =
 private const val MONEY_IN =
     "(t.kind = 'INCOME' OR (t.kind = 'TRANSFER' AND origin.type = 'BANK' AND destination.type <> 'BANK'))"
 
+/** The confirmed rows that went out in one currency over a range of days, which every spending figure counts. */
+private const val SPENT_IN_RANGE =
+    "t.status = 'CONFIRMED' AND " + MONEY_OUT +
+        " AND t.currency = :currency AND t.localDateEpochDay BETWEEN :fromDay AND :toDay"
+
 /**
  * Reports are SQL, not Kotlin loops over the whole table. Every one of these
  * groups on an indexed integer column, so a year of history costs the same as a
@@ -1188,19 +1297,30 @@ interface ReportDao {
      * What [dailyTotals] counts, by category instead of by day, so the rows add up
      * to the period's total. The group is joined here rather than stored on the
      * transaction: moving a category moves its history (ADR-0016).
+     *
+     * A split goes to each category by the amount of its parts, which add up to
+     * its own, so the totals still add up to the period's (ADR-0018). It is
+     * counted once under each category it touches, so the counts no longer do.
      */
     @Query(
         """
         SELECT c.id AS categoryId, c.name AS categoryName, g.id AS groupId, g.name AS groupName,
-               SUM(t.amountMinor) AS totalMinor, COUNT(*) AS count
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        LEFT JOIN category c ON c.id = t.categoryId
+               SUM(s.amountMinor) AS totalMinor, COUNT(DISTINCT s.transactionId) AS count
+        FROM (
+            SELECT t.id AS transactionId, t.categoryId AS categoryId, t.amountMinor AS amountMinor
+            FROM expense_transaction t
+            """ + TRANSFER_ENDS + """
+            WHERE """ + SPENT_IN_RANGE + """
+              AND NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = t.id)
+            UNION ALL
+            SELECT t.id, p.categoryId, p.amountMinor
+            FROM expense_transaction t
+            """ + TRANSFER_ENDS + """
+            JOIN transaction_part p ON p.transactionId = t.id
+            WHERE """ + SPENT_IN_RANGE + """
+        ) s
+        LEFT JOIN category c ON c.id = s.categoryId
         LEFT JOIN category_group g ON g.id = c.groupId
-        WHERE t.status = 'CONFIRMED'
-          AND """ + MONEY_OUT + """
-          AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         GROUP BY c.id
         """,
     )

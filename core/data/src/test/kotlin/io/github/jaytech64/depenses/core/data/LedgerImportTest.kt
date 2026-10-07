@@ -9,11 +9,13 @@ import io.github.jaytech64.depenses.core.model.Recurrence
 import io.github.jaytech64.depenses.core.model.Rhythm
 import io.github.jaytech64.depenses.core.model.TemplateContent
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionPart
 import io.github.jaytech64.depenses.core.testing.inMemoryDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -131,6 +133,49 @@ class LedgerImportTest {
 
             assertEquals(ImportReading.Refused(ImportProblem.AmbiguousAccount("Visa")), reading)
             assertEquals(0, target.transactionDao().count().first())
+        }
+
+    @Test
+    fun `a split arrives split, each part under the category it had`() =
+        runTest {
+            val groceries = source.categoryRepository().named("Épicerie")!!
+            source.enterSplit(
+                TransactionPart(cad(120_00), groceries),
+                TransactionPart(cad(67_42), null, note = "Ampoules"),
+            )
+
+            target.importing(source.export())
+
+            val arrived =
+                target
+                    .transactions()
+                    .confirmed()
+                    .first()
+                    .single()
+            assertEquals(cad(187_42), arrived.amount)
+            assertNull(arrived.categoryId)
+            assertEquals(
+                listOf(Triple("Épicerie", cad(120_00), null), Triple(null, cad(67_42), "Ampoules")),
+                arrived.parts.map { Triple(it.categoryName, it.amount, it.note) },
+            )
+        }
+
+    @Test
+    fun `a file whose parts do not add up to their transaction is refused before anything is written`() =
+        runTest {
+            source.enterSplit(TransactionPart(cad(120_00), null), TransactionPart(cad(67_42), null))
+            val tampered = source.export().replace("12000", "11000")
+
+            val reading = target.reading(tampered)
+
+            assertTrue(reading.toString(), (reading as ImportReading.Refused).problem is ImportProblem.Inconsistent)
+            assertEquals(0, target.transactionDao().count().first())
+        }
+
+    @Test
+    fun `a file from a version yet to come is refused`() =
+        runTest {
+            assertEquals(refused(ImportProblem.UnsupportedVersion(4)), target.reading(document(version = 4)))
         }
 
     @Test
@@ -583,6 +628,7 @@ class LedgerImportTest {
             categoryGroupDao(),
             recurringTransactionDao(),
             transactionTemplateDao(),
+            transactionPartDao(),
             Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
         ).write(bytes, ExportFormat.JSON, LABELS)
         return bytes.toString(Charsets.UTF_8.name())
@@ -609,6 +655,20 @@ class LedgerImportTest {
         categoryId = categoryId,
         reach = CategoryReach(others = false, fromNowOn = fromNowOn).takeIf { fromNowOn },
     )
+
+    private suspend fun DepensesDatabase.enterSplit(vararg parts: TransactionPart) =
+        transactions().addManual(
+            amount = cad(187_42),
+            merchantName = "Costco",
+            occurredAt = OCCURRED_AT,
+            note = null,
+            kind = TransactionKind.EXPENSE,
+            accountId = null,
+            toAccountId = null,
+            categoryId = null,
+            reach = null,
+            parts = parts.toList(),
+        )
 
     /** Everything a person sees of a transaction; ids differ between two databases and are left out. */
     private suspend fun DepensesDatabase.ledger() =

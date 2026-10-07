@@ -64,7 +64,7 @@ internal fun CategorySection(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryField(
+internal fun CategoryField(
     selectedId: Long?,
     categories: List<Category>,
     recent: List<Category>,

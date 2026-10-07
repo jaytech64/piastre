@@ -33,7 +33,7 @@ internal fun decodeExport(text: String): ExportDocument {
     val version = ((root as? JsonObject)?.get("version") as? JsonPrimitive)?.intOrNull
     when (version) {
         null -> refuse(ImportProblem.NotAnExport)
-        LEDGER_FORMAT_VERSION -> Unit
+        in READABLE_FORMAT_VERSIONS -> Unit
         else -> refuse(ImportProblem.UnsupportedVersion(version))
     }
     return try {
@@ -64,6 +64,7 @@ internal fun ExportDocument.check() {
     transactions.forEach { transaction ->
         transaction.checkCodes()
         transaction.checkReferences(accountIds, merchantIds)
+        transaction.checkParts()
         if (transaction.recurringId != null && transaction.recurringId !in recurringIds) {
             inconsistent("transaction ${transaction.sourceKey} belongs to a recurring transaction not in the file")
         }
@@ -87,6 +88,12 @@ private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
     }
     val named =
         transactions.map { it.categoryId to "transaction ${it.sourceKey}" } +
+            transactions.flatMap { owner ->
+                owner.parts.map {
+                    it.categoryId to
+                        "a part of transaction ${owner.sourceKey}"
+                }
+            } +
             merchants.map { it.categoryId to "merchant ${it.id}" } +
             accounts.map { it.categoryId to "account ${it.id}" } +
             recurring.map { it.categoryId to "recurring transaction ${it.id}" } +

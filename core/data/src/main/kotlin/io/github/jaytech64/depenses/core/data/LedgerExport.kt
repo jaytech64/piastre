@@ -6,10 +6,12 @@ import io.github.jaytech64.depenses.core.database.AccountDao
 import io.github.jaytech64.depenses.core.database.CategoryDao
 import io.github.jaytech64.depenses.core.database.CategoryGroupDao
 import io.github.jaytech64.depenses.core.database.MerchantDao
+import io.github.jaytech64.depenses.core.database.PartWithCategory
 import io.github.jaytech64.depenses.core.database.RecurringTransactionDao
 import io.github.jaytech64.depenses.core.database.RecurringWithNames
 import io.github.jaytech64.depenses.core.database.TemplateWithNames
 import io.github.jaytech64.depenses.core.database.TransactionDao
+import io.github.jaytech64.depenses.core.database.TransactionPartDao
 import io.github.jaytech64.depenses.core.database.TransactionTemplateDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
 import kotlinx.coroutines.flow.first
@@ -96,6 +98,7 @@ class LedgerExport
         private val categoryGroups: CategoryGroupDao,
         private val recurring: RecurringTransactionDao,
         private val templates: TransactionTemplateDao,
+        private val parts: TransactionPartDao,
         private val clock: Clock,
     ) {
         /** Returns how many transactions were written. */
@@ -105,9 +108,18 @@ class LedgerExport
             labels: CsvLabels,
         ): Int {
             val rows = transactions.allWithMerchant()
+            val partsByTransaction = parts.allWithNames().first().groupBy { it.part.transactionId }
             when (format) {
-                ExportFormat.CSV -> writeCsv(out, rows, labels, groupNamesByCategory(categories, categoryGroups))
-                ExportFormat.JSON -> writeJson(out, rows)
+                ExportFormat.CSV -> {
+                    val groupNames = groupNamesByCategory(categories, categoryGroups)
+                    writeCsv(out, rows, labels) { row ->
+                        row.csvLines(partsByTransaction[row.transaction.id].orEmpty(), groupNames)
+                    }
+                }
+
+                ExportFormat.JSON -> {
+                    writeJson(out, rows, partsByTransaction)
+                }
             }
             return rows.size
         }
@@ -125,35 +137,74 @@ class LedgerExport
             out: OutputStream,
             rows: List<TransactionWithMerchant>,
             labels: CsvLabels,
-            groupNames: Map<Long, String>,
+            lines: (TransactionWithMerchant) -> List<List<String>>,
         ) {
             val writer = out.bufferedWriter(Charsets.UTF_8)
             writer.write(BYTE_ORDER_MARK)
             writer.appendLine(labels.headerRow().joinToString(FIELD_SEPARATOR))
-            rows.forEach { row ->
-                writer.appendLine(row.csvFields(groupNames).joinToString(FIELD_SEPARATOR, transform = ::quote))
+            rows.flatMap(lines).forEach { fields ->
+                writer.appendLine(fields.joinToString(FIELD_SEPARATOR, transform = ::quote))
             }
             writer.flush()
         }
 
-        private fun TransactionWithMerchant.csvFields(groupNames: Map<Long, String>): List<String> {
+        /**
+         * One line, or for a split one line per part: the same day, merchant and
+         * account on each, with that part's amount, category and note. The amount
+         * column therefore still adds up to the ledger, and a table pivoted on the
+         * category says what went to each (ADR-0018). A part with no note of its
+         * own carries the transaction's.
+         */
+        private fun TransactionWithMerchant.csvLines(
+            parts: List<PartWithCategory>,
+            groupNames: Map<Long, String>,
+        ): List<List<String>> {
+            if (parts.isEmpty()) {
+                return listOf(
+                    csvFields(
+                        transaction.amountMinor,
+                        transaction.note,
+                        categoryName,
+                        transaction.categoryId,
+                        groupNames,
+                    ),
+                )
+            }
+            return parts.map {
+                csvFields(
+                    it.part.amountMinor,
+                    it.part.note ?: transaction.note,
+                    it.categoryName,
+                    it.part.categoryId,
+                    groupNames,
+                )
+            }
+        }
+
+        private fun TransactionWithMerchant.csvFields(
+            amountMinor: Long,
+            note: String?,
+            categoryName: String?,
+            categoryId: Long?,
+            groupNames: Map<Long, String>,
+        ): List<String> {
             val zone = ZoneId.of(transaction.zoneId)
             val moment = Instant.ofEpochMilli(transaction.occurredAtUtcMillis).atZone(zone)
             return listOf(
                 DATE.format(moment),
                 TIME.format(moment),
                 merchantName ?: transaction.merchantRaw.orEmpty(),
-                minorUnitsAsDecimal(transaction.amountMinor),
+                minorUnitsAsDecimal(amountMinor),
                 transaction.currency,
                 transaction.source.name,
                 transaction.status.name,
                 transaction.cardLast4.orEmpty(),
-                transaction.note.orEmpty(),
+                note.orEmpty(),
                 transaction.kind.name,
                 accountLabel(),
                 toAccountName.orEmpty(),
                 categoryName.orEmpty(),
-                transaction.categoryId?.let(groupNames::get).orEmpty(),
+                categoryId?.let(groupNames::get).orEmpty(),
             )
         }
 
@@ -182,22 +233,10 @@ class LedgerExport
             return "$sign$units,${cents.toString().padStart(2, '0')}"
         }
 
-        /**
-         * Quoted only when it has to be, and never left able to break the row.
-         *
-         * A merchant string arrives from a notification, so it can hold a
-         * semicolon, a newline or a quote; a note is typed, so it certainly can.
-         */
-        private fun quote(field: String): String =
-            if (field.any { it in CHARACTERS_NEEDING_QUOTES }) {
-                "\"" + field.replace("\"", "\"\"") + "\""
-            } else {
-                field
-            }
-
         private suspend fun writeJson(
             out: OutputStream,
             rows: List<TransactionWithMerchant>,
+            partsByTransaction: Map<Long, List<PartWithCategory>>,
         ) {
             val document =
                 ExportDocument(
@@ -225,7 +264,7 @@ class LedgerExport
                                 it.categoryId,
                             )
                         },
-                    transactions = rows.map { it.toExported() },
+                    transactions = rows.map { it.toExported(partsByTransaction[it.transaction.id].orEmpty()) },
                     categories = categories.allOnce().map { ExportedCategory(it.id, it.name, it.groupId) },
                     categoryGroups = categoryGroups.allOnce().map { ExportedCategoryGroup(it.id, it.name) },
                     recurring = recurring.allWithNames().first().map { it.toExported() },
@@ -237,7 +276,7 @@ class LedgerExport
             }
         }
 
-        private fun TransactionWithMerchant.toExported() =
+        private fun TransactionWithMerchant.toExported(parts: List<PartWithCategory>) =
             ExportedTransaction(
                 id = transaction.id,
                 amountMinor = transaction.amountMinor,
@@ -265,6 +304,8 @@ class LedgerExport
                 categoryId = transaction.categoryId,
                 categoryName = categoryName,
                 recurringId = transaction.recurringId,
+                parts =
+                    parts.map { ExportedPart(it.part.amountMinor, it.part.categoryId, it.categoryName, it.part.note) },
             )
 
         private fun RecurringWithNames.toExported() =
@@ -292,7 +333,6 @@ class LedgerExport
         private companion object {
             const val BYTE_ORDER_MARK = "\uFEFF"
             const val FIELD_SEPARATOR = ";"
-            const val CHARACTERS_NEEDING_QUOTES = ";\"\n\r"
             const val MINOR_UNITS = 100L
 
             val DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -337,3 +377,18 @@ private fun TemplateWithNames.toExported() =
         lastUsedAtUtcMillis = template.lastUsedAtUtcMillis,
         recurring = template.recurring,
     )
+
+/**
+ * Quoted only when it has to be, and never left able to break the row.
+ *
+ * A merchant string arrives from a notification, so it can hold a
+ * semicolon, a newline or a quote; a note is typed, so it certainly can.
+ */
+private fun quote(field: String): String =
+    if (field.any { it in CHARACTERS_NEEDING_QUOTES }) {
+        "\"" + field.replace("\"", "\"\"") + "\""
+    } else {
+        field
+    }
+
+private const val CHARACTERS_NEEDING_QUOTES = ";\"\n\r"

@@ -84,7 +84,18 @@ data class Transaction(
     val categoryName: String? = null,
     /** The schedule this belongs to while it lasts, or null. See [RecurringTransaction]. */
     val recurringId: Long? = null,
+    /** What the amount is divided into, or empty when it is not split; then [categoryId] is null. */
+    val parts: List<TransactionPart> = emptyList(),
 ) {
+    val isSplit: Boolean get() = parts.isNotEmpty()
+
+    /**
+     * Every category this transaction is under, null among them for what nobody
+     * has labelled: its own, or each one its parts carry, once. Whatever asks
+     * "is this in that category" asks here, so a split answers for all of them.
+     */
+    val categoryIds: List<Long?> get() = if (isSplit) parts.map { it.categoryId }.distinct() else listOf(categoryId)
+
     /**
      * What to put on screen. The canonical merchant if the raw string resolved to
      * one, the raw string if it did not, and null only when the notification

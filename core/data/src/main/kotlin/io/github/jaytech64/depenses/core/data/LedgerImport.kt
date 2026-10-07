@@ -9,6 +9,7 @@ import io.github.jaytech64.depenses.core.database.MerchantDao
 import io.github.jaytech64.depenses.core.database.RawNotificationEventDao
 import io.github.jaytech64.depenses.core.database.RecurringTransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionDao
+import io.github.jaytech64.depenses.core.database.TransactionPartEntity
 import io.github.jaytech64.depenses.core.database.TransactionTemplateDao
 import io.github.jaytech64.depenses.core.database.inTransaction
 import io.github.jaytech64.depenses.core.model.AccountOrigin
@@ -43,6 +44,8 @@ class LedgerImport
         private val templates: TransactionTemplateDao,
         private val posting: RecurringPosting,
     ) {
+        private val parts = database.transactionPartDao()
+
         /** Reads and checks [input], and says what importing it would do, without writing anything. */
         suspend fun read(input: InputStream): ImportReading {
             val text = input.bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -167,8 +170,9 @@ class LedgerImport
             giveDefaults(document, accountIds, merchantIds, categoryIds)
             val recurringIds =
                 document.recurring.associate { it.id to recurringIdFor(it, accountIds, merchantIds, categoryIds) }
-            plan.newTransactions.forEach {
-                transactions.insert(it.toEntity(accountIds, merchantIds, categoryIds, recurringIds))
+            plan.newTransactions.forEach { file ->
+                val id = transactions.insert(file.toEntity(accountIds, merchantIds, categoryIds, recurringIds))
+                parts.replace(id, file.parts.map { it.toEntity(categoryIds) })
             }
             // A template already here, found by its identity, is left as you have it.
             document.templates.forEach {
@@ -289,3 +293,12 @@ private sealed interface AccountTarget {
         override fun keptOpeningBalance(): KeptOpeningBalance? = null
     }
 }
+
+private fun ExportedPart.toEntity(categoryIds: Map<Long, Long?>) =
+    TransactionPartEntity(
+        transactionId = 0,
+        position = 0,
+        amountMinor = amountMinor,
+        categoryId = categoryId?.let(categoryIds::get),
+        note = note,
+    )
