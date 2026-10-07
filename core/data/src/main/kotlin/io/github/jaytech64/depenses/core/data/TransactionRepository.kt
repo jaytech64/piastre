@@ -105,7 +105,8 @@ class TransactionRepository
          *
          * [parts] divide the amount among categories: see [settleCategory] for what
          * they must be. A split carries no category of its own, so [categoryId] and
-         * [reach] are then set aside.
+         * [reach] are then set aside. A part of an expense may go into another
+         * account, which then gains that share.
          */
         suspend fun addManual(
             amount: Money,
@@ -121,7 +122,7 @@ class TransactionRepository
             parts: List<TransactionPart> = emptyList(),
         ): Long =
             database.inTransaction {
-                val settled = settleCategory(amount, categoryId, parts)
+                val settled = settleCategory(amount, categoryId, parts, kind, accountId)
                 val entry =
                     manualEntry(
                         amount,

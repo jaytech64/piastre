@@ -79,7 +79,7 @@ class TransactionEditor
             parts: List<TransactionPart> = emptyList(),
         ) = database.inTransaction {
             val row = transactions.withMerchantById(id) ?: return@inTransaction
-            val settled = settleCategory(amount, categoryId, parts)
+            val settled = settleCategory(amount, categoryId, parts, kind, accountId)
             val existing = row.transaction
             val merchant = merchantName?.takeIf { it.isNotBlank() }?.trim()
             val renamed = merchant != (row.merchantName ?: existing.merchantRaw)

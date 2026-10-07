@@ -5,7 +5,9 @@ package io.github.jaytech64.depenses.core.data
 import io.github.jaytech64.depenses.core.database.PartWithCategory
 import io.github.jaytech64.depenses.core.database.TransactionPartEntity
 import io.github.jaytech64.depenses.core.model.Money
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionPart
+import io.github.jaytech64.depenses.core.model.canMoveOnFrom
 import io.github.jaytech64.depenses.core.model.divide
 
 /**
@@ -24,11 +26,17 @@ internal data class SettledCategory(
  * that part's category and is not split either. Two or more must divide
  * [amount] exactly: the form keeps Save out of reach until they do, so parts
  * that do not are a caller's mistake and are refused rather than written.
+ *
+ * So is a part that goes into another account where none can: on anything but
+ * an expense from a known [accountId], into that same account, or alone, since
+ * an amount that wholly moved on is a transfer and not a split.
  */
 internal fun settleCategory(
     amount: Money,
     categoryId: Long?,
     parts: List<TransactionPart>,
+    kind: TransactionKind,
+    accountId: Long?,
 ): SettledCategory =
     when (parts.size) {
         0 -> {
@@ -36,11 +44,15 @@ internal fun settleCategory(
         }
 
         1 -> {
+            require(!parts.single().isTransfer) { "a part that is a transfer needs another part beside it" }
             SettledCategory(parts.single().categoryId, emptyList())
         }
 
         else -> {
             require(parts.divide(amount)) { "the parts of a split must add up to its amount" }
+            require(parts.canMoveOnFrom(kind, accountId)) {
+                "a part moves on only from an expense's account, into another one"
+            }
             SettledCategory(null, parts)
         }
     }
@@ -53,6 +65,7 @@ internal fun TransactionPart.toEntity() =
         amountMinor = amount.minor,
         categoryId = categoryId,
         note = note?.takeIf { it.isNotBlank() }?.trim(),
+        toAccountId = toAccountId,
     )
 
 internal fun PartWithCategory.toDomain(currency: String) =
@@ -61,4 +74,8 @@ internal fun PartWithCategory.toDomain(currency: String) =
         categoryId = part.categoryId,
         categoryName = categoryName,
         note = part.note,
+        toAccountId = part.toAccountId,
+        toAccountName = toAccountName,
+        toAccountLast4 = toAccountLast4,
+        toAccountType = toAccountType,
     )

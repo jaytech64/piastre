@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.depenses.core.data
 
+import io.github.jaytech64.depenses.core.database.AccountEntity
 import io.github.jaytech64.depenses.core.database.CategoryEntity
 import io.github.jaytech64.depenses.core.database.DepensesDatabase
+import io.github.jaytech64.depenses.core.model.AccountOrigin
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.AliasOrigin
 import io.github.jaytech64.depenses.core.model.Money
@@ -522,6 +524,72 @@ class TransactionEditorTest {
         }
 
     @Test
+    fun `a part that goes into another account is saved with it, and that account gains its share`() =
+        runTest {
+            val chequing = account("Chèques", AccountType.CARD)
+            val mortgage = account("Hypothèque", AccountType.BANK)
+
+            val id = addSplit(part(12_000, null), into(mortgage, 6_742), accountId = chequing)
+
+            val capital = repository.byId(id)?.parts?.last()
+            assertEquals(mortgage, capital?.toAccountId)
+            assertEquals("Hypothèque", capital?.toAccountName)
+            assertEquals(AccountType.BANK, capital?.toAccountType)
+            assertEquals(mapOf(chequing to -18_742L, mortgage to 6_742L), balances())
+        }
+
+    @Test
+    fun `a part into the account the expense came from is refused and nothing is written`() =
+        runTest {
+            val chequing = account("Chèques", AccountType.CARD)
+
+            val refused = runCatching { addSplit(part(12_000, null), into(chequing, 6_742), accountId = chequing) }
+
+            assertTrue(refused.exceptionOrNull() is IllegalArgumentException)
+            assertEquals(0, repository.confirmed().first().size)
+        }
+
+    @Test
+    fun `an edit to income is refused while a part still goes into another account`() =
+        runTest {
+            val chequing = account("Chèques", AccountType.CARD)
+            val mortgage = account("Hypothèque", AccountType.BANK)
+            val parts = listOf(part(12_000, null), into(mortgage, 6_742))
+            val id = addSplit(*parts.toTypedArray(), accountId = chequing)
+
+            val refused =
+                runCatching {
+                    editor.edit(
+                        id,
+                        Money(18_742, Money.CAD),
+                        TransactionKind.INCOME,
+                        "Costco",
+                        occurredAt(),
+                        note = null,
+                        accountId = chequing,
+                        toAccountId = null,
+                        categoryId = null,
+                        reach = null,
+                        parts = parts,
+                    )
+                }
+
+            assertTrue(refused.exceptionOrNull() is IllegalArgumentException)
+            assertEquals(TransactionKind.EXPENSE, repository.byId(id)?.kind)
+        }
+
+    @Test
+    fun `a lone part cannot be a transfer`() =
+        runTest {
+            val chequing = account("Chèques", AccountType.CARD)
+            val mortgage = account("Hypothèque", AccountType.BANK)
+
+            val refused = runCatching { addSplit(into(mortgage, 18_742), accountId = chequing) }
+
+            assertTrue(refused.exceptionOrNull() is IllegalArgumentException)
+        }
+
+    @Test
     fun `a single part is not a split, and gives the transaction its category`() =
         runTest {
             val groceries = category("Épicerie")
@@ -613,14 +681,36 @@ class TransactionEditorTest {
         note: String? = null,
     ) = TransactionPart(Money(minor, Money.CAD), categoryId, note = note)
 
-    private suspend fun addSplit(vararg parts: TransactionPart): Long =
+    private fun into(
+        accountId: Long,
+        minor: Long,
+    ) = TransactionPart(Money(minor, Money.CAD), toAccountId = accountId)
+
+    private suspend fun account(
+        name: String,
+        type: AccountType,
+    ) = database.accountDao().insert(
+        AccountEntity(name = name, type = type, issuerLabel = null, last4 = null, origin = AccountOrigin.USER),
+    )
+
+    private suspend fun balances(): Map<Long, Long> =
+        database
+            .accountDao()
+            .allWithCounts(Money.CAD, Int.MAX_VALUE)
+            .first()
+            .associate { it.account.id to it.balanceMinor }
+
+    private suspend fun addSplit(
+        vararg parts: TransactionPart,
+        accountId: Long? = null,
+    ): Long =
         repository.addManual(
             Money(18_742, Money.CAD),
             "Costco",
             occurredAt(),
             note = null,
             kind = TransactionKind.EXPENSE,
-            accountId = null,
+            accountId = accountId,
             toAccountId = null,
             categoryId = null,
             reach = null,
