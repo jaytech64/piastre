@@ -128,7 +128,7 @@ private fun EntryForm(
         AccountFields(state, accounts, viewModel, onAddFor = { slot -> onPick(slot.picking()) })
 
         // After the accounts, because a transfer's category is about where it goes.
-        WhatFor(state, viewModel, onPick)
+        WhatFor(state, accounts, viewModel, onPick)
 
         // A template says what a transaction is, never when — only whether it has an hour at all.
         if (state.isTemplate) {
@@ -166,15 +166,18 @@ private fun EntryForm(
 @Composable
 private fun WhatFor(
     state: ExpenseFormUiState,
+    accounts: List<Account>,
     viewModel: ExpenseFormViewModel,
     onPick: (Picking) -> Unit,
 ) {
     if (state.isSplit) {
         SplitSection(
             state,
+            accounts,
             viewModel.split,
             viewModel.category,
             onAddCategory = { onPick(Picking.ADD_PART_CATEGORY) },
+            onAddAccount = { onPick(Picking.ADD_PART_ACCOUNT) },
         )
         return
     }
@@ -250,6 +253,7 @@ private fun AccountSlot.picking(): Picking =
     when (this) {
         AccountSlot.SOURCE -> Picking.ADD_ACCOUNT
         AccountSlot.DESTINATION -> Picking.ADD_DESTINATION
+        AccountSlot.PART -> Picking.ADD_PART_ACCOUNT
     }
 
 /**

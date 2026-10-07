@@ -96,6 +96,7 @@
     <string name="form_split">Répartir</string>
     <string name="form_split_title">Répartition</string>
     <string name="form_split_add">Ajouter une partie</string>
+    <string name="form_split_add_transfer">Ajouter un virement</string>
     <string name="form_split_left">Reste à répartir\u00A0: %s</string>
     <string name="form_split_over">%s en trop</string>
     <string name="form_split_stop">Ne plus répartir</string>

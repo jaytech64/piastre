@@ -73,7 +73,7 @@ internal fun ExpenseFormUiState.applying(template: TransactionTemplate): Expense
         note = template.note ?: note,
         recurring = recurring || template.recurring,
         appliedTemplateId = template.id,
-    )
+    ).withPartsFittingItsKind()
 
 /**
  * What a template made from this form is called until you rename it: its

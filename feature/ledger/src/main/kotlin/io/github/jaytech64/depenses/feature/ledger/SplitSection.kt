@@ -30,20 +30,25 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.ButtonsRow
 import io.github.jaytech64.depenses.core.designsystem.Formatters
 import io.github.jaytech64.depenses.core.designsystem.LastButton
+import io.github.jaytech64.depenses.core.model.Account
 import io.github.jaytech64.depenses.core.model.Money
 import java.text.Collator
 
 /**
  * The parts a split's amount is divided into, where the category field is on a
  * transaction that is not split: each part's category, amount and note, then
- * what is still left to divide, which is what Save waits on.
+ * what is still left to divide, which is what Save waits on. A part added as a
+ * transfer leads with the account it goes into, the way a transfer's category
+ * comes after its accounts.
  */
 @Composable
 internal fun SplitSection(
     state: ExpenseFormUiState,
+    accounts: List<Account>,
     split: SplitParts,
     picker: CategoryPicker,
     onAddCategory: () -> Unit,
+    onAddAccount: () -> Unit,
 ) {
     val categories by picker.known.collectAsStateWithLifecycle()
     val recent by picker.recent.collectAsStateWithLifecycle()
@@ -58,6 +63,25 @@ internal fun SplitSection(
         key(part.key) {
             OutlinedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (part.isTransfer) {
+                        AccountField(
+                            label = R.string.form_to,
+                            selectedId = part.toAccountId,
+                            accounts = accounts,
+                            onPick = { id ->
+                                split.onDestinationChange(
+                                    part.key,
+                                    id,
+                                    accounts.firstOrNull { it.id == id }?.categoryId,
+                                )
+                            },
+                            onAddAccount = {
+                                split.awaitAccountFor(part.key)
+                                onAddAccount()
+                            },
+                            allowNone = false,
+                        )
+                    }
                     CategoryField(
                         selectedId = part.categoryId,
                         categories = categories,
@@ -89,6 +113,9 @@ internal fun SplitSection(
 
     ButtonsRow(Modifier.fillMaxWidth(), last = LastButton.FAR_END) {
         TextButton(onClick = split::add) { Text(stringResource(R.string.form_split_add)) }
+        if (state.offersTransferParts) {
+            TextButton(onClick = split::addTransfer) { Text(stringResource(R.string.form_split_add_transfer)) }
+        }
         TextButton(onClick = split::stop) { Text(stringResource(R.string.form_split_stop)) }
     }
 }

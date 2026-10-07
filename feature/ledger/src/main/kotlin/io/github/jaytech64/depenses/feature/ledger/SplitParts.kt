@@ -10,12 +10,18 @@ import kotlinx.coroutines.flow.update
 /**
  * One part of a split as typed so far. The amount is kept as text for the reason
  * the form's own is; [key] only tells the parts apart while they are on screen.
+ *
+ * A part added as a transfer goes into [toAccountId], which is still to pick
+ * while it is null: [isTransfer] is what keeps the account field on screen
+ * until then.
  */
 data class PartDraft(
     val key: Long,
     val amountText: String = "",
     val categoryId: Long? = null,
     val note: String = "",
+    val isTransfer: Boolean = false,
+    val toAccountId: Long? = null,
 ) {
     /** A share is more than nothing, so zero and a refund's minus are not an amount here. */
     val amount: Money? get() = Formatters.parseMoney(amountText)?.takeIf { it.minor > 0 }
@@ -32,6 +38,7 @@ class SplitParts internal constructor(
     private val form: MutableStateFlow<ExpenseFormUiState>,
 ) {
     private var awaitingCategory: Long? = null
+    private var awaitingAccount: Long? = null
 
     /**
      * Starts dividing the amount. The category already chosen becomes the first
@@ -54,13 +61,23 @@ class SplitParts internal constructor(
         }
 
     /** Adds a part already holding what is left to divide, so the last one is never typed. */
-    fun add() =
+    fun add() = add(isTransfer = false)
+
+    /**
+     * Adds a part that goes into another account, still to pick: the share of an
+     * expense that was not spent but moved, as the capital of a mortgage payment
+     * is (ADR-0019).
+     */
+    fun addTransfer() = add(isTransfer = true)
+
+    private fun add(isTransfer: Boolean) =
         form.update { state ->
             val left = state.leftToSplit?.takeIf { it.minor > 0 }
             val next =
                 PartDraft(
                     key = state.parts.maxOf { it.key } + 1,
                     amountText = left?.let(Formatters::amountInput).orEmpty(),
+                    isTransfer = isTransfer,
                 )
             state.copy(parts = state.parts + next)
         }
@@ -93,6 +110,28 @@ class SplitParts internal constructor(
         text: String,
     ) = change(key) { it.copy(note = text) }
 
+    /**
+     * Where a part goes. A part nobody has given a category takes
+     * [categoryOfAccount], the one every transfer into that account is given
+     * (ADR-0010); one that has a category keeps it.
+     */
+    fun onDestinationChange(
+        key: Long,
+        accountId: Long?,
+        categoryOfAccount: Long?,
+    ) = change(key) { it.copy(toAccountId = accountId, categoryId = it.categoryId ?: categoryOfAccount) }
+
+    /** Remembers which part the account about to be added from its list is for. */
+    fun awaitAccountFor(key: Long) {
+        awaitingAccount = key
+    }
+
+    /** The account just added goes onto the part that asked for it. It is new, so it gives no category. */
+    fun takeAccount(accountId: Long) {
+        awaitingAccount?.let { onDestinationChange(it, accountId, categoryOfAccount = null) }
+        awaitingAccount = null
+    }
+
     /** Remembers which part the category about to be added from its list is for. */
     fun awaitCategoryFor(key: Long) {
         awaitingCategory = key
@@ -114,3 +153,11 @@ class SplitParts internal constructor(
 
 private fun ExpenseFormUiState.unsplitWith(part: PartDraft?): ExpenseFormUiState =
     copy(parts = emptyList(), categoryId = part?.categoryId, categoryChosen = true)
+
+/**
+ * The form with no part going into another account unless it is an expense's:
+ * only a share of an expense moves on, so a form turned into income or a
+ * transfer keeps its parts and their categories and drops where they went.
+ */
+internal fun ExpenseFormUiState.withPartsFittingItsKind(): ExpenseFormUiState =
+    if (offersTransferParts) this else copy(parts = parts.map { it.copy(isTransfer = false, toAccountId = null) })

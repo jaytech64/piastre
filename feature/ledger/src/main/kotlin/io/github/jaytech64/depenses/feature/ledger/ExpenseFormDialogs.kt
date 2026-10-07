@@ -87,8 +87,13 @@ internal fun FormDialog(
             )
         }
 
-        Picking.ADD_ACCOUNT, Picking.ADD_DESTINATION -> {
-            val slot = if (picking == Picking.ADD_ACCOUNT) AccountSlot.SOURCE else AccountSlot.DESTINATION
+        Picking.ADD_ACCOUNT, Picking.ADD_DESTINATION, Picking.ADD_PART_ACCOUNT -> {
+            val slot =
+                when (picking) {
+                    Picking.ADD_ACCOUNT -> AccountSlot.SOURCE
+                    Picking.ADD_DESTINATION -> AccountSlot.DESTINATION
+                    else -> AccountSlot.PART
+                }
             AccountDialog(
                 account = null,
                 onSave = { name, type, last4, openingBalance ->
@@ -165,6 +170,7 @@ internal enum class Picking {
     DELETE,
     ADD_ACCOUNT,
     ADD_DESTINATION,
+    ADD_PART_ACCOUNT,
     ADD_CATEGORY,
     ADD_PART_CATEGORY,
     TEMPLATES,
