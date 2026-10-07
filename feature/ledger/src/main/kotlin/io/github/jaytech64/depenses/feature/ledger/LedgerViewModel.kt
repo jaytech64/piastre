@@ -128,42 +128,54 @@ data class LedgerFilter(
      *
      * Narrowed to a category, a split counts for the parts that match and no
      * more: its amount here is theirs, so the rows add up to what a report says
-     * went to that category (ADR-0018). The amounts are compared with that
-     * number, the one the row shows.
+     * went to that category (ADR-0018). Narrowed to an account one of its parts
+     * goes into, it counts for that share, which is what the account gained
+     * (ADR-0019). The amounts are compared with that number, the one the row
+     * shows.
      */
     fun shown(transaction: Transaction): Transaction? {
         val placed =
             transaction.isOn(account) &&
                 transaction.isIn(category) &&
+                (!transaction.isSplit || partsCounted(transaction).isNotEmpty()) &&
                 (merchant == null || transaction.merchantId == merchant.id) &&
                 (from == null || transaction.localDate >= from) &&
                 (to == null || transaction.localDate <= to) &&
                 (note == null || transaction.note?.containsTyped(note) == true)
         if (!placed) return null
-        val shown = transaction.narrowedTo(category)
+        val shown = transaction.narrowed()
         val sized =
             (atLeast == null || shown.amount.minor >= atLeast.minor) &&
                 (atMost == null || shown.amount.minor <= atMost.minor)
         return shown.takeIf { sized }
     }
 
-    /** The split with the amount of its parts under [category]; anything else as it is. */
-    private fun Transaction.narrowedTo(category: CategoryChoice?): Transaction {
-        if (category == null || !isSplit) return this
-        return copy(amount = Money(partsCounted(this).sumOf { it.amount.minor }, amount.currency))
-    }
+    /** The split with the amount of the parts this filter counts; anything else as it is. */
+    private fun Transaction.narrowed(): Transaction =
+        if (isSplit) copy(amount = Money(partsCounted(this).sumOf { it.amount.minor }, amount.currency)) else this
 
-    /** The parts of a split this filter counts, which are the ones its amount here is made of. */
+    /**
+     * The parts of a split this filter counts, which are the ones its amount
+     * here is made of: those under [category], on [account]. Every part is on
+     * the account the split itself is on, and a part that goes into another
+     * account is on that one too.
+     */
     fun partsCounted(split: Transaction): List<TransactionPart> =
-        split.parts.filter { category == null || category.holds(it.categoryId) }
+        split.parts.filter { part ->
+            (category == null || category.holds(part.categoryId)) &&
+                (account == null || split.isAnEndOf(account) || part.toAccountId == account.id)
+        }
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
      * money on that account, and a screen that showed only the leaving end would
-     * lose half of every transfer.
+     * lose half of every transfer. A split is on the account any of its parts
+     * goes into, for the same reason.
      */
     private fun Transaction.isOn(account: Account?): Boolean =
-        account == null || accountId == account.id || toAccountId == account.id
+        account == null || isAnEndOf(account) || parts.any { it.toAccountId == account.id }
+
+    private fun Transaction.isAnEndOf(account: Account): Boolean = accountId == account.id || toAccountId == account.id
 
     /** A split is in every category its parts carry. */
     private fun Transaction.isIn(category: CategoryChoice?): Boolean =
@@ -510,7 +522,9 @@ private fun List<Transaction>.summaryOf(filter: LedgerFilter): BalanceSummary {
 /**
  * The transaction as the rows a total reads: itself, or for a split each part
  * [filter] counts, as the row it would be entered apart. A split's worth is its
- * parts' (ADR-0019), and narrowed to a category only the parts under it count.
+ * parts' (ADR-0019), and narrowed to a category or an account only the parts
+ * there count. A part that goes into another account is then a transfer like
+ * any other, which [movedOn] signs by the end the filtered account is on.
  */
 private fun Transaction.rowsCounted(filter: LedgerFilter): List<Transaction> =
     if (isSplit) filter.partsCounted(this).map(::apart) else listOf(this)

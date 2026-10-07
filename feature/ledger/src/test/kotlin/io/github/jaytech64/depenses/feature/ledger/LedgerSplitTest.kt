@@ -3,6 +3,7 @@
 package io.github.jaytech64.depenses.feature.ledger
 
 import io.github.jaytech64.depenses.core.database.TransactionPartEntity
+import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Category
 import io.github.jaytech64.depenses.core.model.Money
 import kotlinx.coroutines.flow.first
@@ -145,19 +146,128 @@ class LedgerSplitTest : LedgerTest() {
             assertEquals(listOf(groceries, null), repository.byId(costco)?.parts?.map { it.categoryId })
         }
 
+    @Test
+    fun `the account a part goes into shows the split at that share, as a transfer that reached it`() =
+        runTest {
+            val chequing = account("Chèques")
+            val mortgage = account("Hypothèque", AccountType.BANK)
+            val payment = mortgagePayment(chequing, mortgage)
+
+            viewModel.filters.onAccountSelected(mortgage)
+            val state = viewModel.uiState.first { it.filter.account?.id == mortgage && it.days.isNotEmpty() }
+
+            assertEquals(
+                listOf(50_000L),
+                state.days
+                    .single()
+                    .transactions
+                    .map { it.amount.minor },
+            )
+            assertEquals(mapOf(payment to Money(120_000, Money.CAD)), state.wholes)
+            assertEquals(Money(50_000, Money.CAD), state.headline.transfers)
+            assertEquals(Money(0, Money.CAD), state.headline.expenses)
+            assertEquals(Money(50_000, Money.CAD), state.days.single().total)
+        }
+
+    @Test
+    fun `the account a split was paid from shows it whole, its share moved on apart from what was spent`() =
+        runTest {
+            val chequing = account("Chèques")
+            val mortgage = account("Hypothèque", AccountType.BANK)
+            mortgagePayment(chequing, mortgage)
+
+            viewModel.filters.onAccountSelected(chequing)
+            val state = viewModel.uiState.first { it.filter.account?.id == chequing && it.days.isNotEmpty() }
+
+            assertEquals(Money(70_000, Money.CAD), state.headline.expenses)
+            assertEquals(Money(-50_000, Money.CAD), state.headline.transfers)
+            assertEquals(Money(-120_000, Money.CAD), state.headline.balance)
+            assertEquals(emptyMap<Long, Money>(), state.wholes)
+        }
+
+    @Test
+    fun `each account's ledger adds up to what its balance moved by`() =
+        runTest {
+            val chequing = account("Chèques")
+            val mortgage = account("Hypothèque", AccountType.BANK)
+            mortgagePayment(chequing, mortgage)
+
+            for (account in listOf(chequing, mortgage)) {
+                viewModel.filters.onAccountSelected(account)
+                val state = viewModel.uiState.first { it.filter.account?.id == account && it.days.isNotEmpty() }
+
+                assertEquals(state.accounts.single { it.id == account }.balance, state.headline.balance)
+            }
+        }
+
+    @Test
+    fun `a share moved between your own pockets is not spent, and the row still shows the whole payment`() =
+        runTest {
+            val card = account("Visa")
+            val cash = account("Comptant", AccountType.CASH)
+            val costco = insert(amountMinor = 18_742, day = TODAY, accountId = card)
+            split(costco, 14_742L to null, intoAccount = 4_000L to cash)
+
+            val state = viewModel.uiState.first { it.days.isNotEmpty() }
+
+            assertEquals(Money(14_742, Money.CAD), state.headline.expenses)
+            assertEquals(Money(-14_742, Money.CAD), state.days.single().total)
+            assertEquals(
+                18_742L,
+                state.days
+                    .single()
+                    .transactions
+                    .single()
+                    .amount.minor,
+            )
+        }
+
+    @Test
+    fun `narrowed to the account and a category the share is not under, the split is left out`() =
+        runTest {
+            val chequing = account("Chèques")
+            val mortgage = account("Hypothèque", AccountType.BANK)
+            val interest = category("Intérêts")
+            val payment = insert(amountMinor = 120_000, day = TODAY, accountId = chequing)
+            split(payment, 70_000L to interest, intoAccount = 50_000L to mortgage)
+
+            viewModel.filters.onAccountSelected(mortgage)
+            viewModel.filters.onCategorySelected(CategoryChoice.Named(Category(interest, "Intérêts")))
+            val state = viewModel.uiState.first { it.filter.account != null && it.filter.category != null }
+
+            assertEquals(emptyList<LedgerDay>(), state.days)
+        }
+
+    /** 1 200,00 from [chequing]: 700,00 of interest spent, 500,00 of capital into [mortgage]. */
+    private suspend fun mortgagePayment(
+        chequing: Long,
+        mortgage: Long,
+    ): Long {
+        val payment = insert(amountMinor = 120_000, day = TODAY, accountId = chequing)
+        split(payment, 70_000L to null, intoAccount = 50_000L to mortgage)
+        return payment
+    }
+
     private suspend fun split(
         transactionId: Long,
         vararg parts: Pair<Long, Long?>,
+        intoAccount: Pair<Long, Long>? = null,
     ) = database.transactionPartDao().replace(
         transactionId,
-        parts.map { (amountMinor, categoryId) ->
-            TransactionPartEntity(
-                transactionId = transactionId,
-                position = 0,
-                amountMinor = amountMinor,
-                categoryId = categoryId,
-                note = null,
-            )
-        },
+        parts.map { (amountMinor, categoryId) -> part(amountMinor, categoryId) } +
+            listOfNotNull(intoAccount?.let { (amountMinor, accountId) -> part(amountMinor, toAccountId = accountId) }),
+    )
+
+    private fun part(
+        amountMinor: Long,
+        categoryId: Long? = null,
+        toAccountId: Long? = null,
+    ) = TransactionPartEntity(
+        transactionId = 0,
+        position = 0,
+        amountMinor = amountMinor,
+        categoryId = categoryId,
+        note = null,
+        toAccountId = toAccountId,
     )
 }
