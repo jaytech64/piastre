@@ -48,8 +48,7 @@ A single self-contained commit — docs, `ci:`, `chore:`, a one-line fix — goe
 
 ### The shape of a change
 
-1. **Plan anything non-trivial as a Lavish artifact** before writing code, and settle the product forks up front.
-   Past phase plans are committed under `.lavish/` and are the record of what was decided and why.
+1. **Plan anything non-trivial as a Claude artifact** (the `Artifact` tool, not Lavish) before writing code, and settle the product forks up front.
 2. **Branch from `main`** for anything bigger than a single commit, named for what it delivers rather than how: every branch so far has been `feat/<what-it-adds>`, e.g. `feat/import-and-opening-balances`.
 3. **Commit in focused conventional commits**, scoped by module: `feat(ledger)`, `fix(data)`, `refactor(database)`, `docs(adr)`.
    Subjects are lowercase sentences in the product's own voice — `an income goes into an account`, not `add account field to income transactions`.
@@ -79,7 +78,7 @@ Act, then report.
 ### Parking questions
 
 A question that blocks one part of the work stops that part only.
-Finish everything that does not depend on the answer, then bring the questions back together — batched into one `AskUserQuestion` with a recommendation marked *(Recommended)*, or, for a phase's worth of decisions, as a Lavish artifact to annotate.
+Finish everything that does not depend on the answer, then bring the questions back together — batched into one `AskUserQuestion` with a recommendation marked *(Recommended)*, or, for a phase's worth of decisions, as a Claude artifact to annotate.
 
 ### Validation
 
