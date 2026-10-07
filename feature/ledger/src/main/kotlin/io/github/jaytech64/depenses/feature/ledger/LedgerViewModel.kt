@@ -23,6 +23,7 @@ import io.github.jaytech64.depenses.core.model.Merchant
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionPart
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.containsTyped
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -149,9 +150,12 @@ data class LedgerFilter(
     /** The split with the amount of its parts under [category]; anything else as it is. */
     private fun Transaction.narrowedTo(category: CategoryChoice?): Transaction {
         if (category == null || !isSplit) return this
-        val matching = parts.filter { category.holds(it.categoryId) }
-        return copy(amount = Money(matching.sumOf { it.amount.minor }, amount.currency))
+        return copy(amount = Money(partsCounted(this).sumOf { it.amount.minor }, amount.currency))
     }
+
+    /** The parts of a split this filter counts, which are the ones its amount here is made of. */
+    fun partsCounted(split: Transaction): List<TransactionPart> =
+        split.parts.filter { category == null || category.holds(it.categoryId) }
 
     /**
      * Both ends of a transfer match an account: money that reached an account is
@@ -489,7 +493,8 @@ private val HOME_ZERO = Money(0, Money.CAD)
  * selected says what its header says, to the cent.
  */
 private fun List<Transaction>.summaryOf(filter: LedgerFilter): BalanceSummary {
-    val counted = inHomeCurrency()
+    val inHomeCurrency = inHomeCurrency()
+    val counted = inHomeCurrency.flatMap { it.rowsCounted(filter) }
     val account = filter.account
     val (ofTheAccount, ofTheLedger) = counted.partition { account != null && it.kind == TransactionKind.TRANSFER }
     val moved = ofTheLedger.map { it.signedAmount }
@@ -498,9 +503,17 @@ private fun List<Transaction>.summaryOf(filter: LedgerFilter): BalanceSummary {
         income = moved.filter { it.minor > 0 }.fold(HOME_ZERO, Money::plus),
         expenses = -moved.filter { it.minor < 0 }.fold(HOME_ZERO, Money::plus),
         transfers = ofTheAccount.map { it.movedOn(checkNotNull(account)) }.fold(HOME_ZERO, Money::plus),
-        otherCurrencyCount = size - counted.size,
+        otherCurrencyCount = size - inHomeCurrency.size,
     )
 }
+
+/**
+ * The transaction as the rows a total reads: itself, or for a split each part
+ * [filter] counts, as the row it would be entered apart. A split's worth is its
+ * parts' (ADR-0019), and narrowed to a category only the parts under it count.
+ */
+private fun Transaction.rowsCounted(filter: LedgerFilter): List<Transaction> =
+    if (isSplit) filter.partsCounted(this).map(::apart) else listOf(this)
 
 /**
  * The rows a total may add up. Converting needs a rate and a rate needs the

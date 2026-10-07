@@ -1235,23 +1235,51 @@ data class CategoryTotal(
  * one has left and money moved out of one has come back. `NULL <> 'BANK'` is
  * not true, which is what leaves out a transfer with an account missing.
  */
-private const val TRANSFER_ENDS =
-    "LEFT JOIN account origin ON origin.id = t.accountId " +
-        "LEFT JOIN account destination ON destination.id = t.toAccountId"
 private const val MONEY_OUT =
     "(t.kind = 'EXPENSE' OR (t.kind = 'TRANSFER' AND destination.type = 'BANK' AND origin.type <> 'BANK'))"
 private const val MONEY_IN =
     "(t.kind = 'INCOME' OR (t.kind = 'TRANSFER' AND origin.type = 'BANK' AND destination.type <> 'BANK'))"
 
-/** The confirmed rows that went out in one currency over a range of days, which every spending figure counts. */
-private const val SPENT_IN_RANGE =
-    "t.status = 'CONFIRMED' AND " + MONEY_OUT +
-        " AND t.currency = :currency AND t.localDateEpochDay BETWEEN :fromDay AND :toDay"
+/**
+ * Every piece of a confirmed transaction in a range of days that [MONEY_OUT]
+ * and [MONEY_IN] can be asked about, as `t`: a transaction that is not split,
+ * whole, or each part of one that is. A split is worth what its parts are
+ * worth, so every report figure reads these and none reads
+ * `expense_transaction` itself (ADR-0019).
+ *
+ * A part counts as its transaction does, under its own category. One that goes
+ * into another account is a transfer from the transaction's account into that
+ * one, so it counts by the accounts it joins like any transfer: the capital of
+ * a mortgage payment has left, and cash back at the till has not.
+ * `Transaction.movements` is the same in Kotlin.
+ *
+ * The days are narrowed inside each half, where the index on the day is.
+ */
+private const val MOVEMENTS =
+    """
+    (
+        SELECT e.id AS transactionId, e.localDateEpochDay AS day, e.currency AS currency,
+               e.categoryId AS categoryId, e.amountMinor AS amountMinor, e.kind AS kind,
+               e.accountId AS fromAccountId, e.toAccountId AS intoAccountId
+        FROM expense_transaction e
+        WHERE e.status = 'CONFIRMED' AND e.localDateEpochDay BETWEEN :fromDay AND :toDay
+          AND NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = e.id)
+        UNION ALL
+        SELECT e.id, e.localDateEpochDay, e.currency, p.categoryId, p.amountMinor,
+               CASE WHEN p.toAccountId IS NULL THEN e.kind ELSE 'TRANSFER' END,
+               e.accountId, COALESCE(p.toAccountId, e.toAccountId)
+        FROM expense_transaction e
+        JOIN transaction_part p ON p.transactionId = e.id
+        WHERE e.status = 'CONFIRMED' AND e.localDateEpochDay BETWEEN :fromDay AND :toDay
+    ) t
+    LEFT JOIN account origin ON origin.id = t.fromAccountId
+    LEFT JOIN account destination ON destination.id = t.intoAccountId
+    """
 
 /**
  * Reports are SQL, not Kotlin loops over the whole table. Every one of these
- * groups on an indexed integer column, so a year of history costs the same as a
- * week.
+ * reads [MOVEMENTS], which narrows on an indexed integer column, so a year of
+ * history costs the same as a week.
  *
  * They are about what went out, so every one but [incomeForRange] keeps to
  * [MONEY_OUT]: a paycheque ranked beside the groceries would make the ranking
@@ -1260,17 +1288,15 @@ private const val SPENT_IN_RANGE =
  */
 @Dao
 interface ReportDao {
+    /** A split is one transaction on its day, however many of its parts went out. */
     @Query(
         """
-        SELECT t.localDateEpochDay AS day, SUM(t.amountMinor) AS totalMinor, COUNT(*) AS count
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        WHERE t.status = 'CONFIRMED'
-          AND """ + MONEY_OUT + """
+        SELECT t.day AS day, SUM(t.amountMinor) AS totalMinor, COUNT(DISTINCT t.transactionId) AS count
+        FROM """ + MOVEMENTS + """
+        WHERE """ + MONEY_OUT + """
           AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
-        GROUP BY t.localDateEpochDay
-        ORDER BY t.localDateEpochDay
+        GROUP BY t.day
+        ORDER BY t.day
         """,
     )
     fun dailyTotals(
@@ -1282,12 +1308,9 @@ interface ReportDao {
     @Query(
         """
         SELECT SUM(t.amountMinor)
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        WHERE t.status = 'CONFIRMED'
-          AND """ + MONEY_OUT + """
+        FROM """ + MOVEMENTS + """
+        WHERE """ + MONEY_OUT + """
           AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun totalForRange(
@@ -1299,12 +1322,9 @@ interface ReportDao {
     @Query(
         """
         SELECT SUM(t.amountMinor)
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        WHERE t.status = 'CONFIRMED'
-          AND """ + MONEY_IN + """
+        FROM """ + MOVEMENTS + """
+        WHERE """ + MONEY_IN + """
           AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun incomeForRange(
@@ -1325,22 +1345,12 @@ interface ReportDao {
     @Query(
         """
         SELECT c.id AS categoryId, c.name AS categoryName, g.id AS groupId, g.name AS groupName,
-               SUM(s.amountMinor) AS totalMinor, COUNT(DISTINCT s.transactionId) AS count
-        FROM (
-            SELECT t.id AS transactionId, t.categoryId AS categoryId, t.amountMinor AS amountMinor
-            FROM expense_transaction t
-            """ + TRANSFER_ENDS + """
-            WHERE """ + SPENT_IN_RANGE + """
-              AND NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = t.id)
-            UNION ALL
-            SELECT t.id, p.categoryId, p.amountMinor
-            FROM expense_transaction t
-            """ + TRANSFER_ENDS + """
-            JOIN transaction_part p ON p.transactionId = t.id
-            WHERE """ + SPENT_IN_RANGE + """
-        ) s
-        LEFT JOIN category c ON c.id = s.categoryId
+               SUM(t.amountMinor) AS totalMinor, COUNT(DISTINCT t.transactionId) AS count
+        FROM """ + MOVEMENTS + """
+        LEFT JOIN category c ON c.id = t.categoryId
         LEFT JOIN category_group g ON g.id = c.groupId
+        WHERE """ + MONEY_OUT + """
+          AND t.currency = :currency
         GROUP BY c.id
         """,
     )
@@ -1351,10 +1361,10 @@ interface ReportDao {
     ): Flow<List<CategoryTotal>>
 
     /**
-     * How many rows in the range the figures above would have counted, and left
-     * out because they were in something other than [currency]. A transfer that
-     * moves the ledger by nothing is not among them: it is in no total here, so
-     * leaving one out understates nothing.
+     * How many transactions in the range the figures above would have counted,
+     * and left out because they were in something other than [currency]. A
+     * transfer that moves the ledger by nothing is not among them: it is in no
+     * total here, so leaving one out understates nothing.
      *
      * Converting them is impossible here — a rate needs a network, and there is
      * none — so a report can only decline to count them. Declining silently is
@@ -1364,13 +1374,10 @@ interface ReportDao {
      */
     @Query(
         """
-        SELECT COUNT(*)
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        WHERE t.status = 'CONFIRMED'
-          AND (""" + MONEY_OUT + " OR " + MONEY_IN + """)
+        SELECT COUNT(DISTINCT t.transactionId)
+        FROM """ + MOVEMENTS + """
+        WHERE (""" + MONEY_OUT + " OR " + MONEY_IN + """)
           AND t.currency != :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun otherCurrencyCount(
