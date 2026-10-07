@@ -425,12 +425,14 @@ interface TransactionPartDao {
         )
     }
 
-    /** Every part with its category's name, each transaction's together and in the order typed. */
+    /** Every part with what it names, each transaction's together and in the order typed. */
     @Query(
         """
-        SELECT p.*, c.name AS categoryName
+        SELECT p.*, c.name AS categoryName,
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM transaction_part p
         LEFT JOIN category c ON c.id = p.categoryId
+        LEFT JOIN account d ON d.id = p.toAccountId
         ORDER BY p.transactionId, p.position
         """,
     )
@@ -438,9 +440,11 @@ interface TransactionPartDao {
 
     @Query(
         """
-        SELECT p.*, c.name AS categoryName
+        SELECT p.*, c.name AS categoryName,
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM transaction_part p
         LEFT JOIN category c ON c.id = p.categoryId
+        LEFT JOIN account d ON d.id = p.toAccountId
         WHERE p.transactionId = :transactionId
         ORDER BY p.position
         """,
@@ -451,10 +455,13 @@ interface TransactionPartDao {
     suspend fun allOnce(): List<TransactionPartEntity>
 }
 
-/** A part with the name of its category, or none. */
+/** A part with the name of its category, or none, and the account it goes into when it is a transfer. */
 data class PartWithCategory(
     @Embedded val part: TransactionPartEntity,
     val categoryName: String?,
+    val toAccountName: String? = null,
+    val toAccountLast4: String? = null,
+    val toAccountType: AccountType? = null,
 )
 
 @Dao
@@ -590,12 +597,15 @@ interface AccountDao {
     /**
      * In the order you set in Settings, which every list of accounts follows.
      *
-     * Both sides of a transfer count: an account money only ever leaves is still in
-     * use, and the count is what decides whether it can be removed.
+     * Both sides of a transfer count, and so does a split one part of which goes
+     * into the account: an account money only ever leaves is still in use, and
+     * the count is what decides whether it can be removed.
      *
      * The balance starts from the opening balance and follows every confirmed row on
      * the account: income adds, an expense takes away, and a transfer takes from the
-     * account it left and adds to the one it reached. Only [currency] is summed, the
+     * account it left and adds to the one it reached. A part of a split that goes
+     * into the account adds its share, while the split's own account has already
+     * given up the whole amount (ADR-0019). Only [currency] is summed, the
      * way reports keep to one currency, because dollars plus euros is not a balance.
      * It stops at [throughDay]: what the account holds that day, never a row dated
      * after it. The count does not stop, since a row still to come uses the account.
@@ -604,7 +614,9 @@ interface AccountDao {
         """
         SELECT a.*,
             (SELECT COUNT(*) FROM expense_transaction t
-             WHERE (t.accountId = a.id OR t.toAccountId = a.id) AND t.status = 'CONFIRMED') AS transactionCount,
+             WHERE (t.accountId = a.id OR t.toAccountId = a.id OR EXISTS (
+                        SELECT 1 FROM transaction_part p WHERE p.transactionId = t.id AND p.toAccountId = a.id))
+               AND t.status = 'CONFIRMED') AS transactionCount,
             COALESCE(a.openingBalanceMinor, 0)
                 + COALESCE((SELECT SUM(CASE WHEN t.kind = 'INCOME' THEN t.amountMinor ELSE -t.amountMinor END)
                             FROM expense_transaction t
@@ -613,6 +625,12 @@ interface AccountDao {
                 + COALESCE((SELECT SUM(t.amountMinor)
                             FROM expense_transaction t
                             WHERE t.toAccountId = a.id AND t.kind = 'TRANSFER'
+                              AND t.status = 'CONFIRMED' AND t.currency = :currency
+                              AND t.localDateEpochDay <= :throughDay), 0)
+                + COALESCE((SELECT SUM(p.amountMinor)
+                            FROM transaction_part p
+                            JOIN expense_transaction t ON t.id = p.transactionId
+                            WHERE p.toAccountId = a.id
                               AND t.status = 'CONFIRMED' AND t.currency = :currency
                               AND t.localDateEpochDay <= :throughDay), 0)
                 AS balanceMinor
@@ -665,14 +683,16 @@ interface AccountDao {
     )
 
     /**
-     * Returns 1 when the account was removed and 0 when a transaction, a
-     * recurring transaction or a template still uses it, so nothing is ever left
-     * pointing at an account that is gone.
+     * Returns 1 when the account was removed and 0 when a transaction, a part of
+     * one, a recurring transaction or a template still uses it, so nothing is
+     * ever left pointing at an account that is gone.
      */
     @Query(
         """
         DELETE FROM account WHERE id = :id AND NOT EXISTS (
             SELECT 1 FROM expense_transaction WHERE accountId = :id OR toAccountId = :id
+        ) AND NOT EXISTS (
+            SELECT 1 FROM transaction_part WHERE toAccountId = :id
         ) AND NOT EXISTS (
             SELECT 1 FROM recurring_transaction WHERE accountId = :id OR toAccountId = :id
         ) AND NOT EXISTS (

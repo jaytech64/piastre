@@ -155,10 +155,14 @@ data class ExpenseTransactionEntity(
  * [categoryId] is written onto the part, as it is onto a transaction, and null
  * is a share nobody has said anything about yet. [position] is the order you
  * typed the parts in, from 0.
+ *
+ * [toAccountId] makes the share a transfer: it left the transaction's account
+ * for this one, so it adds to this account's balance, and the whole ledger
+ * counts it by the two accounts it joins rather than as spending (ADR-0019).
  */
 @Entity(
     tableName = "transaction_part",
-    indices = [Index("transactionId"), Index("categoryId")],
+    indices = [Index("transactionId"), Index("categoryId"), Index("toAccountId")],
 )
 data class TransactionPartEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -167,6 +171,7 @@ data class TransactionPartEntity(
     val amountMinor: Long,
     val categoryId: Long?,
     val note: String?,
+    val toAccountId: Long? = null,
 )
 
 /**
