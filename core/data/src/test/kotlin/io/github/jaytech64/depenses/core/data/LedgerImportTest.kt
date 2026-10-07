@@ -161,6 +161,72 @@ class LedgerImportTest {
         }
 
     @Test
+    fun `a part that goes into another account arrives going into it, and both accounts hold what they did`() =
+        runTest {
+            val chequing = source.accounts().add("Chèques", AccountType.CARD, last4 = "")
+            val mortgage = source.accounts().add("Hypothèque", AccountType.BANK, last4 = "")
+            source.enterSplit(
+                TransactionPart(cad(120_00), null),
+                TransactionPart(cad(67_42), null, toAccountId = mortgage),
+                accountId = chequing,
+            )
+
+            target.importing(source.export())
+
+            val arrived =
+                target
+                    .transactions()
+                    .confirmed()
+                    .first()
+                    .single()
+            assertEquals(listOf(null, "Hypothèque"), arrived.parts.map { it.toAccountName })
+            assertEquals(source.balances(), target.balances())
+        }
+
+    @Test
+    fun `a file written before a part could go into an account is still read`() =
+        runTest {
+            source.enterSplit(TransactionPart(cad(120_00), null), TransactionPart(cad(67_42), null))
+            val older = source.export().replace("\"version\": 4", "\"version\": 3")
+
+            target.importing(older)
+
+            assertEquals(
+                2,
+                target
+                    .transactions()
+                    .confirmed()
+                    .first()
+                    .single()
+                    .parts.size,
+            )
+        }
+
+    @Test
+    fun `a part into an account the file does not list refuses the file before anything is written`() =
+        runTest {
+            val chequing = source.accounts().add("Chèques", AccountType.CARD, last4 = "")
+            val mortgage = source.accounts().add("Hypothèque", AccountType.BANK, last4 = "")
+            source.enterSplit(
+                TransactionPart(cad(120_00), null),
+                TransactionPart(cad(67_42), null, toAccountId = mortgage),
+                accountId = chequing,
+            )
+            val file = source.export()
+            val tampered =
+                file.replace(
+                    Regex("\"toAccountId\": $mortgage,(\\s+)\"toAccountName\""),
+                    "\"toAccountId\": 99,$1\"toAccountName\"",
+                )
+
+            val reading = target.reading(tampered)
+
+            assertTrue(file != tampered)
+            assertTrue(reading.toString(), (reading as ImportReading.Refused).problem is ImportProblem.Inconsistent)
+            assertEquals(0, target.transactionDao().count().first())
+        }
+
+    @Test
     fun `a file whose parts do not add up to their transaction is refused before anything is written`() =
         runTest {
             source.enterSplit(TransactionPart(cad(120_00), null), TransactionPart(cad(67_42), null))
@@ -175,7 +241,7 @@ class LedgerImportTest {
     @Test
     fun `a file from a version yet to come is refused`() =
         runTest {
-            assertEquals(refused(ImportProblem.UnsupportedVersion(4)), target.reading(document(version = 4)))
+            assertEquals(refused(ImportProblem.UnsupportedVersion(5)), target.reading(document(version = 5)))
         }
 
     @Test
@@ -656,19 +722,21 @@ class LedgerImportTest {
         reach = CategoryReach(others = false, fromNowOn = fromNowOn).takeIf { fromNowOn },
     )
 
-    private suspend fun DepensesDatabase.enterSplit(vararg parts: TransactionPart) =
-        transactions().addManual(
-            amount = cad(187_42),
-            merchantName = "Costco",
-            occurredAt = OCCURRED_AT,
-            note = null,
-            kind = TransactionKind.EXPENSE,
-            accountId = null,
-            toAccountId = null,
-            categoryId = null,
-            reach = null,
-            parts = parts.toList(),
-        )
+    private suspend fun DepensesDatabase.enterSplit(
+        vararg parts: TransactionPart,
+        accountId: Long? = null,
+    ) = transactions().addManual(
+        amount = cad(187_42),
+        merchantName = "Costco",
+        occurredAt = OCCURRED_AT,
+        note = null,
+        kind = TransactionKind.EXPENSE,
+        accountId = accountId,
+        toAccountId = null,
+        categoryId = null,
+        reach = null,
+        parts = parts.toList(),
+    )
 
     /** Everything a person sees of a transaction; ids differ between two databases and are left out. */
     private suspend fun DepensesDatabase.ledger() =

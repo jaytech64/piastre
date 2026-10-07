@@ -148,10 +148,44 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON).filterNot(Char::isWhitespace)
 
-            assertTrue(json, "\"version\":3" in json)
+            assertTrue(json, "\"version\":4" in json)
             assertTrue(json, "\"amountMinor\":18742" in json)
             assertTrue(json, "{\"amountMinor\":12000,\"categoryId\":$groceries,\"categoryName\":\"Épicerie\"" in json)
             assertTrue(json, "\"note\":\"Ampoules\"" in json)
+        }
+
+    @Test
+    fun `the csv gives a part that goes into another account a line that reads as a transfer`() =
+        runTest {
+            val chequing = storeAccount()
+            val mortgage = storeAccount(name = "Hypothèque", type = AccountType.BANK, issuerLabel = null, last4 = null)
+            store(merchantName = "DESRIVES", amountMinor = 1_200_00, accountId = chequing)
+            split(1L, Triple(700_00L, null, null), intoAccount = 500_00L to mortgage)
+
+            val rows = write(ExportFormat.CSV).lines().filter { "DESRIVES" in it }
+
+            assertEquals(2, rows.size)
+            assertTrue(
+                rows.toString(),
+                rows[0].contains(";700,00;CAD;") && rows[0].contains(";EXPENSE;Débit Desrives;;"),
+            )
+            assertTrue(
+                rows.toString(),
+                rows[1].contains(";500,00;CAD;") && rows[1].contains(";TRANSFER;Débit Desrives;Hypothèque;"),
+            )
+        }
+
+    @Test
+    fun `the json says which account a part goes into`() =
+        runTest {
+            val chequing = storeAccount()
+            val mortgage = storeAccount(name = "Hypothèque", type = AccountType.BANK, issuerLabel = null, last4 = null)
+            store(merchantName = "DESRIVES", amountMinor = 1_200_00, accountId = chequing)
+            split(1L, Triple(700_00L, null, null), intoAccount = 500_00L to mortgage)
+
+            val json = write(ExportFormat.JSON).filterNot(Char::isWhitespace)
+
+            assertTrue(json, "\"toAccountId\":$mortgage,\"toAccountName\":\"Hypothèque\"}" in json)
         }
 
     /** The names you give your accounts are data about you, so they leave with the rest. */
@@ -162,7 +196,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 3" in json)
+            assertTrue(json, "\"version\": 4" in json)
             assertTrue(json, "\"name\": \"Débit Desrives\"" in json)
             assertTrue(json, "\"type\": \"CARD\"" in json)
             assertTrue(json, "\"issuerLabel\": \"Carte d'accès Desrives\"" in json)
@@ -179,7 +213,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 3" in json)
+            assertTrue(json, "\"version\": 4" in json)
             assertTrue(json, "\"openingBalanceMinor\": -64025" in json)
             assertTrue(json, "\"openingBalanceMinor\": null" in json)
         }
@@ -233,7 +267,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 3" in json)
+            assertTrue(json, "\"version\": 4" in json)
             assertTrue(json, "\"sourceKey\": \"tag-1\"" in json)
             assertTrue(json, "\"sourcePackage\": \"com.google.android.apps.walletnfcrel\"" in json)
             assertTrue(json, "\"normalisedName\": \"MARCHE ST DAVID\"" in json)
@@ -263,17 +297,25 @@ class LedgerExportTest {
     private suspend fun split(
         transactionId: Long,
         vararg parts: Triple<Long, Long?, String?>,
+        intoAccount: Pair<Long, Long>? = null,
     ) = database.transactionPartDao().replace(
         transactionId,
-        parts.map { (amountMinor, categoryId, note) ->
-            TransactionPartEntity(
-                transactionId = transactionId,
-                position = 0,
-                amountMinor = amountMinor,
-                categoryId = categoryId,
-                note = note,
-            )
-        },
+        parts.map { (amountMinor, categoryId, note) -> part(amountMinor, categoryId, note) } +
+            listOfNotNull(intoAccount?.let { (amountMinor, accountId) -> part(amountMinor, toAccountId = accountId) }),
+    )
+
+    private fun part(
+        amountMinor: Long,
+        categoryId: Long? = null,
+        note: String? = null,
+        toAccountId: Long? = null,
+    ) = TransactionPartEntity(
+        transactionId = 0,
+        position = 0,
+        amountMinor = amountMinor,
+        categoryId = categoryId,
+        note = note,
+        toAccountId = toAccountId,
     )
 
     private suspend fun write(format: ExportFormat): String {

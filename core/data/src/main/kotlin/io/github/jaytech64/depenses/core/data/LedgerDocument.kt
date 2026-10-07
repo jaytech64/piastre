@@ -21,11 +21,16 @@ import kotlinx.serialization.Serializable
  * version-2 reader skips keys it does not know, so it would have imported a
  * split as an uncategorised purchase without a word; the new number makes it
  * refuse instead. Nothing was removed, so a version-2 file is still read.
+ *
+ * Version 4 lets a part go into another account, which changes what the part
+ * is worth and what that account holds. A version-3 reader would have imported
+ * it as an ordinary part and left the account short without a word, so it is
+ * made to refuse too. Nothing was removed, so a version-3 file is still read.
  */
-internal const val LEDGER_FORMAT_VERSION = 3
+internal const val LEDGER_FORMAT_VERSION = 4
 
-/** The versions [decodeExport] reads: this one, and the one before it, which only lacks parts. */
-internal val READABLE_FORMAT_VERSIONS = setOf(2, LEDGER_FORMAT_VERSION)
+/** The versions [decodeExport] reads: this one, and the two before it, which only lack what was added since. */
+internal val READABLE_FORMAT_VERSIONS = setOf(2, 3, LEDGER_FORMAT_VERSION)
 
 /**
  * The JSON export, and what an import reads back.
@@ -197,11 +202,17 @@ internal data class ExportedTransaction(
     val parts: List<ExportedPart> = emptyList(),
 )
 
-/** One share of a split transaction's amount, in that transaction's currency, and what it was for. */
+/**
+ * One share of a split transaction's amount, in that transaction's currency, and
+ * what it was for. [toAccountId] is the account in the file the share went into,
+ * when it is a transfer.
+ */
 @Serializable
 internal data class ExportedPart(
     val amountMinor: Long,
     val categoryId: Long? = null,
     val categoryName: String? = null,
     val note: String? = null,
+    val toAccountId: Long? = null,
+    val toAccountName: String? = null,
 )

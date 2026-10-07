@@ -172,7 +172,7 @@ class LedgerImport
                 document.recurring.associate { it.id to recurringIdFor(it, accountIds, merchantIds, categoryIds) }
             plan.newTransactions.forEach { file ->
                 val id = transactions.insert(file.toEntity(accountIds, merchantIds, categoryIds, recurringIds))
-                parts.replace(id, file.parts.map { it.toEntity(categoryIds) })
+                parts.replace(id, file.parts.map { it.toEntity(categoryIds, accountIds) })
             }
             // A template already here, found by its identity, is left as you have it.
             document.templates.forEach {
@@ -294,11 +294,14 @@ private sealed interface AccountTarget {
     }
 }
 
-private fun ExportedPart.toEntity(categoryIds: Map<Long, Long?>) =
-    TransactionPartEntity(
-        transactionId = 0,
-        position = 0,
-        amountMinor = amountMinor,
-        categoryId = categoryId?.let(categoryIds::get),
-        note = note,
-    )
+private fun ExportedPart.toEntity(
+    categoryIds: Map<Long, Long?>,
+    accountIds: Map<Long, Long>,
+) = TransactionPartEntity(
+    transactionId = 0,
+    position = 0,
+    amountMinor = amountMinor,
+    categoryId = categoryId?.let(categoryIds::get),
+    note = note,
+    toAccountId = toAccountId?.let(accountIds::getValue),
+)
