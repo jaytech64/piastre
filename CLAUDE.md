@@ -202,9 +202,11 @@ A merchant's category — or, for a transfer, the category of the account it goe
 Categorising rows in bulk must not stamp `reviewedAtUtcMillis`, which would lock a parser fix out of them (`CategoryDao.categoriseAtMerchant`).
 A category's group is the opposite: read through, never copied onto the row, so moving a category moves its history ([ADR-0016](docs/adr/0016-a-categorys-group-is-read-through.md)).
 
-### A split is one transaction, counted whole
+### A split is one transaction, worth what its parts are worth
 
-A split's row keeps the whole amount and its parts in `transaction_part` only divide it among categories, so a total reads the row and only what reads a category reads the parts ([ADR-0018](docs/adr/0018-a-split-divides-one-transaction-among-categories.md), `settleCategory`).
+A split's row keeps the whole amount and its parts in `transaction_part` divide it among categories ([ADR-0018](docs/adr/0018-a-split-divides-one-transaction-among-categories.md), `settleCategory`).
+A part of an expense may go into another account, and that share is a transfer counted by the accounts it joins, so a total adds up a split's parts as the rows they would be entered apart, never its row's amount ([ADR-0019](docs/adr/0019-a-part-of-a-split-can-go-into-another-account.md)): `Transaction.movements` for the ledger, `MOVEMENTS` in `Daos.kt` for reports, changed together.
+The account such a part goes into gains the share, in `AccountDao.allWithCounts`, and a new per-account figure must count it too.
 Its row's `categoryId` is null because its parts carry them, so any write that fills in missing categories must pass over a row with parts (`NOT_SPLIT` in `Daos.kt`), or the split is counted under that category twice.
 
 ### A recurring transaction is written, never projected

@@ -1,6 +1,6 @@
 # 18. A split divides one transaction among categories
 
-- **Status:** Accepted — implemented.
+- **Status:** Accepted — implemented; amended by [ADR-0019](0019-a-part-of-a-split-can-go-into-another-account.md).
 - **Decided:** 2026-10-06, while planning split transactions (forks A to I).
 - **Touches:** `:core:model` (`TransactionPart`, `Transaction.parts`), `:core:database` (`TransactionPartEntity`, `TransactionPartDao`, `MIGRATION_16_17`, `ReportDao.categoryTotals`, `CategoryDao`), `:core:data` (`settleCategory`, `TransactionRepository`, `TransactionEditor`, `LedgerExport`, `LedgerImport`), `:feature:ledger`.
 
@@ -65,6 +65,13 @@ Format version 3 makes it refuse; this app reads both.
 An import still never changes a transaction it already holds ([ADR-0005](0005-import-merges-and-never-replaces.md)), so parts arrive only with a transaction that is new here.
 
 A dismissed captured row keeps its parts, as it keeps everything else, and they are in no figure because the row is not.
+
+## Revision — 2026-10-07
+
+[ADR-0019](0019-a-part-of-a-split-can-go-into-another-account.md) built what this record left for later: a part can go into another account.
+It did not hold to the sketch above in one respect.
+A whole-ledger figure does change when the share moved between two accounts that count as nothing to each other, as cash back at the till does, so a split is worth the sum of its parts rather than always its whole amount.
+A split with no such part is counted exactly as this record decided.
 
 ## Where this lives in the code
 

@@ -1,6 +1,6 @@
 # 17. A transfer counts by the accounts it joins
 
-- **Status:** Accepted — implemented.
+- **Status:** Accepted — implemented; amended by [ADR-0019](0019-a-part-of-a-split-can-go-into-another-account.md).
   Supersedes [ADR-0011](0011-a-transfer-under-a-category-is-money-that-left.md); amends [ADR-0006](0006-a-filtered-total-answers-for-one-account.md), [ADR-0007](0007-a-report-counts-spending-not-the-balance.md), [ADR-0008](0008-the-ledger-header-says-what-the-balance-is-made-of.md) and [ADR-0009](0009-a-report-says-what-its-balance-is-made-of.md).
 - **Decided:** 2026-10-04, while planning a report's category ranking.
 - **Touches:** `:core:model` (`Transaction.signedAmount`), `:feature:ledger` (`LedgerViewModel`, `SummaryFigures`), `:core:database` (`ReportDao`), `:core:data` (`ReportRepository`), `:feature:reports`.
@@ -60,6 +60,12 @@ The ledger reports the accounts as they were set up rather than second-guessing 
 
 **The rule is written twice**, in Kotlin for the ledger and in SQL for a report.
 A test totals every pair of account kinds through both and holds them to the same cent.
+
+## Revision — 2026-10-07
+
+[ADR-0019](0019-a-part-of-a-split-can-go-into-another-account.md) lets a part of a split expense go into another account.
+That share is a transfer between the transaction's account and the part's, and the table above decides what it is worth, unchanged.
+The SQL half of the rule now reads `MOVEMENTS`, each unsplit transaction and each part, rather than `expense_transaction` alone.
 
 ## Where this lives in the code
 
