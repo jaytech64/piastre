@@ -8,7 +8,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -33,6 +32,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.designsystem.MARK_SIZE
+import io.github.jaytech64.depenses.core.designsystem.MarkCircle
 import io.github.jaytech64.depenses.core.model.Money
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
@@ -81,7 +82,7 @@ internal fun TransactionRow(
         if (selected) {
             SelectedMark()
         } else {
-            TitleInitials(transaction.mark())
+            MarkCircle(transaction.mark())
         }
 
         Column(Modifier.weight(1f)) {
@@ -222,27 +223,6 @@ private fun Transaction.whenLabel(locale: Locale): String =
     }
 
 @Composable
-private fun TitleInitials(title: String?) {
-    Surface(
-        Modifier.size(ROW_MARK),
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.secondaryContainer,
-    ) {
-        Column(
-            Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                title.initials(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-        }
-    }
-}
-
-@Composable
 private fun SelectedMark() {
     Surface(Modifier.size(ROW_MARK), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
         Icon(
@@ -254,21 +234,11 @@ private fun SelectedMark() {
     }
 }
 
-private fun String?.initials(): String =
-    orEmpty()
-        .split(' ')
-        .filter { it.isNotBlank() }
-        .take(2)
-        .map { it.first().uppercaseChar() }
-        .joinToString("")
-        .ifEmpty { "?" }
-
 /** The circle a row starts with. */
-internal val ROW_MARK = 36.dp
+internal val ROW_MARK = MARK_SIZE
 
 /** What is left of the row's 16 dp margin once the edit button's own inset around its icon is counted. */
 private val EDIT_BUTTON_END = 4.dp
 
 internal const val SEPARATOR = " · "
 internal const val ARROW = "→"
-internal const val SPLIT_MARK = "÷"

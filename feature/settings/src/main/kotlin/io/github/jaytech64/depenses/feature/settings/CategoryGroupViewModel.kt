@@ -88,14 +88,15 @@ class CategoryGroupViewModel
         }
 
         /**
-         * Adds a category to [toGroupId], or renames the one being edited and moves
-         * it there. A rename another category's name refuses keeps the dialog open
-         * and says why, and moves nothing, rather than closing on a change that did
-         * not happen.
+         * Adds a category to [toGroupId] with [icon], or renames the one being
+         * edited, moves it there and gives it that icon. A rename another category's
+         * name refuses keeps the dialog open and says why, and changes nothing else,
+         * rather than closing on a change that did not happen.
          */
         fun save(
             name: String,
             toGroupId: Long?,
+            icon: String?,
         ) {
             val edit = editingState.value
             viewModelScope.launch {
@@ -104,6 +105,7 @@ class CategoryGroupViewModel
                         val category = edit.usage.category
                         if (repository.rename(category.id, name)) {
                             if (toGroupId != category.groupId) categoryGroups.move(category.id, toGroupId)
+                            if (icon != category.icon) categoryGroups.setIcon(category.id, icon)
                             editingState.value = null
                         } else {
                             editingState.value = edit.copy(refused = true)
@@ -111,7 +113,7 @@ class CategoryGroupViewModel
                     }
 
                     CategoryEdit.New -> {
-                        repository.named(name, toGroupId)
+                        repository.named(name, toGroupId, icon)
                         editingState.value = null
                     }
 

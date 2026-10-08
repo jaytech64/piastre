@@ -5,9 +5,14 @@ package io.github.jaytech64.depenses.feature.ledger
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import io.github.jaytech64.depenses.core.designsystem.Formatters
+import io.github.jaytech64.depenses.core.designsystem.Mark
+import io.github.jaytech64.depenses.core.designsystem.categoryHalfMark
+import io.github.jaytech64.depenses.core.designsystem.categoryMark
+import io.github.jaytech64.depenses.core.designsystem.initials
 import io.github.jaytech64.depenses.core.model.AccountType
 import io.github.jaytech64.depenses.core.model.Transaction
 import io.github.jaytech64.depenses.core.model.TransactionKind
+import io.github.jaytech64.depenses.core.model.TransactionPart
 
 /**
  * What the row is for leads: its category, so two bills from one merchant read
@@ -36,17 +41,39 @@ private fun Transaction.categoryTitle(): String? =
     }
 
 /**
- * What stands where a row's initials go: its category's, else its merchant's, or
- * an arrow for a transfer. A split shows that it is one, since no one category's
- * initials would be true of it.
+ * What stands in the circle a row starts with: its category's icon, or that
+ * category's initials while it has none; else its merchant's initials, or an
+ * arrow for a transfer.
+ *
+ * A split in two shows both of its categories, the first part's in the upper
+ * left. With more parts than that, or with two that nobody has given a
+ * category, it only shows that it is a split.
  */
-internal fun Transaction.mark(): String? =
+internal fun Transaction.mark(): Mark =
     when {
-        isSplit -> SPLIT_MARK
-        categoryName != null -> categoryName
-        kind == TransactionKind.TRANSFER -> ARROW
-        else -> displayMerchant
+        isSplit -> splitMark()
+        else -> categoryName?.let { categoryMark(it, categoryIcon) } ?: Mark.Letters(placeLetters())
     }
+
+private fun Transaction.placeLetters(): String =
+    if (kind ==
+        TransactionKind.TRANSFER
+    ) {
+        ARROW
+    } else {
+        displayMerchant.initials()
+    }
+
+private fun Transaction.splitMark(): Mark {
+    if (parts.size != 2) return Mark.Split
+    val (first, second) = parts
+    return when {
+        first.categoryId != second.categoryId -> Mark.Halves(first.halfMark(), second.halfMark())
+        else -> first.categoryName?.let { categoryMark(it, first.categoryIcon) } ?: Mark.Split
+    }
+}
+
+private fun TransactionPart.halfMark(): Mark.Single? = categoryName?.let { categoryHalfMark(it, categoryIcon) }
 
 /** Where the money went: the merchant, or — on a transfer — the two accounts of yours it moved between. */
 @Composable

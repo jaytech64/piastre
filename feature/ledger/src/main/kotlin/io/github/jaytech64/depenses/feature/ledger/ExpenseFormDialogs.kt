@@ -104,8 +104,8 @@ internal fun FormDialog(
             val forPart = picking == Picking.ADD_PART_CATEGORY
             CategoryDialog(
                 name = null,
-                onSave = { name, groupId ->
-                    viewModel.category.add(name, groupId, viewModel.split.takingCategory(forPart))
+                onSave = { name, groupId, icon ->
+                    viewModel.category.add(name, groupId, icon, viewModel.split.takingCategory(forPart))
                     onClose()
                 },
                 onDismiss = onClose,
