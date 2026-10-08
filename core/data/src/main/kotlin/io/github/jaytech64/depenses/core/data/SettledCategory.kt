@@ -73,6 +73,7 @@ internal fun PartWithCategory.toDomain(currency: String) =
         amount = Money(part.amountMinor, currency),
         categoryId = part.categoryId,
         categoryName = categoryName,
+        categoryIcon = categoryIcon,
         note = part.note,
         toAccountId = part.toAccountId,
         toAccountName = toAccountName,

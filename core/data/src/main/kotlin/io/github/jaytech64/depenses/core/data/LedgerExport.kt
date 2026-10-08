@@ -272,7 +272,7 @@ class LedgerExport
                             )
                         },
                     transactions = rows.map { it.toExported(partsByTransaction[it.transaction.id].orEmpty()) },
-                    categories = categories.allOnce().map { ExportedCategory(it.id, it.name, it.groupId) },
+                    categories = categories.allOnce().map { ExportedCategory(it.id, it.name, it.groupId, it.icon) },
                     categoryGroups = categoryGroups.allOnce().map { ExportedCategoryGroup(it.id, it.name) },
                     recurring = recurring.allWithNames().first().map { it.toExported() },
                     templates = templates.allWithNames().first().map { it.toExported() },

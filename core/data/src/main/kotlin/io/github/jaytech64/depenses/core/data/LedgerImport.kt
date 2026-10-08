@@ -45,6 +45,7 @@ class LedgerImport
         private val posting: RecurringPosting,
     ) {
         private val parts = database.transactionPartDao()
+        private val categoryRows = database.categoryDao()
 
         /** Reads and checks [input], and says what importing it would do, without writing anything. */
         suspend fun read(input: InputStream): ImportReading {
@@ -196,15 +197,17 @@ class LedgerImport
 
         /**
          * Each category in the file, found by name or added, in the group the file
-         * puts it in. A category of yours already in a group stays there: merging
+         * puts it in and with the icon the file gives it. A category of yours
+         * already in a group stays there, and one with an icon keeps it: merging
          * never replaces what you chose (ADR-0005).
          */
         private suspend fun categoryIdsFor(document: ExportDocument): Map<Long, Long?> {
             val groupIds = document.categoryGroups.associate { it.id to categoryGroups.named(it.name) }
             return document.categories.associate { file ->
                 val groupId = file.groupId?.let { groupIds[it] }
-                val id = categories.named(file.name, groupId)
+                val id = categories.named(file.name, groupId, file.icon)
                 if (id != null && groupId != null) categoryGroups.groupIfNone(id, groupId)
+                if (id != null && file.icon != null) categoryRows.iconIfNone(id, file.icon)
                 file.id to id
             }
         }

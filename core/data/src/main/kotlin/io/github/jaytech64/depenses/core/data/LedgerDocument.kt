@@ -112,12 +112,17 @@ internal data class ExportedTemplate(
 /**
  * A category you named. It arrived within version 2, so a file written before it
  * has none; [groupId] arrived later still, and is null in a file written before groups.
+ *
+ * [icon] arrived within version 4 and is the icon's name, null in a file written
+ * before icons. It did not take a new version: a reader that skips it shows the
+ * category's initials, and every amount in the file means what it meant.
  */
 @Serializable
 internal data class ExportedCategory(
     val id: Long,
     val name: String,
     val groupId: Long? = null,
+    val icon: String? = null,
 )
 
 /** A group categories are arranged under. It arrived within version 2, so a file written before it has none. */

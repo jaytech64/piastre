@@ -45,7 +45,7 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun transactionPartDao(): TransactionPartDao
 
     companion object {
-        const val VERSION: Int = 18
+        const val VERSION: Int = 19
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -70,6 +70,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_15_16,
                 MIGRATION_16_17,
                 MIGRATION_17_18,
+                MIGRATION_18_19,
             )
 
         const val NAME: String = "depenses.db"
@@ -548,6 +549,19 @@ private val MIGRATION_17_18 =
                 "CREATE INDEX IF NOT EXISTS `index_transaction_part_toAccountId` " +
                     "ON `transaction_part` (`toAccountId`)",
             )
+        }
+    }
+
+/**
+ * Schema 19 lets a category carry an icon.
+ *
+ * Nothing is filled in: a category nobody has picked an icon for has none, and
+ * a guess from its name would be a claim about what you meant by it.
+ */
+private val MIGRATION_18_19 =
+    object : Migration(18, 19) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE category ADD COLUMN icon TEXT")
         }
     }
 

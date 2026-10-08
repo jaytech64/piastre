@@ -8,11 +8,16 @@ import java.util.Locale
  * A kind of spending or income you named, such as Épicerie or Hypothèque. It is
  * what a transaction is given; [groupId] only says where it is arranged, and is
  * null while it is in no group.
+ *
+ * [icon] is the name of the icon you picked for it, null until you do. It is a
+ * name and not a picture because this module has no Android: whatever draws it
+ * looks the name up, and draws the category's initials for one it does not know.
  */
 data class Category(
     val id: Long,
     val name: String,
     val groupId: Long? = null,
+    val icon: String? = null,
 )
 
 /** What categories are arranged under, such as Maison. A transaction is never given one. */

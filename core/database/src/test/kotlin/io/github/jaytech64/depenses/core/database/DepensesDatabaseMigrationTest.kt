@@ -411,6 +411,18 @@ class DepensesDatabaseMigrationTest {
         assertEquals(0, migrated.singleInt("SELECT COUNT(toAccountId) FROM transaction_part"))
     }
 
+    @Test
+    fun `migrating to schema 19 keeps every category, and none of them has an icon`() {
+        helper.createDatabase(NAME, 18).use { database ->
+            database.execSQL("INSERT INTO category (name, normalisedName) VALUES ('Épicerie', 'EPICERIE')")
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 19, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals("Épicerie", migrated.singleString("SELECT name FROM category"))
+        assertEquals(0, migrated.singleInt("SELECT COUNT(icon) FROM category"))
+    }
+
     private fun SupportSQLiteDatabase.singleString(sql: String): String =
         query(sql).use { cursor ->
             cursor.moveToFirst()
