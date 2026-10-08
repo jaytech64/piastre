@@ -57,6 +57,8 @@ A single self-contained commit — docs, `ci:`, `chore:`, a one-line fix — goe
 5. **Prove it by running it** — the emulator first, the phone only for the capture path. See **Validation** below.
 6. **Merge with `git merge --no-ff`** so the branch stays legible in the history.
 7. **Write an ADR** if the change settled a question that would be expensive to reopen.
+8. **Leave the merged branch and its worktree where they are.**
+   A session cannot remove the worktree it runs in, so `.claude/hooks/sweep-finished-worktrees.sh` clears them at the start of the next one, and only when nothing can be lost; never force one out by hand with `git worktree remove --force` or `git branch -D`.
 
 ### What to escalate, and what to decide yourself
 
