@@ -114,25 +114,75 @@ data class Transaction(
      * nothing: counting a card payment would charge you twice for the purchases
      * it settles. So does one between two bank accounts, and one with an account
      * missing, since nobody said where that money went.
+     *
+     * A split is worth what its parts are worth: see [movements].
      */
-    val signedAmount: Money
+    val signedAmount: Money get() = movements.fold(Money(0, amount.currency), Money::plus)
+
+    /**
+     * What the transaction moves on the ledger as a whole, piece by piece: the
+     * transaction itself, or each part of a split as the row [apart] makes of
+     * it. So a split is worth what its parts would be entered apart (ADR-0019):
+     * the capital of a mortgage payment has left, and cash back at the till has
+     * only changed pockets.
+     *
+     * A figure that keeps what came in apart from what went out adds these up
+     * rather than [signedAmount], which nets the two on one row. `MOVEMENTS` in
+     * `Daos.kt` is the same in SQL for reports.
+     */
+    val movements: List<Money>
         get() =
-            when (kind) {
-                TransactionKind.INCOME -> amount
-                TransactionKind.EXPENSE -> -amount
-                TransactionKind.TRANSFER -> transferredAcrossTheLedgersEdge()
+            if (isSplit) {
+                parts.map { apart(it).signedAmount }
+            } else {
+                listOf(
+                    when (kind) {
+                        TransactionKind.INCOME -> amount
+                        TransactionKind.EXPENSE -> -amount
+                        TransactionKind.TRANSFER -> amount.across(accountType, toAccountType)
+                    },
+                )
             }
 
-    private fun transferredAcrossTheLedgersEdge(): Money {
-        val from = accountType
-        val into = toAccountType
-        return when {
-            from == null || into == null -> Money(0, amount.currency)
-            into == AccountType.BANK && from != AccountType.BANK -> -amount
-            from == AccountType.BANK && into != AccountType.BANK -> amount
-            else -> Money(0, amount.currency)
+    /**
+     * The row [part] would be, entered apart from the rest of this split: its
+     * share and its category, on this transaction's day and account. A part
+     * that goes into another account is a transfer from this one into that one;
+     * any other is what the transaction is.
+     */
+    fun apart(part: TransactionPart): Transaction =
+        if (part.isTransfer) {
+            copy(
+                amount = part.amount,
+                categoryId = part.categoryId,
+                categoryName = part.categoryName,
+                parts = emptyList(),
+                kind = TransactionKind.TRANSFER,
+                toAccountId = part.toAccountId,
+                toAccountName = part.toAccountName,
+                toAccountLast4 = part.toAccountLast4,
+                toAccountType = part.toAccountType,
+            )
+        } else {
+            copy(
+                amount = part.amount,
+                categoryId = part.categoryId,
+                categoryName = part.categoryName,
+                parts = emptyList(),
+            )
         }
-    }
+
+    /** This much moved [from] one kind of account [into] another, as it crosses the ledger's edge or does not. */
+    private fun Money.across(
+        from: AccountType?,
+        into: AccountType?,
+    ): Money =
+        when {
+            from == null || into == null -> Money(0, currency)
+            into == AccountType.BANK && from != AccountType.BANK -> -this
+            from == AccountType.BANK && into != AccountType.BANK -> this
+            else -> Money(0, currency)
+        }
 }
 
 /**

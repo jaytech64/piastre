@@ -93,6 +93,7 @@
     <string name="form_split">Split</string>
     <string name="form_split_title">Split</string>
     <string name="form_split_add">Add a part</string>
+    <string name="form_split_add_transfer">Add a transfer</string>
     <string name="form_split_left">Left to split: %s</string>
     <string name="form_split_over">%s too much</string>
     <string name="form_split_stop">Stop splitting</string>

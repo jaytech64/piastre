@@ -394,6 +394,23 @@ class DepensesDatabaseMigrationTest {
         assertEquals(0, migrated.count("transaction_part"))
     }
 
+    @Test
+    fun `migrating to schema 18 keeps every part, and none of them goes into an account`() {
+        helper.createDatabase(NAME, 17).use { database ->
+            database.insertTransaction()
+            database.execSQL(
+                "INSERT INTO transaction_part (transactionId, position, amountMinor, categoryId, note) " +
+                    "VALUES (1, 0, 6000, NULL, NULL), (1, 1, 554, NULL, 'sacs')",
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 18, true, *DepensesDatabase.MIGRATIONS)
+
+        assertEquals(2, migrated.count("transaction_part"))
+        assertEquals(6554, migrated.singleInt("SELECT SUM(amountMinor) FROM transaction_part"))
+        assertEquals(0, migrated.singleInt("SELECT COUNT(toAccountId) FROM transaction_part"))
+    }
+
     private fun SupportSQLiteDatabase.singleString(sql: String): String =
         query(sql).use { cursor ->
             cursor.moveToFirst()

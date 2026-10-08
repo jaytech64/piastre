@@ -26,8 +26,9 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0014](0014-a-dated-filters-headline-is-the-balance-of-its-dates.md) | A dated filter's headline is the balance of its dates | Accepted, revised once — implemented |
 | [0015](0015-a-transaction-counts-from-its-day.md) | A transaction counts from its day | Accepted — implemented |
 | [0016](0016-a-categorys-group-is-read-through.md) | A category's group is read through, never written onto the row | Accepted, revised once — implemented |
-| [0017](0017-a-transfer-counts-by-the-accounts-it-joins.md) | A transfer counts by the accounts it joins | Accepted — implemented |
-| [0018](0018-a-split-divides-one-transaction-among-categories.md) | A split divides one transaction among categories | Accepted — implemented |
+| [0017](0017-a-transfer-counts-by-the-accounts-it-joins.md) | A transfer counts by the accounts it joins | Accepted — amended by 0019 |
+| [0018](0018-a-split-divides-one-transaction-among-categories.md) | A split divides one transaction among categories | Accepted — amended by 0019 |
+| [0019](0019-a-part-of-a-split-can-go-into-another-account.md) | A part of a split can go into another account | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan.
 Each record after them was written with the branch that made the decision.

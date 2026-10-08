@@ -45,7 +45,7 @@ abstract class DepensesDatabase : RoomDatabase() {
     abstract fun transactionPartDao(): TransactionPartDao
 
     companion object {
-        const val VERSION: Int = 17
+        const val VERSION: Int = 18
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -69,6 +69,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_14_15,
                 MIGRATION_15_16,
                 MIGRATION_16_17,
+                MIGRATION_17_18,
             )
 
         const val NAME: String = "depenses.db"
@@ -531,6 +532,21 @@ private val MIGRATION_16_17 =
             db.execSQL(
                 "CREATE INDEX IF NOT EXISTS `index_transaction_part_categoryId` " +
                     "ON `transaction_part` (`categoryId`)",
+            )
+        }
+    }
+
+/**
+ * Schema 18 lets a part of a split go into another account. No part that
+ * exists was said to, so every one of them starts with none.
+ */
+private val MIGRATION_17_18 =
+    object : Migration(17, 18) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE transaction_part ADD COLUMN toAccountId INTEGER")
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS `index_transaction_part_toAccountId` " +
+                    "ON `transaction_part` (`toAccountId`)",
             )
         }
     }

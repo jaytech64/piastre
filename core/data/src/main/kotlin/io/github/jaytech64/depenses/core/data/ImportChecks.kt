@@ -64,7 +64,7 @@ internal fun ExportDocument.check() {
     transactions.forEach { transaction ->
         transaction.checkCodes()
         transaction.checkReferences(accountIds, merchantIds)
-        transaction.checkParts()
+        transaction.checkParts(accountIds)
         if (transaction.recurringId != null && transaction.recurringId !in recurringIds) {
             inconsistent("transaction ${transaction.sourceKey} belongs to a recurring transaction not in the file")
         }

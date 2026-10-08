@@ -19,7 +19,8 @@ The Wallet parser is tested against a corpus captured over two weeks on a real d
 Transactions take a category, and giving one to a purchase can also give it to the merchant's others and to everything bought there from now on — or, for a transfer, to everything moved into the same account ([ADR-0010](docs/adr/0010-a-merchants-category-is-written-onto-each-purchase.md)).
 Categories are arranged in groups on a page of their own in Settings, and the ledger can be filtered by a whole group ([ADR-0016](docs/adr/0016-a-categorys-group-is-read-through.md)).
 
-One transaction can be split among several categories: it stays one row counted whole in every balance, and its parts say what the amount was for wherever a category is read ([ADR-0018](docs/adr/0018-a-split-divides-one-transaction-among-categories.md)).
+One transaction can be split among several categories: it stays one row, and its parts say what the amount was for wherever a category is read ([ADR-0018](docs/adr/0018-a-split-divides-one-transaction-among-categories.md)).
+A part of an expense can go into another account, as the capital of a mortgage payment does while its interest is spent, and the split is then worth what its parts would be entered apart ([ADR-0019](docs/adr/0019-a-part-of-a-split-can-go-into-another-account.md)).
 
 A transaction typed by hand can repeat — every week, every two weeks, every month or every year — and each time it falls due it is written into the ledger, dated on its own day, as an ordinary row ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md)).
 Nothing wakes the app to do it: due days are caught up whenever the app or its listener runs.

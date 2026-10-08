@@ -46,5 +46,43 @@ class TransactionPartTest {
         assertFalse(listOf(part(12_000), TransactionPart(Money(6_742, "USD"))).divide(costco))
     }
 
+    @Test
+    fun `a share of an expense can go into another account`() {
+        assertTrue(listOf(part(70_000), into(MORTGAGE)).canMoveOnFrom(TransactionKind.EXPENSE, CHEQUING))
+    }
+
+    @Test
+    fun `a share cannot go into the account the expense came from`() {
+        assertFalse(listOf(part(70_000), into(CHEQUING)).canMoveOnFrom(TransactionKind.EXPENSE, CHEQUING))
+    }
+
+    @Test
+    fun `a share cannot move on from an account nobody named`() {
+        assertFalse(listOf(part(70_000), into(MORTGAGE)).canMoveOnFrom(TransactionKind.EXPENSE, accountId = null))
+    }
+
+    @Test
+    fun `only an expense has a share that moves on`() {
+        val parts = listOf(part(70_000), into(MORTGAGE))
+
+        assertFalse(parts.canMoveOnFrom(TransactionKind.INCOME, CHEQUING))
+        assertFalse(parts.canMoveOnFrom(TransactionKind.TRANSFER, CHEQUING))
+    }
+
+    @Test
+    fun `parts that go nowhere suit any kind of transaction`() {
+        val parts = listOf(part(12_000), part(6_742))
+
+        assertTrue(parts.canMoveOnFrom(TransactionKind.INCOME, accountId = null))
+        assertTrue(parts.canMoveOnFrom(TransactionKind.TRANSFER, CHEQUING))
+    }
+
     private fun part(minor: Long) = TransactionPart(Money(minor, Money.CAD))
+
+    private fun into(accountId: Long) = TransactionPart(Money(50_000, Money.CAD), toAccountId = accountId)
+
+    private companion object {
+        const val CHEQUING = 1L
+        const val MORTGAGE = 2L
+    }
 }

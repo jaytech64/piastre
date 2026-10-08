@@ -87,16 +87,16 @@ internal fun FormDialog(
             )
         }
 
-        Picking.ADD_ACCOUNT, Picking.ADD_DESTINATION -> {
-            val slot = if (picking == Picking.ADD_ACCOUNT) AccountSlot.SOURCE else AccountSlot.DESTINATION
-            AccountDialog(
-                account = null,
-                onSave = { name, type, last4, openingBalance ->
-                    viewModel.addAccount(name, type, last4, openingBalance, slot)
-                    onClose()
-                },
-                onDismiss = onClose,
-            )
+        Picking.ADD_ACCOUNT -> {
+            AddAccountDialog(AccountSlot.SOURCE, viewModel, onClose)
+        }
+
+        Picking.ADD_DESTINATION -> {
+            AddAccountDialog(AccountSlot.DESTINATION, viewModel, onClose)
+        }
+
+        Picking.ADD_PART_ACCOUNT -> {
+            AddAccountDialog(AccountSlot.PART, viewModel, onClose)
         }
 
         Picking.ADD_CATEGORY, Picking.ADD_PART_CATEGORY -> {
@@ -121,6 +121,23 @@ internal fun FormDialog(
             Unit
         }
     }
+}
+
+/** Adds the account missing from a list on the form, and puts it in the [slot] that list was for. */
+@Composable
+private fun AddAccountDialog(
+    slot: AccountSlot,
+    viewModel: ExpenseFormViewModel,
+    onClose: () -> Unit,
+) {
+    AccountDialog(
+        account = null,
+        onSave = { name, type, last4, openingBalance ->
+            viewModel.addAccount(name, type, last4, openingBalance, slot)
+            onClose()
+        },
+        onDismiss = onClose,
+    )
 }
 
 /** The calendar for the transaction's own day, or for the last day it repeats on, which can also be none. */
@@ -165,6 +182,7 @@ internal enum class Picking {
     DELETE,
     ADD_ACCOUNT,
     ADD_DESTINATION,
+    ADD_PART_ACCOUNT,
     ADD_CATEGORY,
     ADD_PART_CATEGORY,
     TEMPLATES,

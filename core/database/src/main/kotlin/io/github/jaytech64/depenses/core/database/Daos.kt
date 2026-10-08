@@ -425,12 +425,14 @@ interface TransactionPartDao {
         )
     }
 
-    /** Every part with its category's name, each transaction's together and in the order typed. */
+    /** Every part with what it names, each transaction's together and in the order typed. */
     @Query(
         """
-        SELECT p.*, c.name AS categoryName
+        SELECT p.*, c.name AS categoryName,
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM transaction_part p
         LEFT JOIN category c ON c.id = p.categoryId
+        LEFT JOIN account d ON d.id = p.toAccountId
         ORDER BY p.transactionId, p.position
         """,
     )
@@ -438,9 +440,11 @@ interface TransactionPartDao {
 
     @Query(
         """
-        SELECT p.*, c.name AS categoryName
+        SELECT p.*, c.name AS categoryName,
+               d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM transaction_part p
         LEFT JOIN category c ON c.id = p.categoryId
+        LEFT JOIN account d ON d.id = p.toAccountId
         WHERE p.transactionId = :transactionId
         ORDER BY p.position
         """,
@@ -451,10 +455,13 @@ interface TransactionPartDao {
     suspend fun allOnce(): List<TransactionPartEntity>
 }
 
-/** A part with the name of its category, or none. */
+/** A part with the name of its category, or none, and the account it goes into when it is a transfer. */
 data class PartWithCategory(
     @Embedded val part: TransactionPartEntity,
     val categoryName: String?,
+    val toAccountName: String? = null,
+    val toAccountLast4: String? = null,
+    val toAccountType: AccountType? = null,
 )
 
 @Dao
@@ -590,12 +597,15 @@ interface AccountDao {
     /**
      * In the order you set in Settings, which every list of accounts follows.
      *
-     * Both sides of a transfer count: an account money only ever leaves is still in
-     * use, and the count is what decides whether it can be removed.
+     * Both sides of a transfer count, and so does a split one part of which goes
+     * into the account: an account money only ever leaves is still in use, and
+     * the count is what decides whether it can be removed.
      *
      * The balance starts from the opening balance and follows every confirmed row on
      * the account: income adds, an expense takes away, and a transfer takes from the
-     * account it left and adds to the one it reached. Only [currency] is summed, the
+     * account it left and adds to the one it reached. A part of a split that goes
+     * into the account adds its share, while the split's own account has already
+     * given up the whole amount (ADR-0019). Only [currency] is summed, the
      * way reports keep to one currency, because dollars plus euros is not a balance.
      * It stops at [throughDay]: what the account holds that day, never a row dated
      * after it. The count does not stop, since a row still to come uses the account.
@@ -604,7 +614,9 @@ interface AccountDao {
         """
         SELECT a.*,
             (SELECT COUNT(*) FROM expense_transaction t
-             WHERE (t.accountId = a.id OR t.toAccountId = a.id) AND t.status = 'CONFIRMED') AS transactionCount,
+             WHERE (t.accountId = a.id OR t.toAccountId = a.id OR EXISTS (
+                        SELECT 1 FROM transaction_part p WHERE p.transactionId = t.id AND p.toAccountId = a.id))
+               AND t.status = 'CONFIRMED') AS transactionCount,
             COALESCE(a.openingBalanceMinor, 0)
                 + COALESCE((SELECT SUM(CASE WHEN t.kind = 'INCOME' THEN t.amountMinor ELSE -t.amountMinor END)
                             FROM expense_transaction t
@@ -613,6 +625,12 @@ interface AccountDao {
                 + COALESCE((SELECT SUM(t.amountMinor)
                             FROM expense_transaction t
                             WHERE t.toAccountId = a.id AND t.kind = 'TRANSFER'
+                              AND t.status = 'CONFIRMED' AND t.currency = :currency
+                              AND t.localDateEpochDay <= :throughDay), 0)
+                + COALESCE((SELECT SUM(p.amountMinor)
+                            FROM transaction_part p
+                            JOIN expense_transaction t ON t.id = p.transactionId
+                            WHERE p.toAccountId = a.id
                               AND t.status = 'CONFIRMED' AND t.currency = :currency
                               AND t.localDateEpochDay <= :throughDay), 0)
                 AS balanceMinor
@@ -665,14 +683,16 @@ interface AccountDao {
     )
 
     /**
-     * Returns 1 when the account was removed and 0 when a transaction, a
-     * recurring transaction or a template still uses it, so nothing is ever left
-     * pointing at an account that is gone.
+     * Returns 1 when the account was removed and 0 when a transaction, a part of
+     * one, a recurring transaction or a template still uses it, so nothing is
+     * ever left pointing at an account that is gone.
      */
     @Query(
         """
         DELETE FROM account WHERE id = :id AND NOT EXISTS (
             SELECT 1 FROM expense_transaction WHERE accountId = :id OR toAccountId = :id
+        ) AND NOT EXISTS (
+            SELECT 1 FROM transaction_part WHERE toAccountId = :id
         ) AND NOT EXISTS (
             SELECT 1 FROM recurring_transaction WHERE accountId = :id OR toAccountId = :id
         ) AND NOT EXISTS (
@@ -1215,23 +1235,51 @@ data class CategoryTotal(
  * one has left and money moved out of one has come back. `NULL <> 'BANK'` is
  * not true, which is what leaves out a transfer with an account missing.
  */
-private const val TRANSFER_ENDS =
-    "LEFT JOIN account origin ON origin.id = t.accountId " +
-        "LEFT JOIN account destination ON destination.id = t.toAccountId"
 private const val MONEY_OUT =
     "(t.kind = 'EXPENSE' OR (t.kind = 'TRANSFER' AND destination.type = 'BANK' AND origin.type <> 'BANK'))"
 private const val MONEY_IN =
     "(t.kind = 'INCOME' OR (t.kind = 'TRANSFER' AND origin.type = 'BANK' AND destination.type <> 'BANK'))"
 
-/** The confirmed rows that went out in one currency over a range of days, which every spending figure counts. */
-private const val SPENT_IN_RANGE =
-    "t.status = 'CONFIRMED' AND " + MONEY_OUT +
-        " AND t.currency = :currency AND t.localDateEpochDay BETWEEN :fromDay AND :toDay"
+/**
+ * Every piece of a confirmed transaction in a range of days that [MONEY_OUT]
+ * and [MONEY_IN] can be asked about, as `t`: a transaction that is not split,
+ * whole, or each part of one that is. A split is worth what its parts are
+ * worth, so every report figure reads these and none reads
+ * `expense_transaction` itself (ADR-0019).
+ *
+ * A part counts as its transaction does, under its own category. One that goes
+ * into another account is a transfer from the transaction's account into that
+ * one, so it counts by the accounts it joins like any transfer: the capital of
+ * a mortgage payment has left, and cash back at the till has not.
+ * `Transaction.movements` is the same in Kotlin.
+ *
+ * The days are narrowed inside each half, where the index on the day is.
+ */
+private const val MOVEMENTS =
+    """
+    (
+        SELECT e.id AS transactionId, e.localDateEpochDay AS day, e.currency AS currency,
+               e.categoryId AS categoryId, e.amountMinor AS amountMinor, e.kind AS kind,
+               e.accountId AS fromAccountId, e.toAccountId AS intoAccountId
+        FROM expense_transaction e
+        WHERE e.status = 'CONFIRMED' AND e.localDateEpochDay BETWEEN :fromDay AND :toDay
+          AND NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = e.id)
+        UNION ALL
+        SELECT e.id, e.localDateEpochDay, e.currency, p.categoryId, p.amountMinor,
+               CASE WHEN p.toAccountId IS NULL THEN e.kind ELSE 'TRANSFER' END,
+               e.accountId, COALESCE(p.toAccountId, e.toAccountId)
+        FROM expense_transaction e
+        JOIN transaction_part p ON p.transactionId = e.id
+        WHERE e.status = 'CONFIRMED' AND e.localDateEpochDay BETWEEN :fromDay AND :toDay
+    ) t
+    LEFT JOIN account origin ON origin.id = t.fromAccountId
+    LEFT JOIN account destination ON destination.id = t.intoAccountId
+    """
 
 /**
  * Reports are SQL, not Kotlin loops over the whole table. Every one of these
- * groups on an indexed integer column, so a year of history costs the same as a
- * week.
+ * reads [MOVEMENTS], which narrows on an indexed integer column, so a year of
+ * history costs the same as a week.
  *
  * They are about what went out, so every one but [incomeForRange] keeps to
  * [MONEY_OUT]: a paycheque ranked beside the groceries would make the ranking
@@ -1240,17 +1288,15 @@ private const val SPENT_IN_RANGE =
  */
 @Dao
 interface ReportDao {
+    /** A split is one transaction on its day, however many of its parts went out. */
     @Query(
         """
-        SELECT t.localDateEpochDay AS day, SUM(t.amountMinor) AS totalMinor, COUNT(*) AS count
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        WHERE t.status = 'CONFIRMED'
-          AND """ + MONEY_OUT + """
+        SELECT t.day AS day, SUM(t.amountMinor) AS totalMinor, COUNT(DISTINCT t.transactionId) AS count
+        FROM """ + MOVEMENTS + """
+        WHERE """ + MONEY_OUT + """
           AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
-        GROUP BY t.localDateEpochDay
-        ORDER BY t.localDateEpochDay
+        GROUP BY t.day
+        ORDER BY t.day
         """,
     )
     fun dailyTotals(
@@ -1262,12 +1308,9 @@ interface ReportDao {
     @Query(
         """
         SELECT SUM(t.amountMinor)
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        WHERE t.status = 'CONFIRMED'
-          AND """ + MONEY_OUT + """
+        FROM """ + MOVEMENTS + """
+        WHERE """ + MONEY_OUT + """
           AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun totalForRange(
@@ -1279,12 +1322,9 @@ interface ReportDao {
     @Query(
         """
         SELECT SUM(t.amountMinor)
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        WHERE t.status = 'CONFIRMED'
-          AND """ + MONEY_IN + """
+        FROM """ + MOVEMENTS + """
+        WHERE """ + MONEY_IN + """
           AND t.currency = :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun incomeForRange(
@@ -1305,22 +1345,12 @@ interface ReportDao {
     @Query(
         """
         SELECT c.id AS categoryId, c.name AS categoryName, g.id AS groupId, g.name AS groupName,
-               SUM(s.amountMinor) AS totalMinor, COUNT(DISTINCT s.transactionId) AS count
-        FROM (
-            SELECT t.id AS transactionId, t.categoryId AS categoryId, t.amountMinor AS amountMinor
-            FROM expense_transaction t
-            """ + TRANSFER_ENDS + """
-            WHERE """ + SPENT_IN_RANGE + """
-              AND NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = t.id)
-            UNION ALL
-            SELECT t.id, p.categoryId, p.amountMinor
-            FROM expense_transaction t
-            """ + TRANSFER_ENDS + """
-            JOIN transaction_part p ON p.transactionId = t.id
-            WHERE """ + SPENT_IN_RANGE + """
-        ) s
-        LEFT JOIN category c ON c.id = s.categoryId
+               SUM(t.amountMinor) AS totalMinor, COUNT(DISTINCT t.transactionId) AS count
+        FROM """ + MOVEMENTS + """
+        LEFT JOIN category c ON c.id = t.categoryId
         LEFT JOIN category_group g ON g.id = c.groupId
+        WHERE """ + MONEY_OUT + """
+          AND t.currency = :currency
         GROUP BY c.id
         """,
     )
@@ -1331,10 +1361,10 @@ interface ReportDao {
     ): Flow<List<CategoryTotal>>
 
     /**
-     * How many rows in the range the figures above would have counted, and left
-     * out because they were in something other than [currency]. A transfer that
-     * moves the ledger by nothing is not among them: it is in no total here, so
-     * leaving one out understates nothing.
+     * How many transactions in the range the figures above would have counted,
+     * and left out because they were in something other than [currency]. A
+     * transfer that moves the ledger by nothing is not among them: it is in no
+     * total here, so leaving one out understates nothing.
      *
      * Converting them is impossible here — a rate needs a network, and there is
      * none — so a report can only decline to count them. Declining silently is
@@ -1344,13 +1374,10 @@ interface ReportDao {
      */
     @Query(
         """
-        SELECT COUNT(*)
-        FROM expense_transaction t
-        """ + TRANSFER_ENDS + """
-        WHERE t.status = 'CONFIRMED'
-          AND (""" + MONEY_OUT + " OR " + MONEY_IN + """)
+        SELECT COUNT(DISTINCT t.transactionId)
+        FROM """ + MOVEMENTS + """
+        WHERE (""" + MONEY_OUT + " OR " + MONEY_IN + """)
           AND t.currency != :currency
-          AND t.localDateEpochDay BETWEEN :fromDay AND :toDay
         """,
     )
     fun otherCurrencyCount(

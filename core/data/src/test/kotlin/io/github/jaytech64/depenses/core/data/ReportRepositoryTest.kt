@@ -154,6 +154,89 @@ class ReportRepositoryTest {
         }
 
     @Test
+    fun `a report and the ledger agree to the cent on a share moved on, for every pair of accounts`() =
+        runTest {
+            val kinds: List<AccountType?> = AccountType.entries + null
+            var amountMinor = 100L
+            for (from in kinds) {
+                for (into in kinds.filterNotNull()) {
+                    amountMinor *= 2
+                    val key = "split-$amountMinor"
+                    record(on = MONDAY, amountMinor = amountMinor, key = key, accountId = from?.let { account(it) })
+                    split(key, amountMinor - 50L to null, intoAccount = 50L to account(into))
+                }
+            }
+
+            val ledger = transactionRepository().confirmed().first()
+            val cameIn = ledger.flatMap { it.movements }.filter { it.minor > 0 }.sumOf { it.minor }
+            val wentOut = -ledger.flatMap { it.movements }.filter { it.minor < 0 }.sumOf { it.minor }
+
+            assertEquals(cameIn, reports.income(week(), TODAY).first().minor)
+            assertEquals(
+                wentOut,
+                reports
+                    .spending(week(), TODAY)
+                    .first()
+                    .total.minor,
+            )
+            assertEquals(wentOut, reports.total(week(), TODAY).first().minor)
+        }
+
+    @Test
+    fun `the capital of a mortgage payment is spending under its own category, and one transaction on its day`() =
+        runTest {
+            val interest = category("Intérêts", null)
+            val mortgage = category("Hypothèque", null)
+            record(on = MONDAY, amountMinor = 120_000, key = "payment", accountId = account(AccountType.CARD))
+            split(
+                "payment",
+                70_000L to interest,
+                intoAccount = 50_000L to account(AccountType.BANK),
+                itsCategory = mortgage,
+            )
+
+            val spending = reports.categorySpending(week(), TODAY).first().associateBy { it.category?.name }
+
+            assertEquals(Money(70_000, Money.CAD), spending.getValue("Intérêts").total)
+            assertEquals(Money(50_000, Money.CAD), spending.getValue("Hypothèque").total)
+            assertEquals(PeriodSpending(Money(120_000, Money.CAD), 1), reports.spending(week(), TODAY).first())
+        }
+
+    @Test
+    fun `cash back at the till is in no figure, and under no category`() =
+        runTest {
+            val groceries = category("Épicerie", null)
+            record(on = MONDAY, amountMinor = 18_742, key = "costco", accountId = account(AccountType.CARD))
+            split(
+                "costco",
+                14_742L to groceries,
+                intoAccount = 4_000L to account(AccountType.CASH),
+                itsCategory = groceries,
+            )
+
+            assertEquals(Money(14_742, Money.CAD), reports.spending(week(), TODAY).first().total)
+            assertEquals(mapOf(MONDAY to Money(14_742, Money.CAD)), reports.dailyTotals(week(), TODAY).first())
+            assertEquals(
+                Money(14_742, Money.CAD),
+                reports
+                    .categorySpending(week(), TODAY)
+                    .first()
+                    .single()
+                    .total,
+            )
+            assertEquals(Money(0, Money.CAD), reports.income(week(), TODAY).first())
+        }
+
+    @Test
+    fun `a split in another currency is counted once as left out`() =
+        runTest {
+            record(on = MONDAY, amountMinor = 18_742, currency = "USD", key = "costco")
+            split("costco", 12_000L to null, 6_742L to null)
+
+            assertEquals(1, reports.otherCurrencyCount(week(), TODAY).first())
+        }
+
+    @Test
     fun `an income still waiting for review or in another currency is not counted as income`() =
         runTest {
             record(on = MONDAY, amountMinor = 150_000, kind = TransactionKind.INCOME, key = "pay")
@@ -438,24 +521,31 @@ class ReportRepositoryTest {
         )
     }
 
+    /** Divides the row among categories, with a last part of [intoAccount]'s amount going into that account. */
     private suspend fun split(
         key: String,
         vararg parts: Pair<Long, Long?>,
+        intoAccount: Pair<Long, Long>? = null,
+        itsCategory: Long? = null,
     ) {
         val id = checkNotNull(database.transactionDao().bySourceKey("manual", key)).id
-        database.transactionPartDao().replace(
-            id,
-            parts.map { (amountMinor, categoryId) ->
-                TransactionPartEntity(
-                    transactionId = id,
-                    position = 0,
-                    amountMinor = amountMinor,
-                    categoryId = categoryId,
-                    note = null,
-                )
-            },
-        )
+        val spent = parts.map { (amountMinor, categoryId) -> part(amountMinor, categoryId) }
+        val movedOn = intoAccount?.let { (amountMinor, accountId) -> part(amountMinor, itsCategory, accountId) }
+        database.transactionPartDao().replace(id, spent + listOfNotNull(movedOn))
     }
+
+    private fun part(
+        amountMinor: Long,
+        categoryId: Long?,
+        toAccountId: Long? = null,
+    ) = TransactionPartEntity(
+        transactionId = 0,
+        position = 0,
+        amountMinor = amountMinor,
+        categoryId = categoryId,
+        note = null,
+        toAccountId = toAccountId,
+    )
 
     private suspend fun transfer(
         on: LocalDate,

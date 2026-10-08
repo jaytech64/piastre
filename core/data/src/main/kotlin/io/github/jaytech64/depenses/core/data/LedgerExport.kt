@@ -14,6 +14,7 @@ import io.github.jaytech64.depenses.core.database.TransactionDao
 import io.github.jaytech64.depenses.core.database.TransactionPartDao
 import io.github.jaytech64.depenses.core.database.TransactionTemplateDao
 import io.github.jaytech64.depenses.core.database.TransactionWithMerchant
+import io.github.jaytech64.depenses.core.model.TransactionKind
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import java.io.OutputStream
@@ -154,38 +155,44 @@ class LedgerExport
          * column therefore still adds up to the ledger, and a table pivoted on the
          * category says what went to each (ADR-0018). A part with no note of its
          * own carries the transaction's.
+         *
+         * A part that goes into another account reads as the transfer it is, with
+         * that account where a transfer names its destination (ADR-0019).
          */
         private fun TransactionWithMerchant.csvLines(
             parts: List<PartWithCategory>,
             groupNames: Map<Long, String>,
         ): List<List<String>> {
             if (parts.isEmpty()) {
-                return listOf(
-                    csvFields(
-                        transaction.amountMinor,
-                        transaction.note,
-                        categoryName,
-                        transaction.categoryId,
-                        groupNames,
-                    ),
-                )
+                val whole =
+                    CsvShare(
+                        amountMinor = transaction.amountMinor,
+                        note = transaction.note,
+                        categoryName = categoryName,
+                        categoryId = transaction.categoryId,
+                        kind = transaction.kind,
+                        toAccountName = toAccountName,
+                    )
+                return listOf(csvFields(whole, groupNames))
             }
             return parts.map {
+                val movedOn = it.part.toAccountId != null
                 csvFields(
-                    it.part.amountMinor,
-                    it.part.note ?: transaction.note,
-                    it.categoryName,
-                    it.part.categoryId,
+                    CsvShare(
+                        amountMinor = it.part.amountMinor,
+                        note = it.part.note ?: transaction.note,
+                        categoryName = it.categoryName,
+                        categoryId = it.part.categoryId,
+                        kind = if (movedOn) TransactionKind.TRANSFER else transaction.kind,
+                        toAccountName = if (movedOn) it.toAccountName else toAccountName,
+                    ),
                     groupNames,
                 )
             }
         }
 
         private fun TransactionWithMerchant.csvFields(
-            amountMinor: Long,
-            note: String?,
-            categoryName: String?,
-            categoryId: Long?,
+            share: CsvShare,
             groupNames: Map<Long, String>,
         ): List<String> {
             val zone = ZoneId.of(transaction.zoneId)
@@ -194,17 +201,17 @@ class LedgerExport
                 DATE.format(moment),
                 TIME.format(moment),
                 merchantName ?: transaction.merchantRaw.orEmpty(),
-                minorUnitsAsDecimal(amountMinor),
+                minorUnitsAsDecimal(share.amountMinor),
                 transaction.currency,
                 transaction.source.name,
                 transaction.status.name,
                 transaction.cardLast4.orEmpty(),
-                note.orEmpty(),
-                transaction.kind.name,
+                share.note.orEmpty(),
+                share.kind.name,
                 accountLabel(),
-                toAccountName.orEmpty(),
-                categoryName.orEmpty(),
-                categoryId?.let(groupNames::get).orEmpty(),
+                share.toAccountName.orEmpty(),
+                share.categoryName.orEmpty(),
+                share.categoryId?.let(groupNames::get).orEmpty(),
             )
         }
 
@@ -305,7 +312,16 @@ class LedgerExport
                 categoryName = categoryName,
                 recurringId = transaction.recurringId,
                 parts =
-                    parts.map { ExportedPart(it.part.amountMinor, it.part.categoryId, it.categoryName, it.part.note) },
+                    parts.map {
+                        ExportedPart(
+                            amountMinor = it.part.amountMinor,
+                            categoryId = it.part.categoryId,
+                            categoryName = it.categoryName,
+                            note = it.part.note,
+                            toAccountId = it.part.toAccountId,
+                            toAccountName = it.toAccountName,
+                        )
+                    },
             )
 
         private fun RecurringWithNames.toExported() =
@@ -377,6 +393,16 @@ private fun TemplateWithNames.toExported() =
         lastUsedAtUtcMillis = template.lastUsedAtUtcMillis,
         recurring = template.recurring,
     )
+
+/** What one CSV line says of a transaction: the whole of it, or one part of a split. */
+private data class CsvShare(
+    val amountMinor: Long,
+    val note: String?,
+    val categoryName: String?,
+    val categoryId: Long?,
+    val kind: TransactionKind,
+    val toAccountName: String?,
+)
 
 /**
  * Quoted only when it has to be, and never left able to break the row.

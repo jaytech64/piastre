@@ -28,6 +28,7 @@ import io.github.jaytech64.depenses.core.model.TransactionKind
 import io.github.jaytech64.depenses.core.model.TransactionPart
 import io.github.jaytech64.depenses.core.model.TransactionSource
 import io.github.jaytech64.depenses.core.model.TransactionTemplate
+import io.github.jaytech64.depenses.core.model.canMoveOnFrom
 import io.github.jaytech64.depenses.core.model.divide
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,7 +63,7 @@ const val TEMPLATE_ID_ARG = "templateId"
 const val NEW_TEMPLATE_ID = 0L
 
 /** Which end of a transfer a choice is about. Anything else has only a source. */
-enum class AccountSlot { SOURCE, DESTINATION }
+enum class AccountSlot { SOURCE, DESTINATION, PART }
 
 /**
  * What has been typed so far. [amountText] is kept as text rather than as a
@@ -177,14 +178,30 @@ data class ExpenseFormUiState(
     val partsToSave: List<TransactionPart>
         get() =
             parts
-                .map { part -> part.amount?.let { TransactionPart(it, part.categoryId, note = part.note) } }
-                .takeIf { typed -> typed.none { it == null } }
+                .map { part ->
+                    part.amount?.let {
+                        TransactionPart(it, part.categoryId, note = part.note, toAccountId = part.toAccountId)
+                    }
+                }.takeIf { typed -> typed.none { it == null } }
                 ?.filterNotNull()
                 .orEmpty()
 
-    /** Save stays out of reach while something is left to divide, or the parts exceed the amount. */
+    /**
+     * Save stays out of reach while something is left to divide, or the parts
+     * exceed the amount; and while a part that is a transfer has no account, or
+     * one it cannot go into, the way a transfer waits on its two accounts.
+     */
     private val splitIsSettled: Boolean
-        get() = !isSplit || amount?.let { partsToSave.divide(it) } == true
+        get() =
+            !isSplit ||
+                (
+                    amount?.let { partsToSave.divide(it) } == true &&
+                        parts.none { it.isTransfer && it.toAccountId == null } &&
+                        partsToSave.canMoveOnFrom(kind, accountId)
+                )
+
+    /** Only a share of an expense goes into another account. */
+    val offersTransferParts: Boolean get() = kind == TransactionKind.EXPENSE
 
     /** Only a transaction is divided: a schedule and a template say what one is, not what one was for. */
     val offersSplit: Boolean get() = !isSchedule && !isTemplate
@@ -405,7 +422,7 @@ class ExpenseFormViewModel
 
         fun onKindChange(kind: TransactionKind) =
             _uiState.update {
-                category.following(it.copy(kind = kind).withLastAccount(lastAccounts.value))
+                category.following(it.copy(kind = kind).withPartsFittingItsKind().withLastAccount(lastAccounts.value))
             }
 
         fun onAccountChange(
@@ -414,6 +431,7 @@ class ExpenseFormViewModel
         ) = when (slot) {
             AccountSlot.SOURCE -> _uiState.update { it.copy(accountId = id, accountChosen = true) }
             AccountSlot.DESTINATION -> _uiState.update { category.following(it.copy(toAccountId = id)) }
+            AccountSlot.PART -> id?.let(split.transfers::takeAccount)
         }
 
         /** Adds the account missing from the list and picks it, so adding one never means leaving the form. */
@@ -563,7 +581,14 @@ private fun ExpenseFormUiState.filledFrom(transaction: Transaction): ExpenseForm
         categoryChosen = transaction.categoryId != null || transaction.isSplit,
         parts =
             transaction.parts.mapIndexed { index, part ->
-                PartDraft(index.toLong(), Formatters.amountInput(part.amount), part.categoryId, part.note.orEmpty())
+                PartDraft(
+                    key = index.toLong(),
+                    amountText = Formatters.amountInput(part.amount),
+                    categoryId = part.categoryId,
+                    note = part.note.orEmpty(),
+                    isTransfer = part.isTransfer,
+                    toAccountId = part.toAccountId,
+                )
             },
         isCaptured = transaction.source == TransactionSource.NOTIFICATION,
         canRepeat = transaction.source == TransactionSource.MANUAL && transaction.recurringId == null,
