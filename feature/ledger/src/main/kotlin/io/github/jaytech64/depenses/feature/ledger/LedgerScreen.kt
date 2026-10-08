@@ -105,6 +105,7 @@ fun LedgerScreen(
                             if (state.isSelecting) viewModel.selection.toggle(id) else onTransactionClick(id)
                         },
                         onLongClick = viewModel.selection::toggle,
+                        onEdit = onTransactionClick,
                         onSelectAll = viewModel.selection::all,
                         onToggleUpcoming = viewModel.upcoming::toggle,
                         onOpenUpcoming = { line ->
@@ -115,11 +116,7 @@ fun LedgerScreen(
             }
         }
 
-        // Hidden while selecting: an entry added now would land outside a selection
-        // the bar is about to act on.
-        if (!state.isSelecting) {
-            AddButton(onAddClick, Modifier.align(Alignment.BottomEnd))
-        }
+        AddButton(onAddClick, Modifier.align(Alignment.BottomEnd))
     }
 
     if (choosingFilters) {
@@ -323,6 +320,7 @@ private fun DayList(
     today: LocalDate,
     onClick: (Long) -> Unit,
     onLongClick: (Long) -> Unit,
+    onEdit: (Long) -> Unit,
     onSelectAll: () -> Unit,
     onToggleUpcoming: () -> Unit,
     onOpenUpcoming: (UpcomingLine) -> Unit,
@@ -361,6 +359,7 @@ private fun DayList(
                     onClick = { onClick(transaction.id) },
                     onLongClick = { onLongClick(transaction.id) },
                     whole = wholes[transaction.id],
+                    onEdit = if (state.isSelecting) ({ onEdit(transaction.id) }) else null,
                 )
             }
         }
