@@ -203,6 +203,7 @@ A row dated after today counts in no figure anywhere until its day — headline,
 A merchant's category — or, for a transfer, the category of the account it goes into — is copied into each transaction as it is recorded; never `COALESCE` it in at read time, or changing a merchant silently rewrites history ([ADR-0010](docs/adr/0010-a-merchants-category-is-written-onto-each-purchase.md)).
 Categorising rows in bulk must not stamp `reviewedAtUtcMillis`, which would lock a parser fix out of them (`CategoryDao.categoriseAtMerchant`).
 A category's group is the opposite: read through, never copied onto the row, so moving a category moves its history ([ADR-0016](docs/adr/0016-a-categorys-group-is-read-through.md)).
+Its icon is read through too, and stored as its Material Symbols name, never a resource id: a name in `CATEGORY_ICONS` is never renamed, or every category carrying it falls back to its initials ([ADR-0020](docs/adr/0020-a-categorys-icon-is-stored-by-name-and-read-through.md)).
 
 ### A split is one transaction, worth what its parts are worth
 
