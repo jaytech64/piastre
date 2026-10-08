@@ -297,9 +297,8 @@ private const val BUTTON_COUNT = 3
 
 private val LABEL_PADDING = 8.dp
 
-/** Where a transaction row starts, and the circle it starts with. */
+/** Where a transaction row starts. */
 private val ROW_PADDING = 16.dp
-private val ROW_MARK = 36.dp
 
 /** Material's opacity for a disabled control. */
 private const val DISABLED_ALPHA = 0.38f

@@ -83,6 +83,32 @@ class LedgerSelectionTest : LedgerTest() {
         }
 
     @Test
+    fun `a row added while selecting stays out of the selection`() =
+        runTest {
+            val bill = insert(amountMinor = 8_500, day = TODAY)
+            select(bill)
+
+            insert(amountMinor = 6_000, day = TODAY, merchantRaw = "VIDEOTRON")
+            val state = viewModel.uiState.first { it.days.sumOf { day -> day.transactions.size } == 2 }
+
+            assertEquals(setOf(bill), state.selected)
+        }
+
+    @Test
+    fun `a selected row edited while selecting stays selected and is counted as it now reads`() =
+        runTest {
+            val bill = insert(amountMinor = 8_500, day = TODAY)
+            val other = insert(amountMinor = 6_000, day = TODAY, merchantRaw = "VIDEOTRON")
+            select(bill, other)
+
+            val dao = database.transactionDao()
+            dao.update(dao.byId(bill)!!.copy(amountMinor = 9_000))
+            val state = viewModel.uiState.first { it.selectionSummary?.expenses == Money(15_000, Money.CAD) }
+
+            assertEquals(setOf(bill, other), state.selected)
+        }
+
+    @Test
     fun `categorising the selection gives the category to those rows alone and ends it`() =
         runTest {
             val phone = category("Cellulaire")

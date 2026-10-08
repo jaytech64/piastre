@@ -10,12 +10,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,6 +47,9 @@ import java.util.Locale
  *
  * [whole] is given for a split shown for one of its categories: the amount is
  * then that category's share, and the whole it is a share of is said under it.
+ *
+ * [onEdit] is given while the ledger is selecting, when a tap picks the row
+ * instead of opening it: the row then ends with the button that still opens it.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -54,6 +61,7 @@ internal fun TransactionRow(
     onLongClick: (() -> Unit)?,
     dayLabel: String? = null,
     whole: Money? = null,
+    onEdit: (() -> Unit)? = null,
 ) {
     val selected = selection == RowSelection.SELECTED
     Row(
@@ -66,7 +74,7 @@ internal fun TransactionRow(
                 onLongClick = onLongClick,
                 onClick = onClick,
             ).then(if (selection == RowSelection.NONE) Modifier else Modifier.semantics { this.selected = selected })
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(start = 16.dp, end = if (onEdit == null) 16.dp else EDIT_BUTTON_END, top = 10.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -105,6 +113,27 @@ internal fun TransactionRow(
                 )
             }
         }
+
+        onEdit?.let { EditButton(it) }
+    }
+}
+
+/**
+ * Opens the row while a tap on it selects. It keeps its touch target and lays
+ * out no taller than the row's mark, so a row does not grow, and the list does
+ * not move under the finger, when a selection starts.
+ */
+@Composable
+private fun EditButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.height(ROW_MARK).wrapContentHeight(unbounded = true),
+    ) {
+        Icon(
+            Icons.Default.Edit,
+            contentDescription = stringResource(R.string.edit_title),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -195,7 +224,7 @@ private fun Transaction.whenLabel(locale: Locale): String =
 @Composable
 private fun TitleInitials(title: String?) {
     Surface(
-        Modifier.size(36.dp),
+        Modifier.size(ROW_MARK),
         shape = CircleShape,
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
@@ -215,7 +244,7 @@ private fun TitleInitials(title: String?) {
 
 @Composable
 private fun SelectedMark() {
-    Surface(Modifier.size(36.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
+    Surface(Modifier.size(ROW_MARK), shape = CircleShape, color = MaterialTheme.colorScheme.primary) {
         Icon(
             Icons.Default.Check,
             contentDescription = null,
@@ -233,6 +262,12 @@ private fun String?.initials(): String =
         .map { it.first().uppercaseChar() }
         .joinToString("")
         .ifEmpty { "?" }
+
+/** The circle a row starts with. */
+internal val ROW_MARK = 36.dp
+
+/** What is left of the row's 16 dp margin once the edit button's own inset around its icon is counted. */
+private val EDIT_BUTTON_END = 4.dp
 
 internal const val SEPARATOR = " · "
 internal const val ARROW = "→"
