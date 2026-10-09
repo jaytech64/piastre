@@ -1,6 +1,6 @@
-package io.github.jaytech64.depenses.spike.capture
+package io.github.jaytech64.piastre.spike.capture
 
-import io.github.jaytech64.depenses.parsing.RawNotification
+import io.github.jaytech64.piastre.parsing.RawNotification
 import org.json.JSONObject
 
 /** One captured notification, as it will appear in the exported fixture corpus. */

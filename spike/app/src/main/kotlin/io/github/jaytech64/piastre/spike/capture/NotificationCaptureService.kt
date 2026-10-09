@@ -1,4 +1,4 @@
-package io.github.jaytech64.depenses.spike.capture
+package io.github.jaytech64.piastre.spike.capture
 
 import android.content.ComponentName
 import android.content.Context

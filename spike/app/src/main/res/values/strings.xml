@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Dépenses Spike</string>
-    <string name="capture_service_label">Dépenses — capture de notifications</string>
+    <string name="app_name">Piastre Spike</string>
+    <string name="capture_service_label">Piastre — capture de notifications</string>
 </resources>

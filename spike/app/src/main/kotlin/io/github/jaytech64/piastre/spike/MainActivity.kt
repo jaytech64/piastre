@@ -1,4 +1,4 @@
-package io.github.jaytech64.depenses.spike
+package io.github.jaytech64.piastre.spike
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -10,7 +10,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import io.github.jaytech64.depenses.spike.ui.SpikeApp
+import io.github.jaytech64.piastre.spike.ui.SpikeApp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

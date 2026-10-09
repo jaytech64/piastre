@@ -1,4 +1,4 @@
-# Dépenses — Phase 0 capture spike
+# Piastre — Phase 0 capture spike
 
 Throwaway app whose only job is to answer one question:
 **does your card issuer actually produce a usable Google Wallet notification?**
@@ -45,7 +45,7 @@ In-app: **Export** writes a single JSON file wherever you choose.
 Or straight off the device, which is easier when handing it to an agent:
 
 ```sh
-adb exec-out run-as io.github.jaytech64.depenses.spike cat files/captures.jsonl
+adb exec-out run-as io.github.jaytech64.piastre.spike cat files/captures.jsonl
 ```
 
 ## Building

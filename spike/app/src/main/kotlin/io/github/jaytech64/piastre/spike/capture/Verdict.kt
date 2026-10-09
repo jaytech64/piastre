@@ -1,8 +1,8 @@
-package io.github.jaytech64.depenses.spike.capture
+package io.github.jaytech64.piastre.spike.capture
 
-import io.github.jaytech64.depenses.parsing.GoogleWalletParser
-import io.github.jaytech64.depenses.parsing.ParseResult
-import io.github.jaytech64.depenses.parsing.ParserRegistry
+import io.github.jaytech64.piastre.parsing.GoogleWalletParser
+import io.github.jaytech64.piastre.parsing.ParseResult
+import io.github.jaytech64.piastre.parsing.ParserRegistry
 
 /**
  * What the production parser makes of each captured notification.

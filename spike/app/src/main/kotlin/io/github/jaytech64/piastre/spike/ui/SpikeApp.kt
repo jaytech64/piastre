@@ -1,4 +1,4 @@
-package io.github.jaytech64.depenses.spike.ui
+package io.github.jaytech64.piastre.spike.ui
 
 import android.content.Context
 import android.net.Uri
@@ -51,12 +51,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import io.github.jaytech64.depenses.spike.capture.Capture
-import io.github.jaytech64.depenses.spike.capture.CaptureStore
-import io.github.jaytech64.depenses.spike.capture.Classifier
-import io.github.jaytech64.depenses.spike.capture.NotificationAccess
-import io.github.jaytech64.depenses.spike.capture.Sighting
-import io.github.jaytech64.depenses.spike.capture.Verdict
+import io.github.jaytech64.piastre.spike.capture.Capture
+import io.github.jaytech64.piastre.spike.capture.CaptureStore
+import io.github.jaytech64.piastre.spike.capture.Classifier
+import io.github.jaytech64.piastre.spike.capture.NotificationAccess
+import io.github.jaytech64.piastre.spike.capture.Sighting
+import io.github.jaytech64.piastre.spike.capture.Verdict
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,9 +116,9 @@ fun SpikeApp() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dépenses — Spike") },
+                title = { Text("Piastre — Spike") },
                 actions = {
-                    TextButton(onClick = { exportLauncher.launch("depenses-fixtures.json") }) {
+                    TextButton(onClick = { exportLauncher.launch("piastre-fixtures.json") }) {
                         Text("Export")
                     }
                     TextButton(onClick = { confirmClear = true }) {
