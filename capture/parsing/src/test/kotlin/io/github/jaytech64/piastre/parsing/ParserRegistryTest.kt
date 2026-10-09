@@ -1,0 +1,49 @@
+// SPDX-FileCopyrightText: 2026 Jérémy Mailhot
+// SPDX-License-Identifier: GPL-3.0-or-later
+package io.github.jaytech64.piastre.parsing
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+/**
+ * The allowlist the listener filters on. A package missing from here is a
+ * payment app the phone silently stops recording; a package wrongly in it is a
+ * package whose notification content the app starts keeping on disk.
+ */
+class ParserRegistryTest {
+    private val registry = ParserRegistry(listOf(GoogleWalletParser()))
+
+    @Test
+    fun `watches every package its parsers declare`() {
+        assertEquals(setOf("com.google.android.apps.walletnfcrel"), registry.watchedPackages)
+    }
+
+    @Test
+    fun `does not watch an app that merely posts notifications`() {
+        assertFalse("ch.protonmail.android" in registry.watchedPackages)
+    }
+
+    @Test
+    fun `names the app a package belongs to, and falls back to the package itself`() {
+        assertEquals("Google Wallet", registry.sourceName("com.google.android.apps.walletnfcrel"))
+        assertEquals("ch.protonmail.android", registry.sourceName("ch.protonmail.android"))
+    }
+
+    @Test
+    fun `every watched package has a parser that claims it`() {
+        registry.watchedPackages.forEach { watched ->
+            val notification =
+                RawNotification(
+                    sourcePackage = watched,
+                    notificationKey = "0|$watched|1001|tag-1|10348",
+                    postedAtUtcMillis = 1_787_235_111_656,
+                    deviceLocale = "fr-CA",
+                    title = null,
+                    text = null,
+                )
+            assertTrue(registry.parserFor(notification) != null, "no parser claims $watched")
+        }
+    }
+}

@@ -7,10 +7,10 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses"
+    namespace = "io.github.jaytech64.piastre"
 
     defaultConfig {
-        applicationId = "io.github.jaytech64.depenses"
+        applicationId = "io.github.jaytech64.piastre"
         versionCode = 1
         versionName = "0.1.0"
         resourceConfigurations += setOf("en", "fr")

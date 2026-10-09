@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.capture.listener"
+    namespace = "io.github.jaytech64.piastre.capture.listener"
 }
 
 dependencies {

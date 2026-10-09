@@ -170,7 +170,7 @@ A total counts Canadian dollars and says how many rows in another currency it le
 
 ### Money and dates are formatted in exactly one place
 
-`core/designsystem/src/main/kotlin/io/github/jaytech64/depenses/core/designsystem/Formatters.kt` decides what money, dates and times look like, and nothing else may.
+`core/designsystem/src/main/kotlin/io/github/jaytech64/piastre/core/designsystem/Formatters.kt` decides what money, dates and times look like, and nothing else may.
 `"%.2f $".format(...)` is wrong on a Quebec phone in three separate ways: in `fr-CA` the symbol trails the amount, the decimal mark is a comma, and the spacer is U+202F.
 
 Two rules inside that file that look like bugs and are not:

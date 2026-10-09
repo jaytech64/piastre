@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.feature.reports"
+    namespace = "io.github.jaytech64.piastre.feature.reports"
 }
 
 dependencies {

@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.core.testing"
+    namespace = "io.github.jaytech64.piastre.core.testing"
 }
 
 dependencies {

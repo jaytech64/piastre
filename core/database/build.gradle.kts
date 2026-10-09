@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.core.database"
+    namespace = "io.github.jaytech64.piastre.core.database"
 
     // MigrationTestHelper reads the exported schemas through the asset manager, so
     // the committed JSON has to be reachable as an asset for the JVM tests too.

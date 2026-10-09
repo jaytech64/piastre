@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.core.data"
+    namespace = "io.github.jaytech64.piastre.core.data"
 }
 
 dependencies {

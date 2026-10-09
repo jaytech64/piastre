@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.feature.ledger"
+    namespace = "io.github.jaytech64.piastre.feature.ledger"
 }
 
 dependencies {
