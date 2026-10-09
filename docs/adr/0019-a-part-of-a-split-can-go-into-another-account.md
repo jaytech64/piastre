@@ -75,7 +75,7 @@ An import refuses a part into an account the file does not list, into the transa
 - `TransactionPart.toAccountId` and `canMoveOnFrom` in `core/model/src/main/kotlin/.../TransactionPart.kt`, and `TransactionPartTest`.
 - `Transaction.movements` and `apart` in `core/model/src/main/kotlin/.../Transaction.kt`; `` `a split with a share moved on is worth what the expense and the transfer are, entered apart` `` in `TransferTest`.
 - `settleCategory` in `core/data/src/main/kotlin/.../SettledCategory.kt` — what a save refuses.
-- `MIGRATION_17_18` in `core/database/src/main/kotlin/.../DepensesDatabase.kt`; `AccountDao.allWithCounts`, `deleteIfUnused` and `MOVEMENTS` in `Daos.kt`.
+- `MIGRATION_17_18` in `core/database/src/main/kotlin/.../PiastreDatabase.kt`; `AccountDao.allWithCounts`, `deleteIfUnused` and `MOVEMENTS` in `Daos.kt`.
 - `` `a report and the ledger agree to the cent on a share moved on, for every pair of accounts` `` in `ReportRepositoryTest`.
 - `LedgerFilter.partsCounted` and `rowsCounted` in `feature/ledger/src/main/kotlin/.../LedgerViewModel.kt`; `` `each account's ledger adds up to what its balance moved by` `` in `LedgerSplitTest`.
 - `SplitParts.addTransfer` and `SplitSection` in `feature/ledger`, and `ExpenseFormSplitTest`.

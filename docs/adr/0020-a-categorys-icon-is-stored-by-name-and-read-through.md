@@ -55,5 +55,5 @@ The form's category list, the filter chips and the report's ranking still show n
 - `CATEGORY_ICONS` in `core/designsystem/src/main/kotlin/.../CategoryIcons.kt` — the names, and `CategoryIconsTest` holding the table to the drawables.
 - `Mark` and `MarkCircle` in `core/designsystem/src/main/kotlin/.../Mark.kt` — what a circle can show, and how it is drawn.
 - `Transaction.mark` in `feature/ledger/src/main/kotlin/.../RowNames.kt`, and `LedgerMarkTest`.
-- `MIGRATION_18_19` in `core/database/src/main/kotlin/.../DepensesDatabase.kt`, and `` `migrating to schema 19 keeps every category, and none of them has an icon` `` in `DepensesDatabaseMigrationTest`.
+- `MIGRATION_18_19` in `core/database/src/main/kotlin/.../PiastreDatabase.kt`, and `` `migrating to schema 19 keeps every category, and none of them has an icon` `` in `PiastreDatabaseMigrationTest`.
 - `` `an icon comes back with an import, but never over one you picked` `` in `LedgerImportTest`.

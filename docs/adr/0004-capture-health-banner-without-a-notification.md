@@ -67,7 +67,7 @@ There is deliberately no "granted at" timestamp: before the first delivery `last
 ## Where this lives in the code
 
 - `core/model/src/main/kotlin/.../CaptureHealth.kt` — the rule, the four states, `SILENT_AFTER = 48h`.
-- `capture/listener/src/main/kotlin/.../DepensesListenerService.kt` — `noteAlive()`, called before the package filter.
+- `capture/listener/src/main/kotlin/.../PiastreListenerService.kt` — `noteAlive()`, called before the package filter.
 - `capture/listener/src/main/kotlin/.../CaptureHealthRepository.kt` — the live verdict.
-- `feature/settings/src/main/kotlin/.../CaptureHealthBanner.kt` — the banner and its collapsed strip, above the nav host in `DepensesApp`.
+- `feature/settings/src/main/kotlin/.../CaptureHealthBanner.kt` — the banner and its collapsed strip, above the nav host in `PiastreApp`.
 - `SettingsRepository.noteListenerEvent` — the throttle.

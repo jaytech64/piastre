@@ -58,7 +58,7 @@ The principal carries Hypothèque as a label; whether the Hypothèque line of a 
 
 ## Where this lives in the code
 
-- `MerchantEntity.categoryId` and `AccountEntity.categoryId` in `core/database/src/main/kotlin/.../Entities.kt`, and `MIGRATION_10_11` in `DepensesDatabase.kt`.
+- `MerchantEntity.categoryId` and `AccountEntity.categoryId` in `core/database/src/main/kotlin/.../Entities.kt`, and `MIGRATION_10_11` in `PiastreDatabase.kt`.
 - `CategoryDao.categoriseAtMerchant` and `categoriseTransfersInto`, and `TransactionDao.insertOrUpdate`, in `Daos.kt`.
 - `CategoryRepository.spreadFrom` in `core/data/src/main/kotlin/.../CategoryRepository.kt`; its callers `TransactionEditor.edit` and `TransactionRepository.addManual`; `ParsePipeline.record`; `ReviewRepository.correct`.
 - `CategoryPicker` and `CategoryOffer.kt` in `feature/ledger/src/main/kotlin/.../`.

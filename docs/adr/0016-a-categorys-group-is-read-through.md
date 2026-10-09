@@ -51,5 +51,5 @@ The group is joined when the report is read, in `ReportDao.categoryTotals`, so a
 ## Where this lives in the code
 
 - `CategoryGroupRepository` in `core/data/src/main/kotlin/.../CategoryGroupRepository.kt` — the groups, and which category sits in which.
-- `MIGRATION_13_14` in `core/database/src/main/kotlin/.../DepensesDatabase.kt`, and `` `migrating to schema 14 leaves every category in no group` `` in `DepensesDatabaseMigrationTest`.
+- `MIGRATION_13_14` in `core/database/src/main/kotlin/.../PiastreDatabase.kt`, and `` `migrating to schema 14 leaves every category in no group` `` in `PiastreDatabaseMigrationTest`.
 - `balanceMovedOn` in `feature/ledger/src/main/kotlin/.../LedgerViewModel.kt`, and `` `a group shows every category in it, and adds up to them` `` in `LedgerFilterTest`.

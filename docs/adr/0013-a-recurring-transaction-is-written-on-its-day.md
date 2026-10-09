@@ -103,7 +103,7 @@ The row and the cursor past its day are written in one database transaction, and
 
 - `Recurrence` in `:core:model` — the days a schedule falls on, counted from its first day so a bill on the 31st keeps coming back to the 31st.
 - `RecurringTransactionEntity` and `MIGRATION_11_12` in `:core:database` — the schedule and its `nextDueEpochDay` cursor.
-- `RecurringPosting` in `:core:data` — the catch-up pass, and `occurrenceOn`, the row a day writes; called from `DepensesApplication` and `DepensesListenerService`.
+- `RecurringPosting` in `:core:data` — the catch-up pass, and `occurrenceOn`, the row a day writes; called from `PiastreApplication` and `PiastreListenerService`.
 - `RecurringRepository.repeat`, which refuses a captured transaction or one already on a schedule, and `change`, which never touches a written row.
 - `TransactionRepository.addManual` and `TransactionEditor.edit`, which take whether a typed row is recurring, and `placedAtMillis`, the noon both share with `occurrenceOn`.
 - `RecurringRepositoryTest`, and `ExpenseFormRepeatTest` in `:feature:ledger`.
