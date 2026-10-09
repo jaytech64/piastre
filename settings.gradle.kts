@@ -21,7 +21,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "depenses"
+rootProject.name = "piastre"
 
 include(":app")
 

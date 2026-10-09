@@ -1,3 +1,3 @@
 plugins {
-    id("depenses.jvm.library")
+    id("piastre.jvm.library")
 }

@@ -1,9 +1,9 @@
 import com.android.build.api.artifact.SingleArtifact
 
 plugins {
-    id("depenses.android.application")
-    id("depenses.android.compose")
-    id("depenses.android.hilt")
+    id("piastre.android.application")
+    id("piastre.android.compose")
+    id("piastre.android.hilt")
 }
 
 android {

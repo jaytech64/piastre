@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Jérémy Mailhot
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-package io.github.jaytech64.depenses.buildlogic
+package io.github.jaytech64.piastre.buildlogic
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -15,9 +15,9 @@ import org.gradle.kotlin.dsl.project
  */
 class AndroidFeatureConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) = with(target) {
-        pluginManager.apply("depenses.android.library")
-        pluginManager.apply("depenses.android.compose")
-        pluginManager.apply("depenses.android.hilt")
+        pluginManager.apply("piastre.android.library")
+        pluginManager.apply("piastre.android.compose")
+        pluginManager.apply("piastre.android.hilt")
 
         dependencies {
             add("implementation", project(":core:data"))

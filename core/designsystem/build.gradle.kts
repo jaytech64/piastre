@@ -1,6 +1,6 @@
 plugins {
-    id("depenses.android.library")
-    id("depenses.android.compose")
+    id("piastre.android.library")
+    id("piastre.android.compose")
 }
 
 android {

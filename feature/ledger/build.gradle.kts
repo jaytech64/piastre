@@ -1,5 +1,5 @@
 plugins {
-    id("depenses.android.feature")
+    id("piastre.android.feature")
 }
 
 android {
