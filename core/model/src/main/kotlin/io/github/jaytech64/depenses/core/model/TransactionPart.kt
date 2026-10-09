@@ -20,6 +20,7 @@ data class TransactionPart(
     val amount: Money,
     val categoryId: Long? = null,
     val categoryName: String? = null,
+    val categoryIcon: String? = null,
     val note: String? = null,
     val toAccountId: Long? = null,
     val toAccountName: String? = null,

@@ -22,4 +22,7 @@
     <string name="category_dialog_cancel">Annuler</string>
     <string name="category_dialog_group">Groupe</string>
     <string name="category_dialog_no_group">Aucun</string>
+    <string name="category_dialog_icon">Icône</string>
+    <string name="category_dialog_icon_title">Choisir une icône</string>
+    <string name="category_dialog_no_icon">Aucune</string>
 </resources>

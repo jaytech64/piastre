@@ -131,7 +131,7 @@ class LedgerSelectionTest : LedgerTest() {
             val bill = insert(amountMinor = 8_500, day = TODAY)
             select(bill)
 
-            viewModel.selection.categoriseAsNew("Internet", null)
+            viewModel.selection.categoriseAsNew("Internet", null, null)
             val state = viewModel.uiState.first { it.categoryOf(bill) != null }
 
             assertEquals("Internet", state.row(bill).categoryName)

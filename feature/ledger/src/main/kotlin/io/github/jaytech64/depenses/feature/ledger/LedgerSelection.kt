@@ -55,14 +55,15 @@ class LedgerSelection internal constructor(
     /** What a category added for the selection can go in. */
     val groups: Flow<List<CategoryGroup>> = categoryGroups.all()
 
-    /** Adds the category missing from the list, in [groupId], and gives it to the selection. */
+    /** Adds the category missing from the list, in [groupId] with [icon], and gives it to the selection. */
     fun categoriseAsNew(
         name: String,
         groupId: Long?,
+        icon: String?,
     ) {
         val selected = now()
         scope.launch {
-            categories.named(name, groupId)?.let { editor.categoriseAll(selected, it) }
+            categories.named(name, groupId, icon)?.let { editor.categoriseAll(selected, it) }
             end()
         }
     }

@@ -48,7 +48,7 @@ class CategoryGroupViewModelTest {
     fun `a category added here is listed`() =
         runTest {
             viewModel.edit(CategoryEdit.New)
-            viewModel.save("Épicerie", null)
+            viewModel.save("Épicerie", null, null)
 
             assertEquals(
                 "Épicerie",
@@ -68,7 +68,7 @@ class CategoryGroupViewModelTest {
             val groceries = viewModel.categories.first { it.size == 2 }.first { it.category.name == "Épicerie" }
 
             viewModel.edit(CategoryEdit.Existing(groceries))
-            viewModel.save("restaurants", null)
+            viewModel.save("restaurants", null, null)
 
             val edit = viewModel.editing.first { (it as? CategoryEdit.Existing)?.refused == true }
             assertTrue(edit is CategoryEdit.Existing)
@@ -82,7 +82,7 @@ class CategoryGroupViewModelTest {
             val groceries = viewModel.categories.first { it.isNotEmpty() }.single()
 
             viewModel.edit(CategoryEdit.Existing(groceries))
-            viewModel.save("Épicerie", null)
+            viewModel.save("Épicerie", null, null)
 
             viewModel.editing.first { it == null }
             assertEquals(
@@ -108,13 +108,37 @@ class CategoryGroupViewModelTest {
         }
 
     @Test
+    fun `a category added with an icon carries it, and an edit changes it or takes it away`() =
+        runTest {
+            viewModel.edit(CategoryEdit.New)
+            viewModel.save("Épicerie", null, "shopping_cart")
+            val added = viewModel.categories.first { it.isNotEmpty() }.single()
+            assertEquals("shopping_cart", added.category.icon)
+
+            viewModel.edit(CategoryEdit.Existing(added))
+            viewModel.save("Épicerie", null, "storefront")
+            val changed = viewModel.categories.first { it.single().category.icon != "shopping_cart" }.single()
+            assertEquals("storefront", changed.category.icon)
+
+            viewModel.edit(CategoryEdit.Existing(changed))
+            viewModel.save("Épicerie", null, null)
+            assertEquals(
+                null,
+                viewModel.categories
+                    .first { it.single().category.icon != "storefront" }
+                    .single()
+                    .category.icon,
+            )
+        }
+
+    @Test
     fun `a category added on a group's page is in that group`() =
         runTest {
             val home = groups.named("Maison")!!
             val page = page(home)
 
             page.edit(CategoryEdit.New)
-            page.save("Électricité", home)
+            page.save("Électricité", home, null)
 
             assertEquals(listOf("Électricité"), page.categories.first { it.isNotEmpty() }.map { it.category.name })
             assertEquals(emptyList<Any>(), groups.categoriesIn(null).first())
@@ -130,7 +154,7 @@ class CategoryGroupViewModelTest {
             val insurance = page.categories.first { it.isNotEmpty() }.single()
 
             page.edit(CategoryEdit.Existing(insurance))
-            page.save("Assurance", car)
+            page.save("Assurance", car, null)
 
             assertEquals(emptyList<Any>(), page.categories.first { it.isEmpty() })
             assertEquals(listOf("Assurance"), groups.categoriesIn(car).first().map { it.category.name })
@@ -147,7 +171,7 @@ class CategoryGroupViewModelTest {
             val insurance = page.categories.first { it.isNotEmpty() }.single()
 
             page.edit(CategoryEdit.Existing(insurance))
-            page.save("essence", car)
+            page.save("essence", car, null)
 
             page.editing.first { (it as? CategoryEdit.Existing)?.refused == true }
             assertEquals(listOf("Assurance"), groups.categoriesIn(home).first().map { it.category.name })

@@ -86,16 +86,17 @@ class CategoryPicker internal constructor(
     fun onFromNowOnChange(ticked: Boolean) = form.update { it.copy(fromNowOnChoice = ticked) }
 
     /**
-     * Adds the category missing from the list, in [groupId], and picks it; or
-     * picks the one you already have under that name, which stays in its group.
+     * Adds the category missing from the list, in [groupId] with [icon], and picks
+     * it; or picks the one you already have under that name, which stays as it is.
      * [onAdded] takes it instead when it was added for a part of a split.
      */
     fun add(
         name: String,
         groupId: Long?,
+        icon: String?,
         onAdded: ((Long) -> Unit)? = null,
     ) {
-        scope.launch { categories.named(name, groupId)?.let(onAdded ?: ::onPick) }
+        scope.launch { categories.named(name, groupId, icon)?.let(onAdded ?: ::onPick) }
     }
 
     /**

@@ -227,6 +227,7 @@ internal fun toDomain(
             toAccountType = row.toAccountType,
             categoryId = categoryId,
             categoryName = row.categoryName,
+            categoryIcon = row.categoryIcon,
             recurringId = recurringId,
             parts = parts.map { it.toDomain(currency) },
         )

@@ -81,6 +81,16 @@ class CategoryGroupRepository
             groupId: Long?,
         ) = categories.moveToGroup(categoryId, groupId)
 
+        /**
+         * Null takes the category's icon away, and its rows go back to its initials.
+         * It sits beside [move] because the two are alike: how a category is shown,
+         * read through it, and nothing about what was filed under it.
+         */
+        suspend fun setIcon(
+            categoryId: Long,
+            icon: String?,
+        ) = categories.setIcon(categoryId, icon)
+
         /** For an import: puts the category in [groupId] only while it is in none (ADR-0005). */
         internal suspend fun groupIfNone(
             categoryId: Long,

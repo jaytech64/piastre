@@ -251,6 +251,10 @@ data class MerchantEntity(
  * [groupId] is read through wherever the group is shown, unlike the category on
  * a transaction: a group only arranges categories, so moving one must move its
  * history with it. Null is a category nobody has put in a group.
+ *
+ * [icon] is read through the same way, and holds the icon's name rather than a
+ * resource id: an id changes from one build to the next, and an export has to
+ * mean the same thing on the phone that reads it back. Null is no icon picked.
  */
 @Entity(
     tableName = "category",
@@ -261,6 +265,7 @@ data class CategoryEntity(
     val name: String,
     val normalisedName: String,
     val groupId: Long? = null,
+    val icon: String? = null,
 )
 
 /**

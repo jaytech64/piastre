@@ -167,8 +167,8 @@ private fun SelectionDialog(
             val groups by viewModel.selection.groups.collectAsStateWithLifecycle(emptyList())
             CategoryDialog(
                 name = null,
-                onSave = { name, groupId ->
-                    viewModel.selection.categoriseAsNew(name, groupId)
+                onSave = { name, groupId, icon ->
+                    viewModel.selection.categoriseAsNew(name, groupId, icon)
                     onClose()
                 },
                 onDismiss = onClose,

@@ -46,6 +46,18 @@ class CategoryRepositoryTest {
         }
 
     @Test
+    fun `a new category takes the icon it is given, and one you already have keeps its own`() =
+        runTest {
+            val groceries = categories.named("Épicerie", icon = "shopping_cart")!!
+
+            assertEquals(groceries, categories.named("epicerie", icon = "storefront"))
+            assertEquals("shopping_cart", icons().single())
+
+            groups.setIcon(groceries, null)
+            assertNull(icons().single())
+        }
+
+    @Test
     fun `a blank name makes no category`() =
         runTest {
             assertNull(categories.named("   "))
@@ -190,6 +202,8 @@ class CategoryRepositoryTest {
             kind = TransactionKind.EXPENSE,
         ),
     )
+
+    private suspend fun icons() = database.categoryDao().allOnce().map { it.icon }
 
     private suspend fun names(): List<String> = categories.all().first().map { it.category.name }
 }

@@ -291,6 +291,27 @@ class LedgerImportTest : LedgerImportFixture() {
         }
 
     @Test
+    fun `an icon comes back with an import, but never over one you picked`() =
+        runTest {
+            source.categoryRepository().named("Épicerie", icon = "shopping_cart")
+            source.categoryRepository().named("Maison", icon = "home")
+            source.categoryRepository().named("Essence", icon = "local_gas_station")
+            target.categoryRepository().named("maison", icon = "apartment")
+            target.categoryRepository().named("essence")
+
+            target.importing(source.export())
+
+            assertEquals(
+                setOf("Épicerie" to "shopping_cart", "maison" to "apartment", "essence" to "local_gas_station"),
+                target
+                    .categoryDao()
+                    .allOnce()
+                    .map { it.name to it.icon }
+                    .toSet(),
+            )
+        }
+
+    @Test
     fun `a file naming a group it does not list is refused before anything is written`() =
         runTest {
             source.categoryRepository().named("Assurance")

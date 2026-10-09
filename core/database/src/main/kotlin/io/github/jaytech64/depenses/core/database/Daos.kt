@@ -254,7 +254,7 @@ interface TransactionDao : RowWithParts {
         SELECT t.*, m.displayName AS merchantName,
                a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
                d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType,
-               c.name AS categoryName
+               c.name AS categoryName, c.icon AS categoryIcon
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
         LEFT JOIN account a ON a.id = t.accountId
@@ -322,7 +322,7 @@ interface TransactionDao : RowWithParts {
         SELECT t.*, m.displayName AS merchantName,
                a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
                d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType,
-               c.name AS categoryName
+               c.name AS categoryName, c.icon AS categoryIcon
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
         LEFT JOIN account a ON a.id = t.accountId
@@ -378,7 +378,7 @@ interface TransactionDao : RowWithParts {
         SELECT t.*, m.displayName AS merchantName,
                a.name AS accountName, a.last4 AS accountLast4, a.type AS accountType,
                d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType,
-               c.name AS categoryName
+               c.name AS categoryName, c.icon AS categoryIcon
         FROM expense_transaction t
         LEFT JOIN merchant m ON m.id = t.merchantId
         LEFT JOIN account a ON a.id = t.accountId
@@ -428,7 +428,7 @@ interface TransactionPartDao {
     /** Every part with what it names, each transaction's together and in the order typed. */
     @Query(
         """
-        SELECT p.*, c.name AS categoryName,
+        SELECT p.*, c.name AS categoryName, c.icon AS categoryIcon,
                d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM transaction_part p
         LEFT JOIN category c ON c.id = p.categoryId
@@ -440,7 +440,7 @@ interface TransactionPartDao {
 
     @Query(
         """
-        SELECT p.*, c.name AS categoryName,
+        SELECT p.*, c.name AS categoryName, c.icon AS categoryIcon,
                d.name AS toAccountName, d.last4 AS toAccountLast4, d.type AS toAccountType
         FROM transaction_part p
         LEFT JOIN category c ON c.id = p.categoryId
@@ -459,6 +459,7 @@ interface TransactionPartDao {
 data class PartWithCategory(
     @Embedded val part: TransactionPartEntity,
     val categoryName: String?,
+    val categoryIcon: String? = null,
     val toAccountName: String? = null,
     val toAccountLast4: String? = null,
     val toAccountType: AccountType? = null,
@@ -759,6 +760,20 @@ interface CategoryDao : CategoryClearing {
         normalisedName: String,
     ): Int
 
+    /** Gives the category the icon named [icon], or none for null. */
+    @Query("UPDATE category SET icon = :icon WHERE id = :id")
+    suspend fun setIcon(
+        id: Long,
+        icon: String?,
+    )
+
+    /** [setIcon] for a category with none; one you already gave an icon keeps it. */
+    @Query("UPDATE category SET icon = :icon WHERE id = :id AND icon IS NULL")
+    suspend fun iconIfNone(
+        id: Long,
+        icon: String,
+    )
+
     /**
      * Every category, the ones you use most for [kind] first: by how many confirmed
      * rows carried it on or after [sinceEpochDay], then by when it was last used,
@@ -995,7 +1010,7 @@ interface RecurringTransactionDao {
     @Query(
         """
         SELECT r.*, m.displayName AS merchantName, a.name AS accountName, a.type AS accountType,
-               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName
+               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName, c.icon AS categoryIcon
         FROM recurring_transaction r
         LEFT JOIN merchant m ON m.id = r.merchantId
         LEFT JOIN account a ON a.id = r.accountId
@@ -1009,7 +1024,7 @@ interface RecurringTransactionDao {
     @Query(
         """
         SELECT r.*, m.displayName AS merchantName, a.name AS accountName, a.type AS accountType,
-               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName
+               d.name AS toAccountName, d.type AS toAccountType, c.name AS categoryName, c.icon AS categoryIcon
         FROM recurring_transaction r
         LEFT JOIN merchant m ON m.id = r.merchantId
         LEFT JOIN account a ON a.id = r.accountId
@@ -1080,6 +1095,7 @@ data class RecurringWithNames(
     val toAccountName: String?,
     val toAccountType: AccountType?,
     val categoryName: String?,
+    val categoryIcon: String?,
 )
 
 @Dao
@@ -1180,6 +1196,7 @@ data class TransactionWithMerchant(
     val toAccountLast4: String? = null,
     val toAccountType: AccountType? = null,
     val categoryName: String? = null,
+    val categoryIcon: String? = null,
 )
 
 /** The account last used at a merchant, keyed on the name the normaliser gives it. */

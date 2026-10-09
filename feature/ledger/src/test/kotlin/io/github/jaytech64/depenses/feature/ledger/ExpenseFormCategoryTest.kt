@@ -267,7 +267,7 @@ class ExpenseFormCategoryTest {
         runTest {
             open()
 
-            viewModel.category.add("Hypothèque", null)
+            viewModel.category.add("Hypothèque", null, null)
 
             val picked = viewModel.uiState.first { it.categoryId != null }.categoryId
             assertEquals(categories.named("hypotheque"), picked)
@@ -280,7 +280,7 @@ class ExpenseFormCategoryTest {
             val home = database.categoryGroupRepository().named("Maison")!!
             open()
 
-            viewModel.category.add("Électricité", home)
+            viewModel.category.add("Électricité", home, null)
 
             val picked = viewModel.uiState.first { it.categoryId != null }.categoryId
             assertEquals(

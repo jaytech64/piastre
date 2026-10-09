@@ -85,18 +85,25 @@ class CategoryRepository
             }
 
         /**
-         * The category a typed name belongs to, created in [groupId] when there is
-         * none yet; null for a name with nothing in it. Typing `epicerie` picks the
-         * Épicerie you already have, keeps its spelling, and leaves it in its group.
+         * The category a typed name belongs to, created in [groupId] with [icon]
+         * when there is none yet; null for a name with nothing in it. Typing
+         * `epicerie` picks the Épicerie you already have, keeps its spelling, and
+         * leaves it in its group with the icon it has.
          */
         suspend fun named(
             typed: String,
             groupId: Long? = null,
+            icon: String? = null,
         ): Long? {
             val name = CategoryName.of(typed) ?: return null
             categories.byNormalisedName(name.normalisedName)?.let { return it.id }
             categories.insert(
-                CategoryEntity(name = name.displayName, normalisedName = name.normalisedName, groupId = groupId),
+                CategoryEntity(
+                    name = name.displayName,
+                    normalisedName = name.normalisedName,
+                    groupId = groupId,
+                    icon = icon,
+                ),
             )
             return categories.byNormalisedName(name.normalisedName)?.id
         }
@@ -199,7 +206,7 @@ fun anchorFor(
         TransactionKind.EXPENSE, TransactionKind.INCOME -> merchantId?.let(CategoryAnchor::AtMerchant)
     }
 
-internal fun CategoryEntity.toDomain() = Category(id = id, name = name, groupId = groupId)
+internal fun CategoryEntity.toDomain() = Category(id = id, name = name, groupId = groupId, icon = icon)
 
 internal fun CategoryWithCounts.toDomain() =
     CategoryUsage(

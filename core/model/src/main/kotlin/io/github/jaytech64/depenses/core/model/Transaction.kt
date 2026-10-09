@@ -82,6 +82,8 @@ data class Transaction(
     /** Null until you give it one. */
     val categoryId: Long? = null,
     val categoryName: String? = null,
+    /** The icon its category carries now, read through it like its name. See [Category.icon]. */
+    val categoryIcon: String? = null,
     /** The schedule this belongs to while it lasts, or null. See [RecurringTransaction]. */
     val recurringId: Long? = null,
     /** What the amount is divided into, or empty when it is not split; then [categoryId] is null. */
@@ -156,6 +158,7 @@ data class Transaction(
                 amount = part.amount,
                 categoryId = part.categoryId,
                 categoryName = part.categoryName,
+                categoryIcon = part.categoryIcon,
                 parts = emptyList(),
                 kind = TransactionKind.TRANSFER,
                 toAccountId = part.toAccountId,
@@ -168,6 +171,7 @@ data class Transaction(
                 amount = part.amount,
                 categoryId = part.categoryId,
                 categoryName = part.categoryName,
+                categoryIcon = part.categoryIcon,
                 parts = emptyList(),
             )
         }

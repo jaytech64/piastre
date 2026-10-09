@@ -221,6 +221,7 @@ private fun RecurringWithNames.nextRowOn(
             toAccountName = toAccountName,
             toAccountType = toAccountType,
             categoryName = categoryName,
+            categoryIcon = categoryIcon,
         ),
     )
 

@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.depenses.core.designsystem.CategoryDialog
+import io.github.jaytech64.depenses.core.designsystem.MarkCircle
+import io.github.jaytech64.depenses.core.designsystem.categoryMark
 import io.github.jaytech64.depenses.core.model.CategoryGroup
 import io.github.jaytech64.depenses.core.model.CategoryUsage
 import java.text.Collator
@@ -123,6 +125,7 @@ private fun CategoryGroupDialogs(
                 onDelete = { viewModel.edit(CategoryEdit.ConfirmDelete(edit.usage)) },
                 groups = groups,
                 groupId = edit.usage.category.groupId,
+                icon = edit.usage.category.icon,
             )
         }
 
@@ -223,26 +226,30 @@ private fun CategoryRow(
     usage: CategoryUsage,
     onClick: () -> Unit,
 ) {
-    Column(
+    Row(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(usage.category.name, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            listOfNotNull(
-                pluralStringResource(
-                    R.plurals.settings_accounts_transactions,
-                    usage.transactionCount,
-                    usage.transactionCount,
-                ),
-                automaticFor(usage)?.let { stringResource(R.string.settings_categories_automatic, it) },
-            ).joinToString(SEPARATOR),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        MarkCircle(categoryMark(usage.category.name, usage.category.icon))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(usage.category.name, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                listOfNotNull(
+                    pluralStringResource(
+                        R.plurals.settings_accounts_transactions,
+                        usage.transactionCount,
+                        usage.transactionCount,
+                    ),
+                    automaticFor(usage)?.let { stringResource(R.string.settings_categories_automatic, it) },
+                ).joinToString(SEPARATOR),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
