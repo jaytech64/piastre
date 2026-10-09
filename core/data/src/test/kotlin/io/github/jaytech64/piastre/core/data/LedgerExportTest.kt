@@ -27,10 +27,13 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import java.io.ByteArrayOutputStream
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
+import javax.inject.Provider
 
 /**
  * The export is the one artifact that leaves the app, so it is checked as bytes
@@ -61,6 +64,19 @@ class LedgerExportTest {
 
     @After
     fun tearDown() = database.close()
+
+    @Test
+    fun `an export is named for the app and the day it was written`() {
+        val writer =
+            ExportWriter(
+                context = RuntimeEnvironment.getApplication(),
+                export = export,
+                clock = Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
+                zoneId = Provider<ZoneId> { ZoneOffset.UTC },
+            )
+
+        assertEquals("piastre-2026-09-09.json", writer.suggestedFileName(ExportFormat.JSON))
+    }
 
     @Test
     fun `the csv opens as french - byte-order mark, semicolons, decimal comma`() =

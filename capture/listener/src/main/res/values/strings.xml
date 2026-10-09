@@ -1,4 +1,4 @@
 <resources>
     <!-- Shown in the system's notification access screen, so it must name the app. -->
-    <string name="capture_service_label">Dépenses</string>
+    <string name="capture_service_label">Piastre</string>
 </resources>

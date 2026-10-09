@@ -71,9 +71,9 @@ class ExportWriter
                 ExportResult.Failed(error.localizedMessage)
             }
 
-        /** `depenses-2026-09-09.csv` — sorts by date and says what it is. */
+        /** `piastre-2026-09-09.csv` — sorts by date and says what it is. */
         fun suggestedFileName(format: ExportFormat): String =
-            "depenses-${FILE_DATE.format(clock.instant().atZone(zoneId.get()))}.${format.extension}"
+            "piastre-${FILE_DATE.format(clock.instant().atZone(zoneId.get()))}.${format.extension}"
 
         private companion object {
             val FILE_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
