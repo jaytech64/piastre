@@ -9,7 +9,7 @@ import io.github.jaytech64.piastre.core.data.MerchantRepository
 import io.github.jaytech64.piastre.core.data.TransactionEditor
 import io.github.jaytech64.piastre.core.data.TransactionRepository
 import io.github.jaytech64.piastre.core.database.AccountEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
@@ -39,7 +39,7 @@ import javax.inject.Provider
 /** An amount divided among categories on the form, saved through it into a real database. */
 @RunWith(RobolectricTestRunner::class)
 class ExpenseFormSplitTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var categories: CategoryRepository
     private lateinit var transactions: TransactionRepository
     private lateinit var viewModel: ExpenseFormViewModel

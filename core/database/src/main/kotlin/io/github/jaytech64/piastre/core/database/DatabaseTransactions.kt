@@ -11,4 +11,4 @@ import androidx.room.withTransaction
  * the door a caller outside it uses to make several DAO writes succeed or fail
  * together.
  */
-suspend fun <R> DepensesDatabase.inTransaction(block: suspend () -> R): R = withTransaction(block)
+suspend fun <R> PiastreDatabase.inTransaction(block: suspend () -> R): R = withTransaction(block)

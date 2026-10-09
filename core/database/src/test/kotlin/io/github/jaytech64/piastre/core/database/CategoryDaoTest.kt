@@ -21,7 +21,7 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class CategoryDaoTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private val transactions get() = database.transactionDao()
     private val categories get() = database.categoryDao()
     private val groups get() = database.categoryGroupDao()
@@ -30,7 +30,7 @@ class CategoryDaoTest {
     fun open() {
         database =
             Room
-                .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), DepensesDatabase::class.java)
+                .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), PiastreDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
     }

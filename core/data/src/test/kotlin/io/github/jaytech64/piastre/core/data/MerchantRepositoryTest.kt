@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.TransactionKind
 import io.github.jaytech64.piastre.core.model.TransactionStatus
@@ -23,7 +23,7 @@ import javax.inject.Provider
 /** The order the form offers merchants in, read back from a real database. */
 @RunWith(RobolectricTestRunner::class)
 class MerchantRepositoryTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var merchants: MerchantRepository
     private lateinit var transactions: TransactionRepository
 

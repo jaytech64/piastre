@@ -23,7 +23,7 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class RecurringTransactionDaoTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private val recurring get() = database.recurringTransactionDao()
     private val transactions get() = database.transactionDao()
 
@@ -31,7 +31,7 @@ class RecurringTransactionDaoTest {
     fun open() {
         database =
             Room
-                .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), DepensesDatabase::class.java)
+                .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), PiastreDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
     }

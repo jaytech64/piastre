@@ -10,9 +10,9 @@ import io.github.jaytech64.piastre.core.data.MerchantRepository
 import io.github.jaytech64.piastre.core.data.TransactionRepository
 import io.github.jaytech64.piastre.core.database.AccountEntity
 import io.github.jaytech64.piastre.core.database.CategoryEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.piastre.core.database.MerchantEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Category

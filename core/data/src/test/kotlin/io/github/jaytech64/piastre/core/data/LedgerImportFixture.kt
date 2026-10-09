@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.Recurrence
@@ -35,8 +35,8 @@ import javax.inject.Provider
  * carries a file from the first to the second.
  */
 abstract class LedgerImportFixture {
-    protected lateinit var source: DepensesDatabase
-    protected lateinit var target: DepensesDatabase
+    protected lateinit var source: PiastreDatabase
+    protected lateinit var target: PiastreDatabase
 
     @Before
     fun open() {
@@ -50,9 +50,9 @@ abstract class LedgerImportFixture {
         target.close()
     }
 
-    protected fun DepensesDatabase.accounts() = AccountRepository(accountDao())
+    protected fun PiastreDatabase.accounts() = AccountRepository(accountDao())
 
-    protected fun DepensesDatabase.transactions() =
+    protected fun PiastreDatabase.transactions() =
         TransactionRepository(
             database = this,
             transactions = transactionDao(),
@@ -61,7 +61,7 @@ abstract class LedgerImportFixture {
             zoneId = Provider { ZONE },
         )
 
-    protected fun DepensesDatabase.importer() =
+    protected fun PiastreDatabase.importer() =
         LedgerImport(
             database = this,
             transactions = transactionDao(),
@@ -75,7 +75,7 @@ abstract class LedgerImportFixture {
             posting = posting(),
         )
 
-    protected fun DepensesDatabase.posting() =
+    protected fun PiastreDatabase.posting() =
         RecurringPosting(
             this,
             recurringTransactionDao(),
@@ -85,16 +85,15 @@ abstract class LedgerImportFixture {
             Provider { ZONE },
         )
 
-    protected suspend fun DepensesDatabase.reading(file: String): ImportReading =
-        importer().read(file.byteInputStream())
+    protected suspend fun PiastreDatabase.reading(file: String): ImportReading = importer().read(file.byteInputStream())
 
-    protected suspend fun DepensesDatabase.importing(file: String): ImportOutcome {
+    protected suspend fun PiastreDatabase.importing(file: String): ImportOutcome {
         val reading = reading(file)
         assertTrue(reading.toString(), reading is ImportReading.Ready)
         return importer().apply(reading as ImportReading.Ready)
     }
 
-    protected suspend fun DepensesDatabase.export(): String {
+    protected suspend fun PiastreDatabase.export(): String {
         val bytes = ByteArrayOutputStream()
         LedgerExport(
             transactionDao(),
@@ -110,7 +109,7 @@ abstract class LedgerImportFixture {
         return bytes.toString(Charsets.UTF_8.name())
     }
 
-    protected suspend fun DepensesDatabase.enterSplit(
+    protected suspend fun PiastreDatabase.enterSplit(
         vararg parts: TransactionPart,
         accountId: Long? = null,
     ) = transactions().addManual(
@@ -126,7 +125,7 @@ abstract class LedgerImportFixture {
         parts = parts.toList(),
     )
 
-    protected suspend fun DepensesDatabase.balances() =
+    protected suspend fun PiastreDatabase.balances() =
         accounts()
             .all(
                 LocalDate.of(2026, 12, 31),

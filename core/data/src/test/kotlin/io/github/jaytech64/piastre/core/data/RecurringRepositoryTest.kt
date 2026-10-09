@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.Rhythm
 import io.github.jaytech64.piastre.core.model.Transaction
@@ -31,7 +31,7 @@ import javax.inject.Provider
  */
 @RunWith(RobolectricTestRunner::class)
 class RecurringRepositoryTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var transactions: TransactionRepository
     private lateinit var editor: TransactionEditor
     private lateinit var categories: CategoryRepository

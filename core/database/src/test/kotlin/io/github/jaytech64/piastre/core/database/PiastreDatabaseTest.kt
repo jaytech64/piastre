@@ -23,8 +23,8 @@ import org.robolectric.RobolectricTestRunner
  * work rather than only that they compile.
  */
 @RunWith(RobolectricTestRunner::class)
-class DepensesDatabaseTest {
-    private lateinit var database: DepensesDatabase
+class PiastreDatabaseTest {
+    private lateinit var database: PiastreDatabase
 
     @Before
     fun open() {
@@ -32,7 +32,7 @@ class DepensesDatabaseTest {
             Room
                 .inMemoryDatabaseBuilder(
                     ApplicationProvider.getApplicationContext(),
-                    DepensesDatabase::class.java,
+                    PiastreDatabase::class.java,
                 ).allowMainThreadQueries()
                 .build()
     }

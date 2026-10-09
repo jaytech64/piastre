@@ -3,7 +3,7 @@
 package io.github.jaytech64.piastre.core.data
 
 import io.github.jaytech64.piastre.core.database.AccountEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
@@ -27,7 +27,7 @@ import javax.inject.Provider
 /** A part of a split that goes into another account, as a save takes it or refuses it. */
 @RunWith(RobolectricTestRunner::class)
 class TransferPartSaveTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var repository: TransactionRepository
     private lateinit var editor: TransactionEditor
 

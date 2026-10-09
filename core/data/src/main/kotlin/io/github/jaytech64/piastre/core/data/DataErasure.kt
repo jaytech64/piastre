@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.RawNotificationEventDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,7 +17,7 @@ import javax.inject.Singleton
 class DataErasure
     @Inject
     constructor(
-        private val database: DepensesDatabase,
+        private val database: PiastreDatabase,
         private val rawEvents: RawNotificationEventDao,
         private val settings: SettingsRepository,
     ) {

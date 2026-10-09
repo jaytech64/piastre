@@ -9,7 +9,7 @@ import io.github.jaytech64.piastre.core.data.MerchantRepository
 import io.github.jaytech64.piastre.core.data.RecurringRepository
 import io.github.jaytech64.piastre.core.data.TransactionEditor
 import io.github.jaytech64.piastre.core.data.TransactionRepository
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.Rhythm
 import io.github.jaytech64.piastre.core.model.TransactionKind
@@ -42,7 +42,7 @@ import javax.inject.Provider
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class ExpenseFormRepeatTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var transactions: TransactionRepository
     private lateinit var recurring: RecurringRepository
     private lateinit var viewModel: ExpenseFormViewModel

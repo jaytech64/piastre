@@ -20,10 +20,10 @@ object DatabaseModule {
     @Singleton
     fun database(
         @ApplicationContext context: Context,
-    ): DepensesDatabase =
+    ): PiastreDatabase =
         Room
-            .databaseBuilder(context, DepensesDatabase::class.java, DepensesDatabase.NAME)
-            .addMigrations(*DepensesDatabase.MIGRATIONS)
+            .databaseBuilder(context, PiastreDatabase::class.java, PiastreDatabase.NAME)
+            .addMigrations(*PiastreDatabase.MIGRATIONS)
             // A fresh install gets the cash account the 7→8 migration gives an
             // upgrade, so "Cash" is offered from the first purchase rather than
             // after the first time you name it.
@@ -39,34 +39,32 @@ object DatabaseModule {
             ).build()
 
     @Provides
-    fun rawNotificationEventDao(database: DepensesDatabase): RawNotificationEventDao =
-        database.rawNotificationEventDao()
+    fun rawNotificationEventDao(database: PiastreDatabase): RawNotificationEventDao = database.rawNotificationEventDao()
 
     @Provides
-    fun transactionDao(database: DepensesDatabase): TransactionDao = database.transactionDao()
+    fun transactionDao(database: PiastreDatabase): TransactionDao = database.transactionDao()
 
     @Provides
-    fun merchantDao(database: DepensesDatabase): MerchantDao = database.merchantDao()
+    fun merchantDao(database: PiastreDatabase): MerchantDao = database.merchantDao()
 
     @Provides
-    fun reportDao(database: DepensesDatabase): ReportDao = database.reportDao()
+    fun reportDao(database: PiastreDatabase): ReportDao = database.reportDao()
 
     @Provides
-    fun accountDao(database: DepensesDatabase): AccountDao = database.accountDao()
+    fun accountDao(database: PiastreDatabase): AccountDao = database.accountDao()
 
     @Provides
-    fun categoryDao(database: DepensesDatabase): CategoryDao = database.categoryDao()
+    fun categoryDao(database: PiastreDatabase): CategoryDao = database.categoryDao()
 
     @Provides
-    fun categoryGroupDao(database: DepensesDatabase): CategoryGroupDao = database.categoryGroupDao()
+    fun categoryGroupDao(database: PiastreDatabase): CategoryGroupDao = database.categoryGroupDao()
 
     @Provides
-    fun recurringTransactionDao(database: DepensesDatabase): RecurringTransactionDao =
-        database.recurringTransactionDao()
+    fun recurringTransactionDao(database: PiastreDatabase): RecurringTransactionDao = database.recurringTransactionDao()
 
     @Provides
-    fun transactionTemplateDao(database: DepensesDatabase): TransactionTemplateDao = database.transactionTemplateDao()
+    fun transactionTemplateDao(database: PiastreDatabase): TransactionTemplateDao = database.transactionTemplateDao()
 
     @Provides
-    fun transactionPartDao(database: DepensesDatabase): TransactionPartDao = database.transactionPartDao()
+    fun transactionPartDao(database: PiastreDatabase): TransactionPartDao = database.transactionPartDao()
 }

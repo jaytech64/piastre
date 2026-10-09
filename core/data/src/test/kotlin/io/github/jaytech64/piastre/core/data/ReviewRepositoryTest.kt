@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.RawNotificationEventEntity
 import io.github.jaytech64.piastre.core.model.AliasOrigin
 import io.github.jaytech64.piastre.core.model.Money
@@ -37,7 +37,7 @@ import javax.inject.Provider
  */
 @RunWith(RobolectricTestRunner::class)
 class ReviewRepositoryTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var capture: NotificationCapture
     private lateinit var review: ReviewRepository
 

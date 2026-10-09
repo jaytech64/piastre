@@ -5,7 +5,7 @@ package io.github.jaytech64.piastre.feature.settings
 import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.piastre.core.data.CategoryGroupRepository
 import io.github.jaytech64.piastre.core.data.CategoryRepository
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -24,7 +24,7 @@ import org.robolectric.RobolectricTestRunner
 /** A group's page, and the page of categories in none, against a real database. */
 @RunWith(RobolectricTestRunner::class)
 class CategoryGroupViewModelTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var repository: CategoryRepository
     private lateinit var groups: CategoryGroupRepository
     private lateinit var viewModel: CategoryGroupViewModel

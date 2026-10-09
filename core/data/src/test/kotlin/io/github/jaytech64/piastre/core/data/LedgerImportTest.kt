@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.Recurrence
@@ -513,29 +513,29 @@ class LedgerImportTest : LedgerImportFixture() {
             note = null,
         )
 
-    private fun DepensesDatabase.templates() =
+    private fun PiastreDatabase.templates() =
         TemplateRepository(transactionTemplateDao(), MerchantRepository(merchantDao()), Clock.fixed(EXPORTED_AT, ZONE))
 
-    private suspend fun DepensesDatabase.categorised(): List<Pair<String?, String?>> =
+    private suspend fun PiastreDatabase.categorised(): List<Pair<String?, String?>> =
         transactionDao().allWithMerchant().filter { it.categoryName != null }.map { it.merchantName to it.categoryName }
 
     /** Each category with its group's name, null for one in none. */
-    private suspend fun DepensesDatabase.grouped(): Set<Pair<String?, String>> {
+    private suspend fun PiastreDatabase.grouped(): Set<Pair<String?, String>> {
         val groups = categoryGroupDao().allOnce().associate { it.id to it.name }
         return categoryDao().allOnce().map { it.groupId?.let(groups::get) to it.name }.toSet()
     }
 
-    private suspend fun DepensesDatabase.merchantDefaults(): List<Pair<String, String?>> {
+    private suspend fun PiastreDatabase.merchantDefaults(): List<Pair<String, String?>> {
         val names = categoryDao().allOnce().associate { it.id to it.name }
         return merchantDao().allOnce().filter { it.categoryId != null }.map { it.displayName to names[it.categoryId] }
     }
 
-    private suspend fun DepensesDatabase.accountDefaults(): List<Pair<String?, String?>> {
+    private suspend fun PiastreDatabase.accountDefaults(): List<Pair<String?, String?>> {
         val names = categoryDao().allOnce().associate { it.id to it.name }
         return accountDao().allOnce().filter { it.categoryId != null }.map { it.name to names[it.categoryId] }
     }
 
-    private fun DepensesDatabase.recurring() =
+    private fun PiastreDatabase.recurring() =
         RecurringRepository(
             this,
             recurringTransactionDao(),
@@ -544,7 +544,7 @@ class LedgerImportTest : LedgerImportFixture() {
             posting(),
         )
 
-    private suspend fun DepensesDatabase.enter(
+    private suspend fun PiastreDatabase.enter(
         minor: Long,
         kind: TransactionKind,
         accountId: Long? = null,
@@ -567,7 +567,7 @@ class LedgerImportTest : LedgerImportFixture() {
     )
 
     /** Everything a person sees of a transaction; ids differ between two databases and are left out. */
-    private suspend fun DepensesDatabase.ledger() =
+    private suspend fun PiastreDatabase.ledger() =
         transactions()
             .confirmed()
             .first()
@@ -584,7 +584,7 @@ class LedgerImportTest : LedgerImportFixture() {
                 )
             }.sortedBy { it.toString() }
 
-    private suspend fun DepensesDatabase.accountNames() =
+    private suspend fun PiastreDatabase.accountNames() =
         accounts().all(LocalDate.of(2026, 12, 31)).first().map { it.name }
 
     private fun refused(problem: ImportProblem) = ImportReading.Refused(problem)

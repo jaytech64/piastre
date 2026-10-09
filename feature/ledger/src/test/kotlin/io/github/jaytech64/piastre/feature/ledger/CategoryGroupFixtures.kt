@@ -3,7 +3,7 @@
 package io.github.jaytech64.piastre.feature.ledger
 
 import io.github.jaytech64.piastre.core.data.CategoryGroupRepository
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 
 /** The groups categories are arranged under, over this database. */
-internal fun DepensesDatabase.categoryGroupRepository() = CategoryGroupRepository(categoryGroupDao(), categoryDao())
+internal fun PiastreDatabase.categoryGroupRepository() = CategoryGroupRepository(categoryGroupDao(), categoryDao())

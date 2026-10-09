@@ -19,14 +19,14 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class TransactionTemplateDaoTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private val templates get() = database.transactionTemplateDao()
 
     @Before
     fun open() {
         database =
             Room
-                .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), DepensesDatabase::class.java)
+                .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), PiastreDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
     }

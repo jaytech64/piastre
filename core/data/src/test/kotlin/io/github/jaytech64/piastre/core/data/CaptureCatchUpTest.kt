@@ -3,7 +3,7 @@
 package io.github.jaytech64.piastre.core.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
 import io.github.jaytech64.piastre.parsing.ParseResult
 import io.github.jaytech64.piastre.parsing.ParserRegistry
@@ -37,7 +37,7 @@ class CaptureCatchUpTest {
     /** A real scope: DataStore never runs its writes in a [kotlinx.coroutines.test.TestScope]. */
     private val storeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var storeFile: File
     private lateinit var settings: SettingsRepository
 

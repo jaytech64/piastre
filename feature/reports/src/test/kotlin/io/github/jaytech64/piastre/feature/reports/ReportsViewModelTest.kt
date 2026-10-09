@@ -11,8 +11,8 @@ import io.github.jaytech64.piastre.core.data.TransactionRepository
 import io.github.jaytech64.piastre.core.database.AccountEntity
 import io.github.jaytech64.piastre.core.database.CategoryEntity
 import io.github.jaytech64.piastre.core.database.CategoryGroupEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
@@ -44,7 +44,7 @@ import javax.inject.Provider
 
 @RunWith(RobolectricTestRunner::class)
 class ReportsViewModelTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var savedState: SavedStateHandle
     private lateinit var viewModel: ReportsViewModel
 

@@ -11,9 +11,9 @@ import io.github.jaytech64.piastre.core.data.TransactionEditor
 import io.github.jaytech64.piastre.core.data.TransactionRepository
 import io.github.jaytech64.piastre.core.database.AccountEntity
 import io.github.jaytech64.piastre.core.database.CategoryEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.piastre.core.database.MerchantEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Category
@@ -44,7 +44,7 @@ import javax.inject.Provider
 
 /** The in-memory database and helpers the ledger view model tests share. */
 abstract class LedgerTest {
-    protected lateinit var database: DepensesDatabase
+    protected lateinit var database: PiastreDatabase
     protected lateinit var savedState: SavedStateHandle
     protected lateinit var viewModel: LedgerViewModel
 

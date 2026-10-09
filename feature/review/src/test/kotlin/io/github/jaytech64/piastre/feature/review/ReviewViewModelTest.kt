@@ -8,7 +8,7 @@ import io.github.jaytech64.piastre.core.data.NotificationCapture
 import io.github.jaytech64.piastre.core.data.ParsePipeline
 import io.github.jaytech64.piastre.core.data.RawEventRepository
 import io.github.jaytech64.piastre.core.data.ReviewRepository
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.ReviewReason
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
@@ -36,7 +36,7 @@ import javax.inject.Provider
 
 @RunWith(RobolectricTestRunner::class)
 class ReviewViewModelTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var capture: NotificationCapture
     private lateinit var viewModel: ReviewViewModel
 

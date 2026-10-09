@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.LocalContext
  * is no fallback palette to write, maintain or test.
  */
 @Composable
-fun DepensesTheme(
+fun PiastreTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {

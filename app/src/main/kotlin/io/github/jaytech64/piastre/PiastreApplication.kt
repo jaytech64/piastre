@@ -9,7 +9,7 @@ import io.github.jaytech64.piastre.core.data.RecurringPosting
 import javax.inject.Inject
 
 @HiltAndroidApp
-class DepensesApplication : Application() {
+class PiastreApplication : Application() {
     @Inject
     lateinit var catchUp: CaptureCatchUp
 

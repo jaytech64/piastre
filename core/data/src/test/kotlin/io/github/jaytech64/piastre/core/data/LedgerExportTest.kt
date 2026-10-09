@@ -3,10 +3,10 @@
 package io.github.jaytech64.piastre.core.data
 
 import io.github.jaytech64.piastre.core.database.AccountEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.piastre.core.database.MerchantAliasEntity
 import io.github.jaytech64.piastre.core.database.MerchantEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.RawNotificationEventEntity
 import io.github.jaytech64.piastre.core.database.TransactionPartEntity
 import io.github.jaytech64.piastre.core.model.AccountOrigin
@@ -39,7 +39,7 @@ import java.time.ZoneOffset
  */
 @RunWith(RobolectricTestRunner::class)
 class LedgerExportTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var export: LedgerExport
 
     @Before

@@ -4,8 +4,8 @@ package io.github.jaytech64.piastre.core.data
 
 import io.github.jaytech64.piastre.core.database.AccountDao
 import io.github.jaytech64.piastre.core.database.AccountEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.MerchantDao
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.RawNotificationEventDao
 import io.github.jaytech64.piastre.core.database.RecurringTransactionDao
 import io.github.jaytech64.piastre.core.database.TransactionDao
@@ -33,7 +33,7 @@ import javax.inject.Singleton
 class LedgerImport
     @Inject
     constructor(
-        private val database: DepensesDatabase,
+        private val database: PiastreDatabase,
         private val transactions: TransactionDao,
         private val merchants: MerchantRepository,
         private val merchantRows: MerchantDao,

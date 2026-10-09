@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.piastre.core.database.PartWithCategory
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.TransactionDao
 import io.github.jaytech64.piastre.core.database.TransactionWithMerchant
 import io.github.jaytech64.piastre.core.database.inTransaction
@@ -34,7 +34,7 @@ import javax.inject.Singleton
 class TransactionRepository
     @Inject
     constructor(
-        private val database: DepensesDatabase,
+        private val database: PiastreDatabase,
         private val transactions: TransactionDao,
         private val merchants: MerchantRepository,
         private val categories: CategoryRepository,

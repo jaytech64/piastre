@@ -79,7 +79,7 @@ private enum class Destination(
  * straight to the ledger.
  */
 @Composable
-fun DepensesApp(viewModel: OnboardingViewModel = hiltViewModel()) {
+fun PiastreApp(viewModel: OnboardingViewModel = hiltViewModel()) {
     when (viewModel.completed.collectAsStateWithLifecycle().value) {
         // Still being read off disk. A frame of nothing beats a frame of the
         // welcome screen shown to someone who onboarded months ago.

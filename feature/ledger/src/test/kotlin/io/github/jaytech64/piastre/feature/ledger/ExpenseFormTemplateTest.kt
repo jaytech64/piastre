@@ -10,7 +10,7 @@ import io.github.jaytech64.piastre.core.data.MerchantRepository
 import io.github.jaytech64.piastre.core.data.TemplateRepository
 import io.github.jaytech64.piastre.core.data.TransactionEditor
 import io.github.jaytech64.piastre.core.data.TransactionRepository
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.TemplateContent
@@ -46,7 +46,7 @@ import javax.inject.Provider
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class ExpenseFormTemplateTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var transactions: TransactionRepository
     private lateinit var accounts: AccountRepository
     private lateinit var categories: CategoryRepository

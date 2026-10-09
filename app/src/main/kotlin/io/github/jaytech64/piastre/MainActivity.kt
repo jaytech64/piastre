@@ -8,8 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import io.github.jaytech64.piastre.core.data.RecurringPosting
-import io.github.jaytech64.piastre.core.designsystem.DepensesTheme
-import io.github.jaytech64.piastre.navigation.DepensesApp
+import io.github.jaytech64.piastre.core.designsystem.PiastreTheme
+import io.github.jaytech64.piastre.navigation.PiastreApp
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -21,8 +21,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            DepensesTheme {
-                DepensesApp()
+            PiastreTheme {
+                PiastreApp()
             }
         }
     }

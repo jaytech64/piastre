@@ -19,12 +19,12 @@ import org.robolectric.RobolectricTestRunner
  * can already contain the rows the new index forbids.
  */
 @RunWith(RobolectricTestRunner::class)
-class DepensesDatabaseMigrationTest {
+class PiastreDatabaseMigrationTest {
     @get:Rule
     val helper =
         MigrationTestHelper(
             InstrumentationRegistry.getInstrumentation(),
-            DepensesDatabase::class.java,
+            PiastreDatabase::class.java,
         )
 
     @Test
@@ -35,7 +35,7 @@ class DepensesDatabaseMigrationTest {
             database.insertRawEvent(postedAtUtcMillis = RE_POST)
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 2, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 2, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(2, migrated.rawEventCount())
     }
@@ -46,7 +46,7 @@ class DepensesDatabaseMigrationTest {
             database.insertRawEvent(postedAtUtcMillis = FIRST_POST)
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 2, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 2, true, *PiastreDatabase.MIGRATIONS)
         migrated.insertRawEvent(postedAtUtcMillis = FIRST_POST, orIgnore = true)
 
         assertEquals(1, migrated.rawEventCount())
@@ -70,9 +70,9 @@ class DepensesDatabaseMigrationTest {
         val migrated =
             helper.runMigrationsAndValidate(
                 NAME,
-                DepensesDatabase.VERSION,
+                PiastreDatabase.VERSION,
                 true,
-                *DepensesDatabase.MIGRATIONS,
+                *PiastreDatabase.MIGRATIONS,
             )
 
         assertEquals(2, migrated.rawEventCount())
@@ -91,7 +91,7 @@ class DepensesDatabaseMigrationTest {
             database.insertRawEvent(postedAtUtcMillis = RE_POST, sourcePackage = "com.android.systemui")
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 4, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 4, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(1, migrated.rawEventCount())
         assertEquals(WALLET, migrated.singleRawEventPackage())
@@ -104,7 +104,7 @@ class DepensesDatabaseMigrationTest {
             database.insertTransaction()
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 4, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 4, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(0, migrated.rawEventCount())
         assertEquals(1, migrated.count("expense_transaction"))
@@ -120,7 +120,7 @@ class DepensesDatabaseMigrationTest {
             database.insertTransaction()
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 5, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 5, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(1, migrated.count("expense_transaction"))
         assertEquals(6554, migrated.singleInt("SELECT amountMinor FROM expense_transaction"))
@@ -142,7 +142,7 @@ class DepensesDatabaseMigrationTest {
             database.insertRawEvent(postedAtUtcMillis = FIRST_POST)
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 6, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 6, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(1, migrated.rawEventCount())
         assertEquals(
@@ -170,7 +170,7 @@ class DepensesDatabaseMigrationTest {
             database.insertTransaction(sourceKey = "manual-1", source = "MANUAL", cardLast4 = null)
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 7, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 7, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(2, migrated.count("card"))
         assertEquals(3, migrated.singleInt("SELECT COUNT(*) FROM expense_transaction WHERE cardId IS NOT NULL"))
@@ -207,7 +207,7 @@ class DepensesDatabaseMigrationTest {
             database.insertSchema7Transaction(sourceKey = "bare-1", paymentMethod = null, cardId = null)
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 8, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 8, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(3, migrated.count("expense_transaction"))
         assertEquals(2, migrated.count("account"))
@@ -248,7 +248,7 @@ class DepensesDatabaseMigrationTest {
             )
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 9, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 9, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(2, migrated.count("account"))
         assertEquals(2, migrated.singleInt("SELECT COUNT(*) FROM account WHERE openingBalanceMinor IS NULL"))
@@ -267,7 +267,7 @@ class DepensesDatabaseMigrationTest {
             }
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 10, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 10, true, *PiastreDatabase.MIGRATIONS)
 
         val shown =
             migrated.query("SELECT COALESCE(name, issuerLabel, type) FROM account ORDER BY sortOrder").use { cursor ->
@@ -291,7 +291,7 @@ class DepensesDatabaseMigrationTest {
             database.execSQL("UPDATE expense_transaction SET categoryId = 42")
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 11, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 11, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(1, migrated.count("expense_transaction"))
         assertEquals(0, migrated.count("category"))
@@ -306,7 +306,7 @@ class DepensesDatabaseMigrationTest {
             database.insertTransaction()
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 12, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 12, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(1, migrated.count("expense_transaction"))
         assertEquals(0, migrated.count("recurring_transaction"))
@@ -328,7 +328,7 @@ class DepensesDatabaseMigrationTest {
             )
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 13, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 13, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(
             "abc:2026-08-01",
@@ -347,7 +347,7 @@ class DepensesDatabaseMigrationTest {
             database.execSQL("UPDATE expense_transaction SET categoryId = (SELECT id FROM category)")
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 14, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 14, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(0, migrated.count("category_group"))
         assertEquals(1, migrated.singleInt("SELECT COUNT(*) FROM category WHERE groupId IS NULL"))
@@ -360,7 +360,7 @@ class DepensesDatabaseMigrationTest {
             database.insertTransaction()
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 15, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 15, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(1, migrated.count("expense_transaction"))
         assertEquals(0, migrated.count("transaction_template"))
@@ -375,7 +375,7 @@ class DepensesDatabaseMigrationTest {
             )
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 16, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 16, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(1, migrated.count("transaction_template"))
         assertEquals(0, migrated.singleInt("SELECT recurring FROM transaction_template WHERE uuid = 't-1'"))
@@ -387,7 +387,7 @@ class DepensesDatabaseMigrationTest {
             database.insertTransaction()
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 17, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 17, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(1, migrated.count("expense_transaction"))
         assertEquals(6554, migrated.singleInt("SELECT amountMinor FROM expense_transaction"))
@@ -404,7 +404,7 @@ class DepensesDatabaseMigrationTest {
             )
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 18, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 18, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals(2, migrated.count("transaction_part"))
         assertEquals(6554, migrated.singleInt("SELECT SUM(amountMinor) FROM transaction_part"))
@@ -417,7 +417,7 @@ class DepensesDatabaseMigrationTest {
             database.execSQL("INSERT INTO category (name, normalisedName) VALUES ('Épicerie', 'EPICERIE')")
         }
 
-        val migrated = helper.runMigrationsAndValidate(NAME, 19, true, *DepensesDatabase.MIGRATIONS)
+        val migrated = helper.runMigrationsAndValidate(NAME, 19, true, *PiastreDatabase.MIGRATIONS)
 
         assertEquals("Épicerie", migrated.singleString("SELECT name FROM category"))
         assertEquals(0, migrated.singleInt("SELECT COUNT(icon) FROM category"))

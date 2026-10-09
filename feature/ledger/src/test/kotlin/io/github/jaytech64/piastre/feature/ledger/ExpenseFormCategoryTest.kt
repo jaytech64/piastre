@@ -9,7 +9,7 @@ import io.github.jaytech64.piastre.core.data.CategoryRepository
 import io.github.jaytech64.piastre.core.data.MerchantRepository
 import io.github.jaytech64.piastre.core.data.TransactionEditor
 import io.github.jaytech64.piastre.core.data.TransactionRepository
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.Transaction
@@ -41,7 +41,7 @@ import javax.inject.Provider
 /** The category field and the offer beside it, saved through the form into a real database. */
 @RunWith(RobolectricTestRunner::class)
 class ExpenseFormCategoryTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var categories: CategoryRepository
     private lateinit var transactions: TransactionRepository
     private lateinit var accounts: AccountRepository

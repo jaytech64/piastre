@@ -8,8 +8,8 @@ import io.github.jaytech64.piastre.core.data.CategoryRepository
 import io.github.jaytech64.piastre.core.data.MerchantRepository
 import io.github.jaytech64.piastre.core.data.TransactionEditor
 import io.github.jaytech64.piastre.core.data.TransactionRepository
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.TransactionKind
@@ -40,7 +40,7 @@ import javax.inject.Provider
 /** The account the form fills in from the merchant you name. */
 @RunWith(RobolectricTestRunner::class)
 class ExpenseFormAccountTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var merchants: MerchantRepository
     private lateinit var categories: CategoryRepository
     private lateinit var transactions: TransactionRepository

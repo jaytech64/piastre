@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.RecurringTransactionDao
 import io.github.jaytech64.piastre.core.database.RecurringTransactionEntity
 import io.github.jaytech64.piastre.core.database.RecurringWithNames
@@ -34,7 +34,7 @@ import javax.inject.Singleton
 class RecurringRepository
     @Inject
     constructor(
-        private val database: DepensesDatabase,
+        private val database: PiastreDatabase,
         private val recurring: RecurringTransactionDao,
         private val transactions: TransactionDao,
         private val merchants: MerchantRepository,

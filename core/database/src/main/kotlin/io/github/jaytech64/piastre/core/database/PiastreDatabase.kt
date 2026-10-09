@@ -20,10 +20,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         TransactionTemplateEntity::class,
         TransactionPartEntity::class,
     ],
-    version = DepensesDatabase.VERSION,
+    version = PiastreDatabase.VERSION,
     exportSchema = true,
 )
-abstract class DepensesDatabase : RoomDatabase() {
+abstract class PiastreDatabase : RoomDatabase() {
     abstract fun rawNotificationEventDao(): RawNotificationEventDao
 
     abstract fun transactionDao(): TransactionDao
@@ -73,7 +73,7 @@ abstract class DepensesDatabase : RoomDatabase() {
                 MIGRATION_18_19,
             )
 
-        const val NAME: String = "depenses.db"
+        const val NAME: String = "piastre.db"
     }
 }
 

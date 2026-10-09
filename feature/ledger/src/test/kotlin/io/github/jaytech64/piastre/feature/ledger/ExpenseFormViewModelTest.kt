@@ -8,7 +8,7 @@ import io.github.jaytech64.piastre.core.data.CategoryRepository
 import io.github.jaytech64.piastre.core.data.MerchantRepository
 import io.github.jaytech64.piastre.core.data.TransactionEditor
 import io.github.jaytech64.piastre.core.data.TransactionRepository
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.designsystem.Formatters
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Merchant
@@ -48,7 +48,7 @@ import javax.inject.Provider
  */
 @RunWith(RobolectricTestRunner::class)
 class ExpenseFormViewModelTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var repository: TransactionRepository
     private lateinit var merchants: MerchantRepository
     private lateinit var accounts: AccountRepository

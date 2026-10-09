@@ -5,9 +5,9 @@ package io.github.jaytech64.piastre.core.data
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import io.github.jaytech64.piastre.core.database.AccountEntity
 import io.github.jaytech64.piastre.core.database.CategoryEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
 import io.github.jaytech64.piastre.core.database.MerchantEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.RawNotificationEventEntity
 import io.github.jaytech64.piastre.core.database.RecurringTransactionEntity
 import io.github.jaytech64.piastre.core.model.AccountOrigin
@@ -40,7 +40,7 @@ import java.time.Instant
 class DataErasureTest {
     private val storeScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var storeFile: File
     private lateinit var settings: SettingsRepository
     private lateinit var erasure: DataErasure

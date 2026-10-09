@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.ParseState
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
@@ -38,7 +38,7 @@ import javax.inject.Provider
  */
 @RunWith(RobolectricTestRunner::class)
 class ReparseSweepTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
 
     @Before
     fun open() {

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.TransactionKind
 import io.github.jaytech64.piastre.core.model.TransactionSource
 import io.github.jaytech64.piastre.core.model.TransactionStatus
@@ -22,7 +22,7 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class CategoryRepositoryTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var categories: CategoryRepository
     private lateinit var groups: CategoryGroupRepository
 
@@ -209,7 +209,7 @@ class CategoryRepositoryTest {
 }
 
 /** The repository as the app's graph builds it, over [this] database. */
-internal fun DepensesDatabase.categoryRepository() = CategoryRepository(categoryDao(), merchantDao(), accountDao())
+internal fun PiastreDatabase.categoryRepository() = CategoryRepository(categoryDao(), merchantDao(), accountDao())
 
 /** The group repository as the app's graph builds it, over [this] database. */
-internal fun DepensesDatabase.categoryGroupRepository() = CategoryGroupRepository(categoryGroupDao(), categoryDao())
+internal fun PiastreDatabase.categoryGroupRepository() = CategoryGroupRepository(categoryGroupDao(), categoryDao())

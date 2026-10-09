@@ -3,7 +3,7 @@
 package io.github.jaytech64.piastre.core.data
 
 import io.github.jaytech64.piastre.core.database.CategoryEntity
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.AliasOrigin
 import io.github.jaytech64.piastre.core.model.Money
@@ -42,7 +42,7 @@ import javax.inject.Provider
  */
 @RunWith(RobolectricTestRunner::class)
 class TransactionEditorTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var capture: NotificationCapture
     private lateinit var repository: TransactionRepository
     private lateinit var editor: TransactionEditor

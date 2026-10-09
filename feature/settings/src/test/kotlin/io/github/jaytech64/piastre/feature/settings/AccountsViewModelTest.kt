@@ -4,8 +4,8 @@ package io.github.jaytech64.piastre.feature.settings
 
 import io.github.jaytech64.piastre.core.data.AccountRepository
 import io.github.jaytech64.piastre.core.data.LocalDateTicker
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
@@ -33,7 +33,7 @@ import javax.inject.Provider
 /** The Cards section's rules, against a real database. */
 @RunWith(RobolectricTestRunner::class)
 class AccountsViewModelTest {
-    private lateinit var database: DepensesDatabase
+    private lateinit var database: PiastreDatabase
     private lateinit var repository: AccountRepository
     private lateinit var viewModel: AccountsViewModel
 

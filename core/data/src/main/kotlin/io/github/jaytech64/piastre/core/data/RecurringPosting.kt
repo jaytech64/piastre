@@ -4,8 +4,8 @@ package io.github.jaytech64.piastre.core.data
 
 import android.database.sqlite.SQLiteException
 import android.util.Log
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
 import io.github.jaytech64.piastre.core.database.ExpenseTransactionEntity
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.RawNotificationEventDao
 import io.github.jaytech64.piastre.core.database.RecurringTransactionDao
 import io.github.jaytech64.piastre.core.database.RecurringTransactionEntity
@@ -45,7 +45,7 @@ import javax.inject.Singleton
 class RecurringPosting
     @Inject
     constructor(
-        private val database: DepensesDatabase,
+        private val database: PiastreDatabase,
         private val recurring: RecurringTransactionDao,
         private val transactions: TransactionDao,
         private val ticker: LocalDateTicker,

@@ -4,18 +4,18 @@ package io.github.jaytech64.piastre.core.testing
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import io.github.jaytech64.piastre.core.database.DepensesDatabase
+import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import java.util.concurrent.Executor
 
 /**
  * A real SQLite, in memory. Tests that exercise queries catch what a fake DAO
  * cannot: a wrong index, a reserved word, an upsert that resolves on the wrong key.
  */
-fun inMemoryDatabase(): DepensesDatabase =
+fun inMemoryDatabase(): PiastreDatabase =
     Room
         .inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
-            DepensesDatabase::class.java,
+            PiastreDatabase::class.java,
         ).allowMainThreadQueries()
         .setQueryExecutor(SAME_THREAD)
         .setTransactionExecutor(SAME_THREAD)
