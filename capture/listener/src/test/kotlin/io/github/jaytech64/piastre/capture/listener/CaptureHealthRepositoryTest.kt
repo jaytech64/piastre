@@ -103,7 +103,7 @@ class CaptureHealthRepositoryTest {
         Settings.Secure.putString(
             context.contentResolver,
             "enabled_notification_listeners",
-            if (granted) "${context.packageName}/${DepensesListenerService::class.java.name}" else "",
+            if (granted) "${context.packageName}/${PiastreListenerService::class.java.name}" else "",
         )
     }
 

@@ -27,7 +27,7 @@ import javax.inject.Inject
  * against a row that is already on disk.
  */
 @AndroidEntryPoint
-class DepensesListenerService : NotificationListenerService() {
+class PiastreListenerService : NotificationListenerService() {
     @Inject
     lateinit var capture: NotificationCapture
 
