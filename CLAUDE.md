@@ -262,6 +262,11 @@ Restricting it to Wallet would make a fortnight of cooking at home indistinguish
 - **Import merges and never replaces** ([ADR-0005](docs/adr/0005-import-merges-and-never-replaces.md)).
   The app only ever learns to read what it writes; converting from another app's format happens outside the app.
 
+### The `applicationId` is where the ledger lives
+
+Android files the ledger under `io.github.jaytech64.piastre`, so a build with another `applicationId` installs as an empty app beside the real one and carries nothing over ([ADR-0021](docs/adr/0021-depenses-became-piastre-and-the-ledger-crossed-by-hand.md)).
+The Kotlin namespace can be renamed freely; the id cannot.
+
 ### Every file carries its licence
 
 GPL-3.0-or-later, as an `SPDX-License-Identifier` header above the `package` line.
