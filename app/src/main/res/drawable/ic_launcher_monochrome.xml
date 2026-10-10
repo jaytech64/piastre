@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The same two shapes as ic_launcher_foreground in one colour, which Android
+  replaces with the wallpaper's when themed icons are on. The gap between coin
+  and slice carries the shape once the two tones are gone.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#000000"
+        android:pathData="M54,54 L78,54 A24,24 0 1 1 54,30 Z" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M58,50 L58,26 A24,24 0 0 1 82,50 Z" />
+</vector>
