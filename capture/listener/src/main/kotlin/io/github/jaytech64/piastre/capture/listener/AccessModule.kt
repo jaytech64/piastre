@@ -18,4 +18,10 @@ object AccessModule {
     fun notificationAccess(
         @ApplicationContext context: Context,
     ): NotificationAccess = NotificationAccess(context)
+
+    @Provides
+    @Singleton
+    fun walletNotifications(
+        @ApplicationContext context: Context,
+    ): WalletNotifications = WalletNotifications(context)
 }

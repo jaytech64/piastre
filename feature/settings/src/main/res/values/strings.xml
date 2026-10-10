@@ -4,6 +4,9 @@
     <string name="settings_capture_section">Capture</string>
     <string name="settings_capture_toggle">Capture notifications</string>
     <string name="settings_capture_toggle_body">Reads Google Wallet payment notifications and records them here.</string>
+    <string name="settings_wallet_notifications">Google Wallet notifications</string>
+    <string name="settings_wallet_notifications_body">Nothing is recorded while they are off, and Piastre cannot check them for you.</string>
+    <string name="settings_wallet_absent_body">Google Wallet is not installed on this phone.</string>
     <string name="settings_raw_log">Raw log</string>
     <plurals name="settings_raw_log_count">
         <item quantity="one">%d notification kept</item>
@@ -46,6 +49,22 @@
     <string name="onboarding_control_body">One switch in Settings stops the capture, and erasing everything is one action away.</string>
     <string name="onboarding_grant">Allow notification access</string>
     <string name="onboarding_later">Later</string>
+    <string name="onboarding_continue">Continue</string>
+    <string name="onboarding_done">Done</string>
+    <string name="onboarding_step_of">Step %1$d of %2$d</string>
+    <string name="onboarding_access_title">Allow notification access</string>
+    <string name="onboarding_access_reads_title">What Piastre reads</string>
+    <string name="onboarding_access_reads_body">Android shows every notification to an app with this access. Piastre opens only Google Wallet\'s and ignores the rest without keeping a trace.</string>
+    <string name="onboarding_access_keeps_title">What it keeps</string>
+    <string name="onboarding_access_keeps_body">From a payment, the amount, the merchant and the time. The notification\'s text is removed after 90 days.</string>
+    <string name="onboarding_access_granted">Access is granted.</string>
+    <string name="onboarding_wallet_title">Keep Google Wallet notifications on</string>
+    <string name="onboarding_wallet_why">Piastre records a payment from the notification Google Wallet shows for it. If they are off, nothing arrives and nothing is recorded, even with access granted.</string>
+    <string name="onboarding_wallet_check">Check that notifications are allowed and that the Purchases category is on.</string>
+    <string name="onboarding_wallet_blind">Piastre cannot see this setting, so it cannot check it for you.</string>
+    <string name="onboarding_wallet_open">Open Wallet\'s settings</string>
+    <string name="onboarding_wallet_absent_title">Google Wallet is not installed</string>
+    <string name="onboarding_wallet_absent_body">Piastre records payments from Google Wallet\'s notifications, so it has nothing to capture on this phone until Wallet is installed. You can still enter transactions yourself.</string>
 
     <string name="settings_accounts_section">Accounts</string>
     <string name="settings_accounts_add">Add an account</string>

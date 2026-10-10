@@ -54,7 +54,7 @@
     <string name="ledger_manual_entry">saisie manuelle</string>
     <string name="ledger_unknown_merchant">Marchand inconnu</string>
     <string name="ledger_empty_title">Aucune dépense enregistrée</string>
-    <string name="ledger_empty_body">Un paiement fait avec Google Wallet apparaît ici tout seul, en quelques secondes.</string>
+    <string name="ledger_empty_body">Un paiement fait avec Google Portefeuille apparaît ici tout seul, en quelques secondes.</string>
     <plurals name="ledger_needs_review">
         <item quantity="one">%d à réviser</item>
         <item quantity="other">%d à réviser</item>

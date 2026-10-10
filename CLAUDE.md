@@ -282,6 +282,7 @@ The app targets Quebec, so **`fr_CA` is the case to get right and `en` is the fa
 
 Strings live in the module that draws them, never in `:app`.
 A user-visible string added in one language and not the other is an incomplete change — and the French wording is the maintainer's call, not yours.
+Google Wallet is « Google Portefeuille » in French, the name the app carries on a Quebec phone; « Wallet » never appears in a French string.
 
 At 200 % a French word squeezed into too little width breaks mid-word, so a row of buttons goes through `ButtonsRow` and a choice among a few through `ChoiceRow`, never a bare `Row` or `SingleChoiceSegmentedButtonRow` (`:core:designsystem`).
 A new screen is checked at `fr-CA` 200 % on the emulator before it is done.
