@@ -7,10 +7,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.piastre.capture.listener.CaptureHealthRepository
+import io.github.jaytech64.piastre.capture.listener.WalletNotifications
 import io.github.jaytech64.piastre.core.model.CaptureHealth
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 import java.time.Instant
@@ -24,6 +25,11 @@ data class CaptureHealthUiState(
      * same clock reading the verdict was, and not from a later one.
      */
     val checkedAt: Instant = Instant.EPOCH,
+    /**
+     * Whether Google Wallet is on this phone at all; without it there is nothing
+     * to capture. Null for the same first frame [health] is.
+     */
+    val walletInstalled: Boolean? = null,
 )
 
 @HiltViewModel
@@ -31,24 +37,31 @@ class CaptureHealthViewModel
     @Inject
     constructor(
         private val repository: CaptureHealthRepository,
+        private val wallet: WalletNotifications,
         private val clock: Clock,
     ) : ViewModel() {
         val uiState: StateFlow<CaptureHealthUiState> =
-            repository.health
-                .map { CaptureHealthUiState(it, clock.instant()) }
-                .stateIn(
-                    scope = viewModelScope,
-                    started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                    initialValue = CaptureHealthUiState(),
-                )
+            combine(repository.health, wallet.installed) { health, installed ->
+                CaptureHealthUiState(health, clock.instant(), installed)
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = CaptureHealthUiState(),
+            )
 
         /**
          * Notification access can only change in a screen belonging to the system,
-         * so coming back from it is the one moment worth asking again.
+         * and Google Wallet can only be installed from another app, so coming back
+         * is the one moment worth asking either again.
          */
-        fun refresh() = repository.refresh()
+        fun refresh() {
+            repository.refresh()
+            wallet.refresh()
+        }
 
         fun notificationAccessIntent(): Intent = repository.settingsIntent()
+
+        fun walletNotificationsIntent(): Intent = wallet.settingsIntent()
 
         private companion object {
             const val STOP_TIMEOUT_MILLIS = 5_000L

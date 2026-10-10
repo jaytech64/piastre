@@ -46,6 +46,22 @@
     <string name="onboarding_control_body">Un seul interrupteur, dans les Réglages, interrompt la capture, et tout effacer se fait en une action.</string>
     <string name="onboarding_grant">Autoriser l\'accès aux notifications</string>
     <string name="onboarding_later">Plus tard</string>
+    <string name="onboarding_continue">Continuer</string>
+    <string name="onboarding_done">Terminer</string>
+    <string name="onboarding_step_of">Étape %1$d de %2$d</string>
+    <string name="onboarding_access_title">Autoriser l\'accès aux notifications</string>
+    <string name="onboarding_access_reads_title">Ce que Piastre lit</string>
+    <string name="onboarding_access_reads_body">Android montre toutes les notifications à une application qui a cet accès. Piastre n\'ouvre que celles de Google Wallet et ignore les autres sans en garder de trace.</string>
+    <string name="onboarding_access_keeps_title">Ce qu\'elle garde</string>
+    <string name="onboarding_access_keeps_body">D\'un paiement, le montant, le marchand et l\'heure. Le texte de la notification est retiré après 90 jours.</string>
+    <string name="onboarding_access_granted">L\'accès est accordé.</string>
+    <string name="onboarding_wallet_title">Gardez les notifications de Google Wallet activées</string>
+    <string name="onboarding_wallet_why">Piastre inscrit un paiement à partir de la notification que Google Wallet affiche. Si elles sont désactivées, rien n\'arrive et rien n\'est inscrit, même avec l\'accès accordé.</string>
+    <string name="onboarding_wallet_check">Vérifiez que les notifications sont autorisées et que la catégorie Achats est activée.</string>
+    <string name="onboarding_wallet_blind">Piastre ne peut pas voir ce réglage et ne peut donc pas le vérifier pour vous.</string>
+    <string name="onboarding_wallet_open">Ouvrir les réglages de Wallet</string>
+    <string name="onboarding_wallet_absent_title">Google Wallet n\'est pas installé</string>
+    <string name="onboarding_wallet_absent_body">Piastre inscrit les paiements à partir des notifications de Google Wallet\u00A0: elle n\'a donc rien à capter sur ce téléphone tant que Wallet n\'est pas installé. Vous pouvez toujours inscrire vos transactions vous-même.</string>
 
     <string name="settings_accounts_section">Comptes</string>
     <string name="settings_accounts_add">Ajouter un compte</string>
