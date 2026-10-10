@@ -4,6 +4,9 @@
     <string name="settings_capture_section">Capture</string>
     <string name="settings_capture_toggle">Capter les notifications</string>
     <string name="settings_capture_toggle_body">Lit les notifications de paiement de Google Wallet et les inscrit ici.</string>
+    <string name="settings_wallet_notifications">Notifications de Google Wallet</string>
+    <string name="settings_wallet_notifications_body">Rien n\'est inscrit tant qu\'elles sont désactivées, et Piastre ne peut pas le vérifier pour vous.</string>
+    <string name="settings_wallet_absent_body">Google Wallet n\'est pas installé sur ce téléphone.</string>
     <string name="settings_raw_log">Journal brut</string>
     <plurals name="settings_raw_log_count">
         <item quantity="one">%d notification conservée</item>

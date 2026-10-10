@@ -4,6 +4,9 @@
     <string name="settings_capture_section">Capture</string>
     <string name="settings_capture_toggle">Capture notifications</string>
     <string name="settings_capture_toggle_body">Reads Google Wallet payment notifications and records them here.</string>
+    <string name="settings_wallet_notifications">Google Wallet notifications</string>
+    <string name="settings_wallet_notifications_body">Nothing is recorded while they are off, and Piastre cannot check them for you.</string>
+    <string name="settings_wallet_absent_body">Google Wallet is not installed on this phone.</string>
     <string name="settings_raw_log">Raw log</string>
     <plurals name="settings_raw_log_count">
         <item quantity="one">%d notification kept</item>

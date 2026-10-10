@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.feature.settings
 
+import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -68,6 +70,8 @@ fun SettingsScreen(
 
         health.health?.let { CaptureHealthRow(it, health.checkedAt) }
 
+        health.walletInstalled?.let { WalletNotificationsRow(it, healthViewModel::walletNotificationsIntent) }
+
         SettingRow(
             title = stringResource(R.string.settings_raw_log),
             body = pluralStringResource(R.plurals.settings_raw_log_count, state.rawEventCount, state.rawEventCount),
@@ -103,6 +107,30 @@ fun SettingsScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+        )
+    }
+}
+
+/**
+ * The way to the one capture setting the app cannot read. Without Google Wallet
+ * there is no such screen to open, so the row says that and leads nowhere.
+ */
+@Composable
+private fun WalletNotificationsRow(
+    walletInstalled: Boolean,
+    settingsIntent: () -> Intent,
+) {
+    val context = LocalContext.current
+    if (walletInstalled) {
+        SettingRow(
+            title = stringResource(R.string.settings_wallet_notifications),
+            body = stringResource(R.string.settings_wallet_notifications_body),
+            onClick = { context.startActivity(settingsIntent()) },
+        )
+    } else {
+        SettingRow(
+            title = stringResource(R.string.settings_wallet_notifications),
+            body = stringResource(R.string.settings_wallet_absent_body),
         )
     }
 }
