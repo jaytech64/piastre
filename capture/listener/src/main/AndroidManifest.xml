@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+      Since Android 11 an app sees only the packages it names, and without this
+      one WalletNotifications finds no Google Wallet on any phone. It is not a
+      permission: it says whether Wallet is installed and nothing about it.
+    -->
+    <queries>
+        <package android:name="com.google.android.apps.walletnfcrel" />
+    </queries>
+
     <application>
 
         <!--
