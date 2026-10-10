@@ -1,10 +1,10 @@
 <resources>
     <string name="account_dialog_add_title">Ajouter un compte</string>
     <string name="account_dialog_edit_title">Nommer ce compte</string>
-    <string name="account_dialog_from_wallet">%1$s, tel que l\'indique Wallet</string>
+    <string name="account_dialog_from_wallet">%1$s, tel que l\'indique Google Portefeuille</string>
     <string name="account_dialog_name">Nom</string>
     <string name="account_dialog_last4">4 derniers chiffres (facultatif)</string>
-    <string name="account_dialog_last4_locked">4 derniers chiffres · fournis par Wallet</string>
+    <string name="account_dialog_last4_locked">4 derniers chiffres · fournis par Google Portefeuille</string>
     <string name="account_dialog_opening_balance">Solde d\'ouverture (facultatif)</string>
     <string name="account_dialog_opening_balance_help">Ce qu\'il contenait avant toute transaction ici. Négatif pour une somme due.</string>
     <string name="account_dialog_remove">Retirer</string>
