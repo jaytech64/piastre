@@ -1,16 +1,16 @@
 import com.android.build.api.artifact.SingleArtifact
 
 plugins {
-    id("depenses.android.application")
-    id("depenses.android.compose")
-    id("depenses.android.hilt")
+    id("piastre.android.application")
+    id("piastre.android.compose")
+    id("piastre.android.hilt")
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses"
+    namespace = "io.github.jaytech64.piastre"
 
     defaultConfig {
-        applicationId = "io.github.jaytech64.depenses"
+        applicationId = "io.github.jaytech64.piastre"
         versionCode = 1
         versionName = "0.1.0"
         resourceConfigurations += setOf("en", "fr")

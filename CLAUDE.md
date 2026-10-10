@@ -1,4 +1,4 @@
-# CLAUDE.md — Dépenses
+# CLAUDE.md — Piastre
 
 Read [`README.md`](README.md) first: it holds the module graph, the build commands and the privacy claim.
 This file holds what the README does not — the rules a change must not break, and where the guard that would catch a break lives.
@@ -98,7 +98,7 @@ Screens, navigation, the review inbox, settings, export and import all prove the
 It is also where `fr-CA` gets exercised, since switching the system locale on a throwaway AVD costs nothing.
 
 **Reach for the real phone only when the emulator cannot produce the signal**, which in practice means the capture path.
-Google Wallet posts a genuine payment notification only on a real phone with a real card, so a parser change, anything touching `DepensesListenerService`, and the capture-health banner are proven against real spending and nothing else.
+Google Wallet posts a genuine payment notification only on a real phone with a real card, so a parser change, anything touching `PiastreListenerService`, and the capture-health banner are proven against real spending and nothing else.
 
 Say plainly which surface each claim was proven on, and never let an emulator run stand in for a capture-path claim.
 
@@ -170,7 +170,7 @@ A total counts Canadian dollars and says how many rows in another currency it le
 
 ### Money and dates are formatted in exactly one place
 
-`core/designsystem/src/main/kotlin/io/github/jaytech64/depenses/core/designsystem/Formatters.kt` decides what money, dates and times look like, and nothing else may.
+`core/designsystem/src/main/kotlin/io/github/jaytech64/piastre/core/designsystem/Formatters.kt` decides what money, dates and times look like, and nothing else may.
 `"%.2f $".format(...)` is wrong on a Quebec phone in three separate ways: in `fr-CA` the symbol trails the amount, the decimal mark is a comma, and the spacer is U+202F.
 
 Two rules inside that file that look like bugs and are not:
@@ -229,7 +229,7 @@ Forgetting the bump is silent: the fix ships and history stays wrong.
 
 ### The listener's package allowlist is data minimisation, not an optimisation
 
-Android hands `DepensesListenerService` every notification on the device: mail subjects, message previews, everything.
+Android hands `PiastreListenerService` every notification on the device: mail subjects, message previews, everything.
 `registry.watchedPackages` filters **before the bundle is opened**, so a notification no parser claims leaves no trace at all — not even a discarded row.
 Never move that filter later in the method for tidiness, and never read a field before it.
 
@@ -239,7 +239,7 @@ Restricting it to Wallet would make a fortnight of cooking at home indistinguish
 ### Migrations are historical records
 
 `core/database/schemas/` holds one committed JSON per version, so a migration is reviewable rather than a leap of faith.
-`DepensesDatabaseMigrationTest` validates the individual steps and migrates a first-release database all the way to the current schema.
+`PiastreDatabaseMigrationTest` validates the individual steps and migrates a first-release database all the way to the current schema.
 
 - **A migration builds the schema of its own version and no other.**
   `MIGRATION_6_7` still creates the `card` table that schema 8 goes on to replace with `account`.
@@ -261,6 +261,11 @@ Restricting it to Wallet would make a fortnight of cooking at home indistinguish
 - **Export writes both CSV and JSON** ([ADR-0003](docs/adr/0003-export-writes-csv-and-json.md)); JSON is the format import reads.
 - **Import merges and never replaces** ([ADR-0005](docs/adr/0005-import-merges-and-never-replaces.md)).
   The app only ever learns to read what it writes; converting from another app's format happens outside the app.
+
+### The `applicationId` is where the ledger lives
+
+Android files the ledger under `io.github.jaytech64.piastre`, so a build with another `applicationId` installs as an empty app beside the real one and carries nothing over ([ADR-0021](docs/adr/0021-depenses-became-piastre-and-the-ledger-crossed-by-hand.md)).
+The Kotlin namespace can be renamed freely; the id cannot.
 
 ### Every file carries its licence
 

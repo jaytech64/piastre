@@ -37,11 +37,11 @@
         <item quantity="other">il y a %d jours</item>
     </plurals>
 
-    <string name="onboarding_title">Bienvenue dans Dépenses</string>
+    <string name="onboarding_title">Bienvenue dans Piastre</string>
     <string name="onboarding_capture_title">Vos paiements, inscrits tout seuls</string>
     <string name="onboarding_capture_body">L\'application lit les notifications de paiement de Google Wallet et en tire le montant, le marchand et l\'heure.</string>
     <string name="onboarding_private_title">Rien ne sort de votre téléphone</string>
-    <string name="onboarding_private_body">Dépenses n\'a même pas la permission d\'accéder à Internet. Tout reste dans la mémoire de l\'appareil.</string>
+    <string name="onboarding_private_body">Piastre n\'a même pas la permission d\'accéder à Internet. Tout reste dans la mémoire de l\'appareil.</string>
     <string name="onboarding_control_title">Vous gardez la main</string>
     <string name="onboarding_control_body">Un seul interrupteur, dans les Réglages, interrompt la capture, et tout effacer se fait en une action.</string>
     <string name="onboarding_grant">Autoriser l\'accès aux notifications</string>

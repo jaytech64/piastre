@@ -1,9 +1,9 @@
 plugins {
-    id("depenses.android.feature")
+    id("piastre.android.feature")
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.feature.review"
+    namespace = "io.github.jaytech64.piastre.feature.review"
 }
 
 dependencies {

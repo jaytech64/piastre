@@ -2,7 +2,7 @@ plugins {
     `kotlin-dsl`
 }
 
-group = "io.github.jaytech64.depenses.buildlogic"
+group = "io.github.jaytech64.piastre.buildlogic"
 
 kotlin {
     jvmToolchain(17)
@@ -18,28 +18,28 @@ dependencies {
 gradlePlugin {
     plugins {
         register("androidApplication") {
-            id = "depenses.android.application"
-            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidApplicationConventionPlugin"
+            id = "piastre.android.application"
+            implementationClass = "io.github.jaytech64.piastre.buildlogic.AndroidApplicationConventionPlugin"
         }
         register("androidLibrary") {
-            id = "depenses.android.library"
-            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidLibraryConventionPlugin"
+            id = "piastre.android.library"
+            implementationClass = "io.github.jaytech64.piastre.buildlogic.AndroidLibraryConventionPlugin"
         }
         register("androidCompose") {
-            id = "depenses.android.compose"
-            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidComposeConventionPlugin"
+            id = "piastre.android.compose"
+            implementationClass = "io.github.jaytech64.piastre.buildlogic.AndroidComposeConventionPlugin"
         }
         register("androidHilt") {
-            id = "depenses.android.hilt"
-            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidHiltConventionPlugin"
+            id = "piastre.android.hilt"
+            implementationClass = "io.github.jaytech64.piastre.buildlogic.AndroidHiltConventionPlugin"
         }
         register("androidFeature") {
-            id = "depenses.android.feature"
-            implementationClass = "io.github.jaytech64.depenses.buildlogic.AndroidFeatureConventionPlugin"
+            id = "piastre.android.feature"
+            implementationClass = "io.github.jaytech64.piastre.buildlogic.AndroidFeatureConventionPlugin"
         }
         register("jvmLibrary") {
-            id = "depenses.jvm.library"
-            implementationClass = "io.github.jaytech64.depenses.buildlogic.JvmLibraryConventionPlugin"
+            id = "piastre.jvm.library"
+            implementationClass = "io.github.jaytech64.piastre.buildlogic.JvmLibraryConventionPlugin"
         }
     }
 }

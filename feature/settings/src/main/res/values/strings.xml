@@ -37,11 +37,11 @@
         <item quantity="other">%d days ago</item>
     </plurals>
 
-    <string name="onboarding_title">Welcome to Dépenses</string>
+    <string name="onboarding_title">Welcome to Piastre</string>
     <string name="onboarding_capture_title">Your payments, recorded on their own</string>
     <string name="onboarding_capture_body">The app reads Google Wallet payment notifications and takes the amount, the merchant and the time from them.</string>
     <string name="onboarding_private_title">Nothing leaves your phone</string>
-    <string name="onboarding_private_body">Dépenses does not even have permission to use the internet. Everything stays in this device\'s storage.</string>
+    <string name="onboarding_private_body">Piastre does not even have permission to use the internet. Everything stays in this device\'s storage.</string>
     <string name="onboarding_control_title">You stay in control</string>
     <string name="onboarding_control_body">One switch in Settings stops the capture, and erasing everything is one action away.</string>
     <string name="onboarding_grant">Allow notification access</string>

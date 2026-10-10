@@ -18,7 +18,7 @@ pluginManagement {
 // for the coordinates below.
 includeBuild("..") {
     dependencySubstitution {
-        substitute(module("io.github.jaytech64.depenses:depenses-parsing"))
+        substitute(module("io.github.jaytech64.piastre:piastre-parsing"))
             .using(project(":capture:parsing"))
     }
 }
@@ -31,5 +31,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "depenses-spike"
+rootProject.name = "piastre-spike"
 include(":app")

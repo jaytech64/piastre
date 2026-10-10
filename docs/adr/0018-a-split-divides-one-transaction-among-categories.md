@@ -77,7 +77,7 @@ A split with no such part is counted exactly as this record decided.
 
 - `TransactionPart`, `divide` and `leftOf` in `core/model/src/main/kotlin/.../TransactionPart.kt`, and `TransactionPartTest`.
 - `settleCategory` in `core/data/src/main/kotlin/.../SettledCategory.kt` — the one place that decides whether a category goes on the row or among parts.
-- `MIGRATION_16_17` in `core/database/src/main/kotlin/.../DepensesDatabase.kt`, and `` `migrating to schema 17 keeps the ledger and splits nothing` `` in `DepensesDatabaseMigrationTest`.
+- `MIGRATION_16_17` in `core/database/src/main/kotlin/.../PiastreDatabase.kt`, and `` `migrating to schema 17 keeps the ledger and splits nothing` `` in `PiastreDatabaseMigrationTest`.
 - `ReportDao.categoryTotals`, `CATEGORISED` and `NOT_SPLIT` in `core/database/src/main/kotlin/.../Daos.kt`; `` `a split goes to each category by its parts, and the categories still add up to the period` `` in `ReportRepositoryTest`.
 - `LedgerFilter.shown` in `feature/ledger/src/main/kotlin/.../LedgerViewModel.kt`, and `LedgerSplitTest`.
 - `SplitParts` and `SplitSection` in `feature/ledger`, and `ExpenseFormSplitTest`.

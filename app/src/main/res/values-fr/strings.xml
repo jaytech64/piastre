@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Dépenses</string>
+    <string name="app_name">Piastre</string>
     <string name="nav_ledger">Dépenses</string>
     <string name="nav_reports">Rapports</string>
     <string name="nav_review">Révision</string>

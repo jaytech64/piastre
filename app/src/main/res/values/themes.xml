@@ -1,3 +1,3 @@
 <resources>
-    <style name="Theme.Depenses" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Piastre" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

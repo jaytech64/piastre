@@ -1,6 +1,6 @@
-# Dépenses
+# Piastre
 
-An Android expense tracker that turns Google Wallet payment notifications into a private, local ledger.
+An Android app that turns Google Wallet payment notifications into a private, local ledger: where your money went, and what is left.
 
 Everything stays on the device.
 The app has no `INTERNET` permission and no network code, and the build fails if either ever appears — see [Privacy](#privacy) below.

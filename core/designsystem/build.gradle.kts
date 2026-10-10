@@ -1,10 +1,10 @@
 plugins {
-    id("depenses.android.library")
-    id("depenses.android.compose")
+    id("piastre.android.library")
+    id("piastre.android.compose")
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.core.designsystem"
+    namespace = "io.github.jaytech64.piastre.core.designsystem"
 }
 
 dependencies {

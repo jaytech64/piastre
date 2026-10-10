@@ -1,9 +1,9 @@
 plugins {
-    id("depenses.android.library")
+    id("piastre.android.library")
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.core.testing"
+    namespace = "io.github.jaytech64.piastre.core.testing"
 }
 
 dependencies {

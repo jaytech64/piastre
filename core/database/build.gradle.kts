@@ -1,11 +1,11 @@
 plugins {
-    id("depenses.android.library")
-    id("depenses.android.hilt")
+    id("piastre.android.library")
+    id("piastre.android.hilt")
     alias(libs.plugins.room)
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.core.database"
+    namespace = "io.github.jaytech64.piastre.core.database"
 
     // MigrationTestHelper reads the exported schemas through the asset manager, so
     // the committed JSON has to be reachable as an asset for the JVM tests too.

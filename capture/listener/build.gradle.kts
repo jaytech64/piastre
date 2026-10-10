@@ -1,10 +1,10 @@
 plugins {
-    id("depenses.android.library")
-    id("depenses.android.hilt")
+    id("piastre.android.library")
+    id("piastre.android.hilt")
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.capture.listener"
+    namespace = "io.github.jaytech64.piastre.capture.listener"
 }
 
 dependencies {

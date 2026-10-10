@@ -1,5 +1,5 @@
 plugins {
-    id("depenses.jvm.library")
+    id("piastre.jvm.library")
     alias(libs.plugins.kotlin.serialization)
 
     // The captured corpus is the evidence every layer above is tested against, so

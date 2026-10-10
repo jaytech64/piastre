@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "io.github.jaytech64.depenses.spike"
+    namespace = "io.github.jaytech64.piastre.spike"
     compileSdk = 36
 
     defaultConfig {
         // Deliberately NOT the production id: the spike must be installable
         // alongside, and uninstallable without touching, the real app.
-        applicationId = "io.github.jaytech64.depenses.spike"
+        applicationId = "io.github.jaytech64.piastre.spike"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
@@ -43,7 +43,7 @@ android {
 }
 
 dependencies {
-    implementation("io.github.jaytech64.depenses:depenses-parsing")
+    implementation("io.github.jaytech64.piastre:piastre-parsing")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
