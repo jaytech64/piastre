@@ -13,6 +13,9 @@
         <item quantity="other">%d notifications conservées</item>
     </plurals>
     <string name="settings_no_network">Aucune donnée ne quitte l\'appareil. L\'application n\'a pas la permission d\'accéder à Internet.</string>
+    <string name="settings_support">Soutenir Piastre</string>
+    <string name="settings_support_body">Piastre est gratuit et le restera. Un don l\'aide à avancer, et ne débloque rien.</string>
+    <string name="settings_support_no_browser">Aucun navigateur ne peut ouvrir la page de dons. Son adresse : %1$s</string>
 
     <string name="health_listening">Capture active</string>
     <string name="health_paused">Capture en pause</string>

@@ -17,6 +17,7 @@ import io.github.jaytech64.piastre.core.data.ImportOutcome
 import io.github.jaytech64.piastre.core.data.ImportProblem
 import io.github.jaytech64.piastre.core.data.ImportReader
 import io.github.jaytech64.piastre.core.data.ImportReading
+import io.github.jaytech64.piastre.core.data.PremiumSource
 import io.github.jaytech64.piastre.core.data.RawEventRepository
 import io.github.jaytech64.piastre.core.data.RecurringRepository
 import io.github.jaytech64.piastre.core.data.SettingsRepository
@@ -78,7 +79,11 @@ class SettingsViewModel
         templates: TemplateRepository,
         categories: CategoryRepository,
         categoryGroups: CategoryGroupRepository,
+        premium: PremiumSource,
     ) : ViewModel() {
+        /** Where the Support row leads, or null in a build that must not ask. */
+        val donationPage: String? = premium.donationPage
+
         val uiState: StateFlow<SettingsUiState> =
             combine(
                 settings.captureEnabled,

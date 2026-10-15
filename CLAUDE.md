@@ -91,7 +91,7 @@ Every test in the repo is a JVM or Robolectric unit test, so anything a user act
 
 ```
 emulator -avd Pixel_10 &
-./gradlew installDebug
+./gradlew installPlayDebug
 ```
 
 Screens, navigation, the review inbox, settings, export and import all prove themselves there, and it resets to a known state far more cheaply than the phone does.
@@ -102,14 +102,14 @@ Google Wallet posts a genuine payment notification only on a real phone with a r
 
 Say plainly which surface each claim was proven on, and never let an emulator run stand in for a capture-path claim.
 
-With the phone plugged in, `./gradlew installDebug` installs on **every** connected device, so name the target with `ANDROID_SERIAL=<serial>`: an emulator run must never also put an unapproved build on the phone.
+With the phone plugged in, `./gradlew installPlayDebug` installs on **every** connected device, so name the target with `ANDROID_SERIAL=<serial>`: an emulator run must never also put an unapproved build on the phone.
 
 **An install on the phone must never take the data with it.**
 That phone holds real spending, and it holds the only copy: `allowBackup="false"`, every domain excluded from both cloud backup and device transfer, and no network to have synced it anywhere.
 A wipe is not a setback, it is the permanent loss of the ledger this app exists to keep.
 
-`./gradlew installDebug` over an existing debug build preserves app data, so the danger is never the install itself — it is the reflex that follows a *refused* install.
-**Never run `uninstallDebug`, `adb uninstall`, or "clear storage" to make an install go through.**
+`./gradlew installPlayDebug` over an existing debug build preserves app data, so the danger is never the install itself — it is the reflex that follows a *refused* install.
+**Never run `uninstallPlayDebug`, `uninstallFossDebug`, `adb uninstall`, or "clear storage" to make an install go through.**
 An install is refused for a reason worth understanding first: a debug keystore regenerated on another machine, a release build going over the debug one (no release signing config exists, so their signatures never match), or a downgrade below the installed `versionCode`.
 When that happens, stop and export from Settings — CSV and JSON, per [ADR-0003](docs/adr/0003-export-writes-csv-and-json.md) — before touching anything, and say so rather than clearing the way yourself.
 
@@ -124,10 +124,10 @@ The toolchain is declared in `gradle/gradle-daemon-jvm.properties`, so a wrong J
 ./gradlew check           # everything below, and the gate before any commit
 ./gradlew spotlessApply   # format, and add the missing licence header
 ./gradlew assembleDebug
-./gradlew installDebug
+./gradlew installPlayDebug   # or installFossDebug
 ```
 
-`check` is the whole gate, not just tests: it runs `:detekt`, every module's `spotlessCheck`, Android Lint, every unit test, and `:app:verifyDebugHasNoNetworkPermission` / `verifyReleaseHasNoNetworkPermission`.
+`check` is the whole gate, not just tests: it runs `:detekt`, every module's `spotlessCheck`, Android Lint, every unit test, `:app:verify*HasNoNetworkPermission` on every variant, and `:app:verifyFoss*HasNoGoogleStoreCode`.
 CI (`.github/workflows/ci.yml`) runs `spotlessCheck`, `detekt`, `check` and `assembleDebug` as separate steps only so a failure names itself; it is the backstop, not a second opinion.
 
 Versions are pinned in `gradle/libs.versions.toml`, and AndroidX is deliberately held at the last line supporting AGP 8.13 / `compileSdk` 36.
@@ -152,6 +152,9 @@ Two rules matter before you propose a new file:
   Nothing stops a module from adding a sibling by hand, so this one is on you: if `:feature:reports` needs something from `:feature:ledger`, that thing belongs in `:core:`.
 
 `:core:data` is the only API a feature may see.
+
+**Only `:app` knows which store it was built for** ([ADR-0022](docs/adr/0022-piastre-is-sold-on-play-and-given-on-f-droid.md)).
+Its `store` flavour takes `:premium:play` or `:premium:foss`, each binding `PremiumSource`; a feature never branches on the build, and Google's billing library stays off the F-Droid classpath, which `verifyFoss*HasNoGoogleStoreCode` enforces.
 A feature never touches a DAO, an entity or Room directly.
 
 ---

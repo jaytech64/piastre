@@ -38,3 +38,6 @@ include(":feature:ledger")
 include(":feature:review")
 include(":feature:reports")
 include(":feature:settings")
+
+include(":premium:play")
+include(":premium:foss")
