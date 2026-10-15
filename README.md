@@ -41,11 +41,16 @@ Budgets and any payment source other than Wallet are out of scope so far.
 ## Building
 
 ```
-./gradlew assembleDebug     # build
-./gradlew check             # lint, static analysis, tests, privacy guard
-./gradlew spotlessApply     # format
-./gradlew installDebug      # install on a connected device
+./gradlew assembleDebug        # build both stores
+./gradlew check                # lint, static analysis, tests, privacy guards
+./gradlew spotlessApply        # format
+./gradlew installPlayDebug     # install the Play build on a connected device
+./gradlew installFossDebug     # install the F-Droid build on a connected device
 ```
+
+The app is built for two stores ([ADR-0022](docs/adr/0022-piastre-is-sold-on-play-and-given-on-f-droid.md)).
+The Play build sells Premium through Google Play; the F-Droid build has every feature, free, and asks only for a donation.
+Both are the same app under the same `applicationId`, so moving from one to the other goes through export and import.
 
 ## Module graph
 
@@ -61,6 +66,7 @@ Module boundaries are Gradle modules rather than packages, because a package bou
 | `:core:data` | Android lib | Repositories and settings. The only API features may see. |
 | `:core:designsystem` | Android lib | Theme, and the one place that decides what money and dates look like. |
 | `:feature:*` | Android lib | `ledger` · `review` · `reports` · `settings`. Siblings never depend on each other. |
+| `:premium:*` | Android lib | `play` · `foss`. What each store lets the app ask; `:app` takes one per build. |
 | `:core:testing` | Android lib | Fixtures, fakes, in-memory database. |
 
 `:capture:parsing` and `:core:model` have no Android dependency at all, so the riskiest code in the app is tested on the JVM in milliseconds — no emulator, no Robolectric, no device.
@@ -70,7 +76,7 @@ Module boundaries are Gradle modules rather than packages, because a package bou
 The ledger is financial data about one person, and it is treated that way.
 
 - **No network permission.**
-  Not in the manifest and not in any dependency: `./gradlew check` reads the *merged* manifest and fails the build if `INTERNET` or `ACCESS_NETWORK_STATE` appears.
+  Not in the manifest and not in any dependency: `./gradlew check` reads the *merged* manifest of both builds and fails if `INTERNET` or `ACCESS_NETWORK_STATE` appears.
   Without the permission the data physically cannot leave the device, which is a stronger guarantee than a promise not to send it.
 - **No backup, no device transfer.**
   `allowBackup="false"` plus `data_extraction_rules.xml` excluding every domain.
