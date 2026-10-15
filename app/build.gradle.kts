@@ -1,4 +1,7 @@
 import com.android.build.api.artifact.SingleArtifact
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.ResolvedComponentResult
+import org.gradle.api.artifacts.result.ResolvedDependencyResult
 
 plugins {
     id("piastre.android.application")
@@ -14,6 +17,16 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         resourceConfigurations += setOf("en", "fr")
+    }
+
+    // One codebase, two stores (ADR-0022). Each flavour brings the one module
+    // that answers for its store, so the billing library is on the Play build's
+    // classpath by construction, never by care. Both keep the same applicationId,
+    // because Android files the ledger under it (ADR-0021).
+    flavorDimensions += "store"
+    productFlavors {
+        create("play") { dimension = "store" }
+        create("foss") { dimension = "store" }
     }
 
     buildTypes {
@@ -34,6 +47,8 @@ dependencies {
     implementation(project(":feature:reports"))
     implementation(project(":feature:review"))
     implementation(project(":feature:settings"))
+    "playImplementation"(project(":premium:play"))
+    "fossImplementation"(project(":premium:foss"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -70,6 +85,66 @@ androidComponents.onVariants { variant ->
                     "Merged manifest requests ${found.joinToString()}. This app stores financial data " +
                         "locally and ships with no network access; remove the permission or the dependency " +
                         "that pulls it in."
+                }
+            }
+        }
+    tasks.named("check").configure { dependsOn(verify) }
+}
+
+/**
+ * The F-Droid build carries no Google store code and asks for none of what the
+ * Play build needs in order to sell. F-Droid refuses a proprietary library, and
+ * the people who install from it chose it to be rid of exactly that, so a
+ * dependency that drags any of it in fails the build rather than the listing.
+ */
+val googleStoreGroups =
+    listOf(
+        "com.android.billingclient",
+        "com.google.android.gms",
+        "com.google.android.datatransport",
+        "com.google.firebase",
+    )
+val playOnlyPermissions =
+    listOf(
+        "com.android.vending.BILLING",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+    )
+
+androidComponents.onVariants(androidComponents.selector().withFlavor("store" to "foss")) { variant ->
+    val verify =
+        tasks.register("verify${variant.name.replaceFirstChar(Char::uppercase)}HasNoGoogleStoreCode") {
+            val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
+            val groups = googleStoreGroups
+            val permissions = playOnlyPermissions
+            val modules =
+                variant.runtimeConfiguration.incoming.resolutionResult.rootComponent.map { root ->
+                    val seen = mutableSetOf<ResolvedComponentResult>()
+                    val pending = ArrayDeque(listOf(root))
+                    while (pending.isNotEmpty()) {
+                        val component = pending.removeFirst()
+                        if (seen.add(component)) {
+                            component.dependencies
+                                .filterIsInstance<ResolvedDependencyResult>()
+                                .forEach { pending.add(it.selected) }
+                        }
+                    }
+                    seen
+                        .map { it.id }
+                        .filterIsInstance<ModuleComponentIdentifier>()
+                        .map { "${it.group}:${it.module}" }
+                }
+            inputs.file(manifest)
+            inputs.property("modules", modules)
+            outputs.upToDateWhen { true }
+            doLast {
+                val text = manifest.get().asFile.readText()
+                val asked = permissions.filter { it in text }
+                val google = modules.get().filter { module -> groups.any { module.startsWith("$it:") } }
+                check(asked.isEmpty() && google.isEmpty()) {
+                    "The F-Droid build must carry no Google store code. " +
+                        "Permissions: ${asked.ifEmpty { listOf("none") }.joinToString()}. " +
+                        "Modules: ${google.ifEmpty { listOf("none") }.joinToString()}."
                 }
             }
         }
