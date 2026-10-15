@@ -3,6 +3,7 @@
 package io.github.jaytech64.piastre.feature.settings
 
 import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -100,6 +101,8 @@ fun SettingsScreen(
 
         DataSection(lastAction = lastAction, viewModel = viewModel)
 
+        viewModel.donationPage?.let { SupportRow(it) }
+
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 
         Text(
@@ -131,6 +134,29 @@ private fun WalletNotificationsRow(
         SettingRow(
             title = stringResource(R.string.settings_wallet_notifications),
             body = stringResource(R.string.settings_wallet_absent_body),
+        )
+    }
+}
+
+/**
+ * The F-Droid build's one ask: a donation page, handed to the browser. A donation
+ * unlocks nothing, and the app never learns whether one was made. Without a
+ * browser to open it, the row gives the address to type elsewhere.
+ */
+@Composable
+private fun SupportRow(page: String) {
+    val context = LocalContext.current
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(page))
+    if (intent.resolveActivity(context.packageManager) != null) {
+        SettingRow(
+            title = stringResource(R.string.settings_support),
+            body = stringResource(R.string.settings_support_body),
+            onClick = { context.startActivity(intent) },
+        )
+    } else {
+        SettingRow(
+            title = stringResource(R.string.settings_support),
+            body = stringResource(R.string.settings_support_no_browser, page),
         )
     }
 }
