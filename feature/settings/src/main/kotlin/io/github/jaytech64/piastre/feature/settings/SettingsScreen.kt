@@ -3,7 +3,6 @@
 package io.github.jaytech64.piastre.feature.settings
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.piastre.core.designsystem.rememberLongestWord
 import io.github.jaytech64.piastre.core.model.CaptureHealth
+import io.github.jaytech64.piastre.core.model.Premium
 import java.time.Instant
 
 @Composable
@@ -38,12 +38,13 @@ fun SettingsScreen(
     onOpenCategories: () -> Unit,
     onOpenRecurring: () -> Unit,
     onOpenTemplates: () -> Unit,
+    onOpenPremium: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     healthViewModel: CaptureHealthViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val health by healthViewModel.uiState.collectAsStateWithLifecycle()
     val lastAction by viewModel.lastAction.collectAsStateWithLifecycle()
+    val premium by viewModel.premium.collectAsStateWithLifecycle()
 
     Column(
         Modifier
@@ -57,26 +58,9 @@ fun SettingsScreen(
             modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
         )
 
-        SectionHeader(stringResource(R.string.settings_capture_section))
+        premium?.takeIf { it != Premium.Unlocked }?.let { PremiumRow(it, onOpenPremium) }
 
-        SettingRow(
-            title = stringResource(R.string.settings_capture_toggle),
-            body = stringResource(R.string.settings_capture_toggle_body),
-        ) {
-            Switch(
-                checked = state.captureEnabled,
-                onCheckedChange = viewModel::setCaptureEnabled,
-            )
-        }
-
-        health.health?.let { CaptureHealthRow(it, health.checkedAt) }
-
-        health.walletInstalled?.let { WalletNotificationsRow(it, healthViewModel::walletNotificationsIntent) }
-
-        SettingRow(
-            title = stringResource(R.string.settings_raw_log),
-            body = pluralStringResource(R.plurals.settings_raw_log_count, state.rawEventCount, state.rawEventCount),
-        )
+        CaptureSection(state, viewModel, healthViewModel)
 
         AccountsSection()
 
@@ -138,27 +122,35 @@ private fun WalletNotificationsRow(
     }
 }
 
-/**
- * The F-Droid build's one ask: a donation page, handed to the browser. A donation
- * unlocks nothing, and the app never learns whether one was made. Without a
- * browser to open it, the row gives the address to type elsewhere.
- */
+/** Capture on or off, whether it is working, and what it has kept. */
 @Composable
-private fun SupportRow(page: String) {
-    val context = LocalContext.current
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(page))
-    if (intent.resolveActivity(context.packageManager) != null) {
-        SettingRow(
-            title = stringResource(R.string.settings_support),
-            body = stringResource(R.string.settings_support_body),
-            onClick = { context.startActivity(intent) },
-        )
-    } else {
-        SettingRow(
-            title = stringResource(R.string.settings_support),
-            body = stringResource(R.string.settings_support_no_browser, page),
+private fun CaptureSection(
+    state: SettingsUiState,
+    viewModel: SettingsViewModel,
+    healthViewModel: CaptureHealthViewModel,
+) {
+    val health by healthViewModel.uiState.collectAsStateWithLifecycle()
+
+    SectionHeader(stringResource(R.string.settings_capture_section))
+
+    SettingRow(
+        title = stringResource(R.string.settings_capture_toggle),
+        body = stringResource(R.string.settings_capture_toggle_body),
+    ) {
+        Switch(
+            checked = state.captureEnabled,
+            onCheckedChange = viewModel::setCaptureEnabled,
         )
     }
+
+    health.health?.let { CaptureHealthRow(it, health.checkedAt) }
+
+    health.walletInstalled?.let { WalletNotificationsRow(it, healthViewModel::walletNotificationsIntent) }
+
+    SettingRow(
+        title = stringResource(R.string.settings_raw_log),
+        body = pluralStringResource(R.plurals.settings_raw_log_count, state.rawEventCount, state.rawEventCount),
+    )
 }
 
 @Composable

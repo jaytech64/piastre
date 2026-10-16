@@ -16,6 +16,12 @@
     <string name="settings_support">Soutenir Piastre</string>
     <string name="settings_support_body">Piastre est gratuit et le restera. Un don l\'aide à avancer, et ne débloque rien.</string>
     <string name="settings_support_no_browser">Aucun navigateur ne peut ouvrir la page de dons. Son adresse : %1$s</string>
+    <string name="settings_premium">Premium</string>
+    <string name="settings_premium_free">Les budgets, et chaque fonction Premium à venir</string>
+    <string name="settings_premium_trial">Essai gratuit jusqu\'au %1$s</string>
+    <string name="settings_premium_on">Actif, renouvelé chaque année</string>
+    <string name="settings_premium_cancelled">Actif jusqu\'à la fin de la période payée</string>
+    <string name="settings_premium_lifetime">À vie</string>
 
     <string name="health_listening">Capture active</string>
     <string name="health_paused">Capture en pause</string>
