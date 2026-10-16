@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.jaytech64.piastre.core.data.PremiumRepository
 import io.github.jaytech64.piastre.core.data.RecurringPosting
 import io.github.jaytech64.piastre.core.designsystem.PiastreTheme
 import io.github.jaytech64.piastre.navigation.PiastreApp
@@ -16,6 +17,9 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject
     lateinit var recurring: RecurringPosting
+
+    @Inject
+    lateinit var premium: PremiumRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,9 +36,13 @@ class MainActivity : ComponentActivity() {
      * a process Android kept from yesterday has slept through its midnight
      * timer, whose clock stops while the phone sleeps, so a bill due today
      * would wait for that timer instead of being in the ledger when you look.
+     *
+     * The store is asked again too, so a subscription cancelled in Google Play
+     * while the app was away reads as cancelled the moment you come back.
      */
     override fun onStart() {
         super.onStart()
         recurring.schedule()
+        premium.refresh()
     }
 }

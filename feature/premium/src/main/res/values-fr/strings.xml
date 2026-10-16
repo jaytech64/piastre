@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="premium_title">Piastre Premium</string>
+    <string name="premium_free_lead">Premium ajoute ce qui va au-delà de tenir le registre.</string>
+    <string name="premium_benefit_budgets">Budgets : un montant par mois pour une catégorie ou un groupe, et ce qu\'il en reste</string>
+    <string name="premium_benefit_future">Chaque fonction Premium à venir</string>
+    <string name="premium_buy_trial">%1$d jours gratuits, puis %2$s par an</string>
+    <string name="premium_buy_yearly">%1$s par an</string>
+    <string name="premium_buy_lifetime">%1$s, une seule fois</string>
+    <string name="premium_terms">L\'abonnement se renouvelle chaque année jusqu\'à son annulation. Annulez en tout temps dans Google Play. Les taxes s\'ajoutent au paiement.</string>
+    <string name="premium_offers_loading">Chargement des offres…</string>
+    <string name="premium_offers_unavailable">Les offres ne peuvent pas s\'afficher sans connexion. Un Premium déjà acheté reste actif.</string>
+    <string name="premium_retry">Réessayer</string>
+    <string name="premium_trial">Essai gratuit jusqu\'au %1$s</string>
+    <string name="premium_subscribed">Premium actif, renouvelé chaque année</string>
+    <string name="premium_cancelled">Premium reste actif jusqu\'à la fin de la période payée</string>
+    <string name="premium_lifetime">Premium à vie. Merci.</string>
+    <string name="premium_unlocked">Toutes les fonctions sont actives dans cette version.</string>
+    <string name="premium_manage">Gérer ou annuler</string>
+    <string name="premium_resubscribe">Se réabonner</string>
+    <string name="premium_in_google_play">Dans Google Play</string>
+    <string name="premium_lifetime_instead">Plutôt payer une seule fois ?</string>
+    <string name="premium_lifetime_instead_body">Après l\'achat, annulez l\'abonnement dans Google Play : il ne s\'arrête pas de lui-même.</string>
+    <string name="premium_remind_title">Recevoir un rappel avant la fin de l\'essai</string>
+    <string name="premium_remind_body">Piastre peut envoyer une notification une semaine avant que l\'essai devienne une année payée.</string>
+    <string name="premium_remind_allow">Me le rappeler</string>
+    <string name="premium_remind_refused">Les notifications de Piastre sont désactivées : aucun rappel ne viendra. Elles s\'activent dans les paramètres d\'Android.</string>
+    <string name="premium_remind_settings">Ouvrir les paramètres</string>
+</resources>

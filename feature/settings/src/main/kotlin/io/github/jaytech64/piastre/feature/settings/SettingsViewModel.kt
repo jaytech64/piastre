@@ -17,11 +17,13 @@ import io.github.jaytech64.piastre.core.data.ImportOutcome
 import io.github.jaytech64.piastre.core.data.ImportProblem
 import io.github.jaytech64.piastre.core.data.ImportReader
 import io.github.jaytech64.piastre.core.data.ImportReading
+import io.github.jaytech64.piastre.core.data.PremiumRepository
 import io.github.jaytech64.piastre.core.data.PremiumSource
 import io.github.jaytech64.piastre.core.data.RawEventRepository
 import io.github.jaytech64.piastre.core.data.RecurringRepository
 import io.github.jaytech64.piastre.core.data.SettingsRepository
 import io.github.jaytech64.piastre.core.data.TemplateRepository
+import io.github.jaytech64.piastre.core.model.Premium
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -79,10 +81,15 @@ class SettingsViewModel
         templates: TemplateRepository,
         categories: CategoryRepository,
         categoryGroups: CategoryGroupRepository,
-        premium: PremiumSource,
+        premiumSource: PremiumSource,
+        premiumRepository: PremiumRepository,
     ) : ViewModel() {
         /** Where the Support row leads, or null in a build that must not ask. */
-        val donationPage: String? = premium.donationPage
+        val donationPage: String? = premiumSource.donationPage
+
+        /** Null until the store has answered once; the F-Droid build answers Unlocked, and shows no Premium row. */
+        val premium: StateFlow<Premium?> =
+            premiumRepository.premium.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
 
         val uiState: StateFlow<SettingsUiState> =
             combine(

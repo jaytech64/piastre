@@ -16,6 +16,12 @@
     <string name="settings_support">Support Piastre</string>
     <string name="settings_support_body">Piastre is free and will stay free. A donation helps it keep going, and unlocks nothing.</string>
     <string name="settings_support_no_browser">No browser can open the donation page. Its address is %1$s</string>
+    <string name="settings_premium">Premium</string>
+    <string name="settings_premium_free">Budgets, and every Premium feature to come</string>
+    <string name="settings_premium_trial">Free trial until %1$s</string>
+    <string name="settings_premium_on">On, renewed every year</string>
+    <string name="settings_premium_cancelled">On until the end of the paid period</string>
+    <string name="settings_premium_lifetime">For life</string>
 
     <string name="health_listening">Capture active</string>
     <string name="health_paused">Capture paused</string>

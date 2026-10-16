@@ -54,6 +54,20 @@ It is keyed to the kind of failure, so silence turning into revoked access opens
 
 Rejected: a full dismiss, and a collapse remembered across launches — both let a broken capture live out of sight for weeks, which is the failure this record exists to catch.
 
+## Revision — the Play build gains both permissions, for another reason
+
+- **Decided:** 2026-10-11, while planning Premium; built 2026-10-15.
+
+Premium's 30-day trial on Play needs a written notice before it becomes a paid year, and Quebec asks for one 2 to 10 days ahead.
+The Play build therefore declares `POST_NOTIFICATIONS` and `RECEIVE_BOOT_COMPLETED`, and sets one inexact alarm a week before a trial this app started ends.
+
+This does not reopen the capture alarm.
+The reason above still holds for it: the moments that wake the app are the ones that cannot happen while capture is deaf, so an alarm would have to fire into a process with nothing new to say.
+The trial is different because its date is known in advance.
+
+The F-Droid build has no trial and declares neither permission; `verifyFoss*HasNoGoogleStoreCode` fails the build if either reaches it ([ADR-0022](0022-piastre-is-sold-on-play-and-given-on-f-droid.md)).
+Recurring transactions still never use an alarm, since the F-Droid build could not keep one through a restart.
+
 ## Consequences
 
 The alarm is only seen by a user who opens the app.

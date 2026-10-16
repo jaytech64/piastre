@@ -47,6 +47,7 @@ dependencies {
     implementation(project(":feature:reports"))
     implementation(project(":feature:review"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:premium"))
     "playImplementation"(project(":premium:play"))
     "fossImplementation"(project(":premium:foss"))
 

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      The billing library merges both of these in for its telemetry. Play Billing
+      talks to the Play Store app on the device, which does the networking, and
+      the spike proved it buys, acknowledges and restores without them
+      (spike-billing/README.md). Removing them keeps the no-network claim true of
+      the Play build too, which verifyPlay*HasNoNetworkPermission enforces.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
+    <!--
+      Both for the trial reminder alone, and in the Play build alone: the F-Droid
+      build has no trial, and verifyFoss*HasNoGoogleStoreCode refuses both there.
+      A restart clears every alarm, hence the boot permission (ADR-0004, revised).
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application>
+        <receiver
+            android:name=".TrialReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
