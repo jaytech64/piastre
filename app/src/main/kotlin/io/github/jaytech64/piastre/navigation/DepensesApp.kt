@@ -44,6 +44,7 @@ import io.github.jaytech64.piastre.feature.ledger.RECURRING_ID_ARG
 import io.github.jaytech64.piastre.feature.ledger.RecurringListScreen
 import io.github.jaytech64.piastre.feature.ledger.TEMPLATE_ID_ARG
 import io.github.jaytech64.piastre.feature.ledger.TemplateListScreen
+import io.github.jaytech64.piastre.feature.premium.PremiumScreen
 import io.github.jaytech64.piastre.feature.reports.ReportsScreen
 import io.github.jaytech64.piastre.feature.review.ReviewScreen
 import io.github.jaytech64.piastre.feature.settings.CATEGORY_GROUP_ID_ARG
@@ -163,8 +164,10 @@ private fun NavGraphBuilder.settingsPages(navController: NavHostController) {
             onOpenCategories = { navController.navigate(CATEGORIES_ROUTE) },
             onOpenRecurring = { navController.navigate(RECURRING_LIST_ROUTE) },
             onOpenTemplates = { navController.navigate(TEMPLATE_LIST_ROUTE) },
+            onOpenPremium = { navController.navigate(PREMIUM_ROUTE) },
         )
     }
+    composable(PREMIUM_ROUTE) { PremiumScreen() }
     composable(CATEGORIES_ROUTE) {
         CategoriesScreen(onOpen = { id -> navController.navigate(categoryGroupRoute(id)) })
     }
@@ -274,6 +277,7 @@ private const val EDIT_EXPENSE_ROUTE = "ledger/edit/{$EXPENSE_ID_ARG}"
 private fun editExpenseRoute(id: Long) = "ledger/edit/$id"
 
 /** Reached from Settings and returning to it; the categories in no group have a page of their own. */
+private const val PREMIUM_ROUTE = "settings/premium"
 private const val CATEGORIES_ROUTE = "settings/categories"
 private const val CATEGORY_GROUP_ROUTE = "settings/categories/group/{$CATEGORY_GROUP_ID_ARG}"
 private const val UNGROUPED_CATEGORIES_ROUTE = "settings/categories/ungrouped"
