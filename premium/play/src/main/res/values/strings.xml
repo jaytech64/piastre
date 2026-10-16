@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="trial_channel">Premium trial</string>
+    <string name="trial_ends_title">Your free trial ends on %1$s</string>
+    <string name="trial_ends_body">Piastre Premium then costs %1$s a year. To pay nothing, cancel in Google Play before that day.</string>
+</resources>
