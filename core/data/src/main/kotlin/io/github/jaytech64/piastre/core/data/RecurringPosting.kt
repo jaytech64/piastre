@@ -31,10 +31,11 @@ import javax.inject.Singleton
  *
  * Nothing wakes the app on a due day. WorkManager declares a network permission
  * this app refuses to ship (see [CaptureCatchUp]), and an alarm that survives a
- * reboot needs the boot permission ADR-0004 declined. So due days are caught up
- * rather than fired: whenever the process starts — the app launching, or Android
- * binding the listener — whenever the app comes back on screen, at every midnight
- * while the process lives, and whenever the listener rebinds. The midnight timer
+ * reboot needs the boot permission the F-Droid build never declares (ADR-0004).
+ * So due days are caught up rather than fired: whenever the process starts —
+ * the app launching, or Android binding the listener — whenever the app comes
+ * back on screen, at every midnight while the process lives, and whenever the
+ * listener rebinds. The midnight timer
  * alone is not enough: its clock stops while the phone sleeps, so it can wake
  * hours late. Each row is dated on its own due day however late it is
  * written, so the ledger is right whenever it is read.

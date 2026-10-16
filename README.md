@@ -65,8 +65,8 @@ Module boundaries are Gradle modules rather than packages, because a package bou
 | `:core:database` | Android lib | Room entities, DAOs, migrations. |
 | `:core:data` | Android lib | Repositories and settings. The only API features may see. |
 | `:core:designsystem` | Android lib | Theme, and the one place that decides what money and dates look like. |
-| `:feature:*` | Android lib | `ledger` · `review` · `reports` · `settings`. Siblings never depend on each other. |
-| `:premium:*` | Android lib | `play` · `foss`. What each store lets the app ask; `:app` takes one per build. |
+| `:feature:*` | Android lib | `ledger` · `review` · `reports` · `settings` · `premium`. Siblings never depend on each other. |
+| `:premium:*` | Android lib | `play` · `foss`. What each store sells and says is owned; `:app` takes one per build. `play` is the only module that sees Google's billing library. |
 | `:core:testing` | Android lib | Fixtures, fakes, in-memory database. |
 
 `:capture:parsing` and `:core:model` have no Android dependency at all, so the riskiest code in the app is tested on the JVM in milliseconds — no emulator, no Robolectric, no device.
