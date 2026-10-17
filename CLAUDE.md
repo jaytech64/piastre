@@ -199,6 +199,7 @@ A report's ranking, calendar and spending comparison count what went out and no 
 
 The ledger header's figures always add up to the balance above them: income and expenses, and under an account filter that account's transfers as a figure of their own, never folded into either ([ADR-0008](docs/adr/0008-the-ledger-header-says-what-the-balance-is-made-of.md), `BalanceSummary`).
 The headline is this month's, except under a filter with dates, where it is every row shown ([ADR-0014](docs/adr/0014-a-dated-filters-headline-is-the-balance-of-its-dates.md), `LedgerViewModel.headlineRows`).
+A budget counts what the category ranking counts, through `ReportRepository.categorySpending` and never a query of its own, and a change applies from its month on, so a past month keeps its amount ([ADR-0023](docs/adr/0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md)).
 A row dated after today counts in no figure anywhere until its day — headline, day, selection, report, account balance — and waits in the line above today ([ADR-0015](docs/adr/0015-a-transaction-counts-from-its-day.md)); a new total must stop at today too.
 
 ### A category is written onto the row, never read through
