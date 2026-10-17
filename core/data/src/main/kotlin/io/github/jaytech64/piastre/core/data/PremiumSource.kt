@@ -26,6 +26,15 @@ interface PremiumSource {
     /** The store's own page where a subscription is managed or cancelled, or null where nothing is sold. */
     val managePage: String?
 
+    /** The store's name, as a suggestion e-mail states which build it came from. A proper name, never translated. */
+    val storeName: String
+
+    /**
+     * The store's order number for the Premium owned, or null for none: a
+     * suggestion e-mail quotes it to claim the priority Premium buyers get.
+     */
+    val orderNumber: Flow<String?>
+
     /**
      * What the store says is owned, or null while it cannot be asked. Null is not
      * Free: [PremiumRepository] keeps the last answer until the store gives another.

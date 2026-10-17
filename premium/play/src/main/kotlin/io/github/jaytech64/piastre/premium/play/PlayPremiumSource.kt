@@ -63,6 +63,12 @@ class PlayPremiumSource
 
         override val managePage: String = PlayProducts.manageUrl(context.packageName)
 
+        override val storeName: String = "Google Play"
+
+        private val orderState = MutableStateFlow<String?>(null)
+
+        override val orderNumber: Flow<String?> = orderState.onStart { refresh() }
+
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val asking = Mutex()
 
@@ -166,8 +172,10 @@ class PlayPremiumSource
                 subscriptions
                     .firstOrNull { PlayProducts.SUBSCRIPTION in it.products && it.isPurchased }
                     ?.let { OwnedSubscription(it.purchaseToken, it.isAutoRenewing) }
-            val lifetime = oneTime.any { PlayProducts.LIFETIME in it.products && it.isPurchased }
-            return ownedPremium(subscription, lifetime, trials.current(), clock.instant())
+            val lifetime = oneTime.firstOrNull { PlayProducts.LIFETIME in it.products && it.isPurchased }
+            orderState.value =
+                (lifetime ?: subscriptions.firstOrNull { it.purchaseToken == subscription?.purchaseToken })?.orderId
+            return ownedPremium(subscription, lifetime != null, trials.current(), clock.instant())
         }
 
         private suspend fun readOffers(): PremiumOffers {
