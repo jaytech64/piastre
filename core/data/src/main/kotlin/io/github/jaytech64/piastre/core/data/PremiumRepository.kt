@@ -51,6 +51,10 @@ class PremiumRepository
 
         val managePage: String? = source.managePage
 
+        val storeName: String = source.storeName
+
+        val orderNumber: Flow<String?> = source.orderNumber
+
         fun refresh() = source.refresh()
 
         fun buy(

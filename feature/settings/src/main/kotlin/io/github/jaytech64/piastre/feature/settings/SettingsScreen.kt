@@ -85,6 +85,8 @@ fun SettingsScreen(
 
         DataSection(lastAction = lastAction, viewModel = viewModel)
 
+        SuggestRow(viewModel)
+
         viewModel.donationPage?.let { SupportRow(it) }
 
         HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
