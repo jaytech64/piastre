@@ -25,7 +25,10 @@ A part of an expense can go into another account, as the capital of a mortgage p
 A transaction typed by hand can repeat — every week, every two weeks, every month or every year — and each time it falls due it is written into the ledger, dated on its own day, as an ordinary row ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md)).
 Nothing wakes the app to do it: due days are caught up whenever the app or its listener runs.
 
-Budgets and any payment source other than Wallet are out of scope so far.
+A category or a group can carry a monthly budget, judged against exactly what the report's ranking counts, from the month it was set ([ADR-0023](docs/adr/0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md)).
+Budgets are the first Premium feature; on F-Droid every feature is on.
+
+Any payment source other than Wallet is out of scope so far.
 
 ## Requirements
 

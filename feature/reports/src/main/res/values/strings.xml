@@ -40,4 +40,33 @@
         <item quantity="one">%d purchase is waiting to be reviewed.</item>
         <item quantity="other">%d purchases are waiting to be reviewed.</item>
     </plurals>
+    <string name="budgets_title">Budgets</string>
+    <string name="budgets_row_premium">A monthly amount per category or group, with Premium</string>
+    <string name="budgets_row_none">No budget yet</string>
+    <plurals name="budgets_row_count">
+        <item quantity="one">%d budget this month</item>
+        <item quantity="other">%d budgets this month</item>
+    </plurals>
+    <string name="budgets_previous">Previous month</string>
+    <string name="budgets_next">Next month</string>
+    <string name="budgets_premium_off">Budgets come with Premium. The ones you set are kept, and export still writes them.</string>
+    <string name="budgets_none_this_month">No budget this month.</string>
+    <string name="budgets_add">Add a budget</string>
+    <string name="budgets_past_month">A past month keeps the budgets it was judged against.</string>
+    <plurals name="budgets_other_currency">
+        <item quantity="one">%d purchase in another currency is not counted.</item>
+        <item quantity="other">%d purchases in another currency are not counted.</item>
+    </plurals>
+    <string name="budget_spent_of">%1$s of %2$s</string>
+    <string name="budget_left">%1$s left</string>
+    <string name="budget_left_per_day">, or %1$s a day</string>
+    <string name="budget_over">Over by %1$s</string>
+    <string name="budget_new">New budget</string>
+    <string name="budget_on">On</string>
+    <string name="budget_group_label">%1$s (group)</string>
+    <string name="budget_each_month">Each month</string>
+    <string name="budget_from">From %1$s on</string>
+    <string name="budget_stop">Stop this budget</string>
+    <string name="budget_cancel">Cancel</string>
+    <string name="budget_save">Save</string>
 </resources>

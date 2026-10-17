@@ -2,10 +2,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.feature.reports
 
+import android.app.Activity
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
+import io.github.jaytech64.piastre.core.data.BudgetRepository
+import io.github.jaytech64.piastre.core.data.CategoryGroupRepository
 import io.github.jaytech64.piastre.core.data.CategoryRepository
 import io.github.jaytech64.piastre.core.data.LocalDateTicker
 import io.github.jaytech64.piastre.core.data.MerchantRepository
+import io.github.jaytech64.piastre.core.data.PremiumOffer
+import io.github.jaytech64.piastre.core.data.PremiumOffers
+import io.github.jaytech64.piastre.core.data.PremiumRepository
+import io.github.jaytech64.piastre.core.data.PremiumSource
 import io.github.jaytech64.piastre.core.data.ReportRepository
 import io.github.jaytech64.piastre.core.data.TransactionRepository
 import io.github.jaytech64.piastre.core.database.AccountEntity
@@ -17,13 +25,16 @@ import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.PeriodUnit
+import io.github.jaytech64.piastre.core.model.Premium
 import io.github.jaytech64.piastre.core.model.ReportPeriod
 import io.github.jaytech64.piastre.core.model.TransactionKind
 import io.github.jaytech64.piastre.core.model.TransactionSource
 import io.github.jaytech64.piastre.core.model.TransactionStatus
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -37,6 +48,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.File
 import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
@@ -47,6 +59,10 @@ class ReportsViewModelTest {
     private lateinit var database: PiastreDatabase
     private lateinit var savedState: SavedStateHandle
     private lateinit var viewModel: ReportsViewModel
+    private val storeFile: File = File.createTempFile("settings", ".preferences_pb").apply { delete() }
+
+    /** One for the whole test, as in the app: DataStore refuses two stores open on the same file. */
+    private val premium by lazy { PremiumRepository(UnlockedBuild, PreferenceDataStoreFactory.create { storeFile }) }
 
     @Before
     fun setUp() {
@@ -59,6 +75,7 @@ class ReportsViewModelTest {
     @After
     fun tearDown() {
         database.close()
+        storeFile.delete()
         Dispatchers.resetMain()
     }
 
@@ -418,6 +435,14 @@ class ReportsViewModelTest {
     private fun reportsViewModel(state: SavedStateHandle) =
         ReportsViewModel(
             reports = ReportRepository(database.reportDao()),
+            budgets =
+                BudgetRepository(
+                    database.budgetDao(),
+                    ReportRepository(database.reportDao()),
+                    CategoryRepository(database.categoryDao(), database.merchantDao(), database.accountDao()),
+                    CategoryGroupRepository(database.categoryGroupDao(), database.categoryDao()),
+                ),
+            premium = premium,
             transactions =
                 TransactionRepository(
                     database = database,
@@ -434,6 +459,21 @@ class ReportsViewModelTest {
             ticker = LocalDateTicker(Clock.systemUTC(), Provider { ZONE }),
             savedState = state,
         )
+
+    /** The F-Droid build's answer, which is all a report needs to know about Premium. */
+    private object UnlockedBuild : PremiumSource {
+        override val donationPage: String? = null
+        override val managePage: String? = null
+        override val owned: Flow<Premium?> = flowOf(Premium.Unlocked)
+        override val offers: Flow<PremiumOffers> = flowOf(PremiumOffers.None)
+
+        override fun refresh() = Unit
+
+        override fun buy(
+            activity: Activity,
+            offer: PremiumOffer,
+        ) = Unit
+    }
 
     private suspend fun settled(): ReportsUiState = viewModel.uiState.first { !it.loading }
 

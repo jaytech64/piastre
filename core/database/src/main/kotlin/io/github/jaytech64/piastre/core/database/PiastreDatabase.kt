@@ -19,10 +19,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RecurringTransactionEntity::class,
         TransactionTemplateEntity::class,
         TransactionPartEntity::class,
+        BudgetEntity::class,
     ],
     version = PiastreDatabase.VERSION,
     exportSchema = true,
 )
+// One accessor per DAO is the shape Room asks for, so the count grows with the tables.
+@Suppress("TooManyFunctions")
 abstract class PiastreDatabase : RoomDatabase() {
     abstract fun rawNotificationEventDao(): RawNotificationEventDao
 
@@ -44,8 +47,10 @@ abstract class PiastreDatabase : RoomDatabase() {
 
     abstract fun transactionPartDao(): TransactionPartDao
 
+    abstract fun budgetDao(): BudgetDao
+
     companion object {
-        const val VERSION: Int = 19
+        const val VERSION: Int = 20
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -71,6 +76,7 @@ abstract class PiastreDatabase : RoomDatabase() {
                 MIGRATION_16_17,
                 MIGRATION_17_18,
                 MIGRATION_18_19,
+                MIGRATION_19_20,
             )
 
         const val NAME: String = "piastre.db"
@@ -562,6 +568,22 @@ private val MIGRATION_18_19 =
     object : Migration(18, 19) {
         override fun migrate(db: SupportSQLiteDatabase) {
             db.execSQL("ALTER TABLE category ADD COLUMN icon TEXT")
+        }
+    }
+
+/** Schema 20 adds budgets. There were none before, so nothing is filled in. */
+private val MIGRATION_19_20 =
+    object : Migration(19, 20) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `budget` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`targetKind` TEXT NOT NULL, `targetId` INTEGER NOT NULL, `fromMonth` INTEGER NOT NULL, " +
+                    "`amountMinor` INTEGER, `currency` TEXT NOT NULL)",
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS `index_budget_targetKind_targetId_fromMonth` " +
+                    "ON `budget` (`targetKind`, `targetId`, `fromMonth`)",
+            )
         }
     }
 

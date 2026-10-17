@@ -374,3 +374,27 @@ data class TransactionTemplateEntity(
     /** Whether the transaction it fills has a day and no hour, because it comes back. */
     @ColumnInfo(defaultValue = "0") val recurring: Boolean = false,
 )
+
+/**
+ * A monthly budget on a category or a group, from [fromMonth] on, until a later
+ * row for the same target says otherwise. A changed amount is a new row from the
+ * month it changed, which is what lets a past month keep the amount it was
+ * judged against; a null [amountMinor] stops the budget from that month.
+ *
+ * [targetKind] and [targetId] name what it is on rather than two nullable ids,
+ * because SQLite treats every null as different and a unique index over two
+ * nullable columns would let the same budget be written twice. [fromMonth] is
+ * the month counted from January of year zero, `year * 12 + month - 1`.
+ */
+@Entity(
+    tableName = "budget",
+    indices = [Index(value = ["targetKind", "targetId", "fromMonth"], unique = true)],
+)
+data class BudgetEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val targetKind: String,
+    val targetId: Long,
+    val fromMonth: Int,
+    val amountMinor: Long?,
+    val currency: String,
+)

@@ -18,7 +18,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jaytech64.piastre.core.model.PeriodUnit
 import io.github.jaytech64.piastre.core.model.ReportPeriod
+import java.time.YearMonth
 import java.util.Locale
 
 /**
@@ -34,6 +36,8 @@ import java.util.Locale
 @Composable
 fun ReportsScreen(
     onOpenTransactions: (SpendingOf, ReportPeriod) -> Unit,
+    onOpenBudgets: (YearMonth) -> Unit,
+    onOpenPremium: () -> Unit,
     viewModel: ReportsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -58,6 +62,10 @@ fun ReportsScreen(
             onStepBack = viewModel::onStepBack,
             onStepForward = viewModel::onStepForward,
         )
+
+        if (state.period.unit == PeriodUnit.MONTH) {
+            BudgetsRow(state) { if (state.premiumOn) onOpenBudgets(state.period.month) else onOpenPremium() }
+        }
 
         CategoryRanking(
             state = state,

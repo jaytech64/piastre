@@ -4,6 +4,8 @@ package io.github.jaytech64.piastre.core.data
 
 import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountType
+import io.github.jaytech64.piastre.core.model.BudgetChange
+import io.github.jaytech64.piastre.core.model.BudgetTarget
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.Recurrence
 import io.github.jaytech64.piastre.core.model.Rhythm
@@ -26,6 +28,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.ZoneId
 import java.time.ZoneOffset
 import javax.inject.Provider
@@ -429,6 +432,36 @@ class LedgerImportTest : LedgerImportFixture() {
             assertEquals(listOf("Zoo Cafe", "Metro Plus"), arrived.map { it.merchantName })
             assertEquals("Comptant", arrived.first().accountName)
             assertEquals("Restaurants", arrived.first().categoryName)
+        }
+
+    @Test
+    fun `budgets come back on the same categories and groups, and a month budgeted here keeps its amount`() =
+        runTest {
+            val sourceHome = source.categoryGroupRepository().named("Maison")!!
+            val sourceGroceries = source.categoryRepository().named("Épicerie", sourceHome)!!
+            source.budgets().set(BudgetTarget.Category(sourceGroceries), cad(400_00), YearMonth.of(2026, 9))
+            source.budgets().stop(BudgetTarget.Category(sourceGroceries), YearMonth.of(2026, 11))
+            source.budgets().set(BudgetTarget.Group(sourceHome), cad(1_500_00), YearMonth.of(2026, 10))
+            val targetGroceries = target.categoryRepository().named("Épicerie")!!
+            target.budgets().set(BudgetTarget.Category(targetGroceries), cad(350_00), YearMonth.of(2026, 9))
+
+            target.importing(source.export())
+
+            val targetHome = target.categoryGroupRepository().named("Maison")!!
+            val arrived =
+                target
+                    .budgets()
+                    .changes()
+                    .first()
+                    .toSet()
+            assertEquals(
+                setOf(
+                    BudgetChange(BudgetTarget.Category(targetGroceries), YearMonth.of(2026, 9), cad(350_00)),
+                    BudgetChange(BudgetTarget.Category(targetGroceries), YearMonth.of(2026, 11), null),
+                    BudgetChange(BudgetTarget.Group(targetHome), YearMonth.of(2026, 10), cad(1_500_00)),
+                ),
+                arrived,
+            )
         }
 
     @Test

@@ -32,6 +32,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0020](0020-a-categorys-icon-is-stored-by-name-and-read-through.md) | A category's icon is stored by name and read through | Accepted — implemented |
 | [0021](0021-depenses-became-piastre-and-the-ledger-crossed-by-hand.md) | Dépenses became Piastre, and the ledger crossed by hand | Accepted — implemented |
 | [0022](0022-piastre-is-sold-on-play-and-given-on-f-droid.md) | Piastre is sold on Play and given on F-Droid | Accepted — partly implemented |
+| [0023](0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md) | A budget counts what a report counts, from the month it was set | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan.
 Each record after them was written with the branch that made the decision.

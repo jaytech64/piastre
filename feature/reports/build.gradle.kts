@@ -11,4 +11,5 @@ dependencies {
     // is exercised against a real SQLite rather than a fake repository.
     testImplementation(project(":core:testing"))
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.datastore.preferences)
 }

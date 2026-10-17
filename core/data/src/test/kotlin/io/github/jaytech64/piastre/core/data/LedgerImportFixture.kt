@@ -61,6 +61,9 @@ abstract class LedgerImportFixture {
             zoneId = Provider { ZONE },
         )
 
+    protected fun PiastreDatabase.budgets() =
+        BudgetRepository(budgetDao(), ReportRepository(reportDao()), categoryRepository(), categoryGroupRepository())
+
     protected fun PiastreDatabase.importer() =
         LedgerImport(
             database = this,
@@ -72,6 +75,7 @@ abstract class LedgerImportFixture {
             categoryGroups = categoryGroupRepository(),
             recurring = recurringTransactionDao(),
             templates = transactionTemplateDao(),
+            budgets = budgetDao(),
             posting = posting(),
         )
 
@@ -104,6 +108,7 @@ abstract class LedgerImportFixture {
             recurringTransactionDao(),
             transactionTemplateDao(),
             transactionPartDao(),
+            budgetDao(),
             Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
         ).write(bytes, ExportFormat.JSON, LABELS)
         return bytes.toString(Charsets.UTF_8.name())

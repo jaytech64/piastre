@@ -3,6 +3,7 @@
 package io.github.jaytech64.piastre.core.data
 
 import io.github.jaytech64.piastre.core.database.AccountDao
+import io.github.jaytech64.piastre.core.database.BudgetDao
 import io.github.jaytech64.piastre.core.database.CategoryDao
 import io.github.jaytech64.piastre.core.database.CategoryGroupDao
 import io.github.jaytech64.piastre.core.database.MerchantDao
@@ -100,6 +101,7 @@ class LedgerExport
         private val recurring: RecurringTransactionDao,
         private val templates: TransactionTemplateDao,
         private val parts: TransactionPartDao,
+        private val budgets: BudgetDao,
         private val clock: Clock,
     ) {
         /** Returns how many transactions were written. */
@@ -276,6 +278,17 @@ class LedgerExport
                     categoryGroups = categoryGroups.allOnce().map { ExportedCategoryGroup(it.id, it.name) },
                     recurring = recurring.allWithNames().first().map { it.toExported() },
                     templates = templates.allWithNames().first().map { it.toExported() },
+                    budgets =
+                        budgets.allOnce().map {
+                            val change = it.toChange()
+                            ExportedBudget(
+                                it.targetKind,
+                                it.targetId,
+                                change.from.toString(),
+                                it.amountMinor,
+                                it.currency,
+                            )
+                        },
                 )
             out.bufferedWriter(Charsets.UTF_8).apply {
                 write(JSON.encodeToString(document))

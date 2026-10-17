@@ -6,10 +6,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jaytech64.piastre.core.data.BudgetLine
+import io.github.jaytech64.piastre.core.data.BudgetRepository
 import io.github.jaytech64.piastre.core.data.CategorySpending
 import io.github.jaytech64.piastre.core.data.LocalDateTicker
+import io.github.jaytech64.piastre.core.data.PremiumRepository
 import io.github.jaytech64.piastre.core.data.ReportRepository
 import io.github.jaytech64.piastre.core.data.TransactionRepository
+import io.github.jaytech64.piastre.core.model.BudgetTarget
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.PeriodUnit
 import io.github.jaytech64.piastre.core.model.ReportPeriod
@@ -20,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import javax.inject.Inject
@@ -123,6 +128,10 @@ data class ReportsUiState(
     val otherCurrencyCount: Int = 0,
     /** The whole ledger's queue, which the totals here also leave out. */
     val needsReviewCount: Int = 0,
+    /** Whether budgets can be opened, rather than the Premium page in their place. */
+    val premiumOn: Boolean = false,
+    /** The month's budgets by what they are on, in the month view alone; a day or a week has none. */
+    val budgets: Map<BudgetTarget, BudgetLine> = emptyMap(),
     val loading: Boolean = true,
 ) {
     /**
@@ -146,6 +155,8 @@ class ReportsViewModel
     @Inject
     constructor(
         private val reports: ReportRepository,
+        private val budgets: BudgetRepository,
+        premium: PremiumRepository,
         transactions: TransactionRepository,
         ticker: LocalDateTicker,
         private val savedState: SavedStateHandle,
@@ -168,10 +179,17 @@ class ReportsViewModel
             combine(unit, anchor, ticker.dates()) { selectedUnit, anchorDay, today ->
                 val on = anchorDay?.let(LocalDate::ofEpochDay) ?: today
                 ReportPeriod.containing(selectedUnit, on) to today
-            }.flatMapLatest { (period, today) -> report(period, today, transactions.needsReviewCount()) }
-                .combine(
-                    savedState.getStateFlow<Long?>(OPEN_GROUP, null),
-                ) { state, open -> state.copy(openGroupId = open) }
+            }.flatMapLatest { (period, today) ->
+                combine(
+                    report(period, today, transactions.needsReviewCount()),
+                    budgets.of(period, today),
+                ) { state, lines ->
+                    state.copy(budgets = lines)
+                }
+            }.combine(
+                savedState.getStateFlow<Long?>(OPEN_GROUP, null),
+            ) { state, open -> state.copy(openGroupId = open) }
+                .combine(premium.premium) { state, owned -> state.copy(premiumOn = owned.isOn) }
                 .stateIn(
                     scope = viewModelScope,
                     started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
@@ -330,4 +348,15 @@ class ReportsViewModel
             /** Five is what fits above the fold beside the calendar. */
             const val TOP_RANKED = 5
         }
+    }
+
+/** A month's budgets by what they are on; a day or a week has none. */
+private fun BudgetRepository.of(
+    period: ReportPeriod,
+    today: LocalDate,
+): Flow<Map<BudgetTarget, BudgetLine>> =
+    if (period.unit == PeriodUnit.MONTH) {
+        month(period.month, today).map { month -> month.lines.associateBy { it.target } }
+    } else {
+        flowOf(emptyMap())
     }

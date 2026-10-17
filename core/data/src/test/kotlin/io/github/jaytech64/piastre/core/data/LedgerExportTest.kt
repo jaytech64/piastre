@@ -58,6 +58,7 @@ class LedgerExportTest {
                 recurring = database.recurringTransactionDao(),
                 templates = database.transactionTemplateDao(),
                 parts = database.transactionPartDao(),
+                budgets = database.budgetDao(),
                 clock = Clock.fixed(EXPORTED_AT, ZoneOffset.UTC),
             )
     }

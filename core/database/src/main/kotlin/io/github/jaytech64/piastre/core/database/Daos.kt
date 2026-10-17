@@ -924,8 +924,13 @@ interface CategoryDao : CategoryClearing {
         clearFromRecurring(id)
         clearFromTemplates(id)
         clearFromParts(id)
+        deleteBudgets(id)
         deleteRow(id)
     }
+
+    /** A budget is on what it names, so it goes with it, history included. */
+    @Query("DELETE FROM budget WHERE targetKind = 'CATEGORY' AND targetId = :id")
+    suspend fun deleteBudgets(id: Long)
 
     @Query("DELETE FROM category WHERE id = :id")
     suspend fun deleteRow(id: Long)
@@ -973,13 +978,18 @@ interface CategoryGroupDao {
 
     /**
      * Removes a group and leaves its categories in none. Every transaction keeps
-     * its category, since a group only arranges them.
+     * its category, since a group only arranges them. The group's budgets go with
+     * it; its categories keep theirs.
      */
     @Transaction
     suspend fun delete(id: Long) {
         ungroup(id)
+        deleteBudgets(id)
         deleteRow(id)
     }
+
+    @Query("DELETE FROM budget WHERE targetKind = 'GROUP' AND targetId = :id")
+    suspend fun deleteBudgets(id: Long)
 
     @Query("UPDATE category SET groupId = NULL WHERE groupId = :id")
     suspend fun ungroup(id: Long)
@@ -1402,4 +1412,21 @@ interface ReportDao {
         toDay: Int,
         currency: String,
     ): Flow<Int>
+}
+
+@Dao
+interface BudgetDao {
+    @Query("SELECT * FROM budget ORDER BY targetKind, targetId, fromMonth")
+    fun all(): Flow<List<BudgetEntity>>
+
+    @Query("SELECT * FROM budget ORDER BY targetKind, targetId, fromMonth")
+    suspend fun allOnce(): List<BudgetEntity>
+
+    /** A second change in the same month replaces the first: a month is judged against one amount. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun set(budget: BudgetEntity)
+
+    /** An import never overwrites a month you already budgeted here. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertOrIgnore(budget: BudgetEntity)
 }

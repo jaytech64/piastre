@@ -4,6 +4,7 @@ package io.github.jaytech64.piastre.core.data
 
 import io.github.jaytech64.piastre.core.database.AccountDao
 import io.github.jaytech64.piastre.core.database.AccountEntity
+import io.github.jaytech64.piastre.core.database.BudgetDao
 import io.github.jaytech64.piastre.core.database.MerchantDao
 import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.RawNotificationEventDao
@@ -42,6 +43,7 @@ class LedgerImport
         private val categoryGroups: CategoryGroupRepository,
         private val recurring: RecurringTransactionDao,
         private val templates: TransactionTemplateDao,
+        private val budgets: BudgetDao,
         private val posting: RecurringPosting,
     ) {
         private val parts = database.transactionPartDao()
@@ -178,6 +180,12 @@ class LedgerImport
             // A template already here, found by its identity, is left as you have it.
             document.templates.forEach {
                 templates.insertOrIgnore(it.toEntity(accountIds, merchantIds, categoryIds))
+            }
+            // A month you budgeted here keeps your amount; the file fills the months you did not.
+            val groupIds = document.categoryGroups.associate { it.id to categoryGroups.named(it.name) }
+            document.budgets.forEach { file ->
+                val target = (if (file.targetKind == BUDGET_ON_GROUP) groupIds else categoryIds)[file.targetId]
+                target?.let { budgets.insertOrIgnore(file.toEntity(it)) }
             }
         }
 

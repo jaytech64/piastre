@@ -67,4 +67,7 @@ object DatabaseModule {
 
     @Provides
     fun transactionPartDao(database: PiastreDatabase): TransactionPartDao = database.transactionPartDao()
+
+    @Provides
+    fun budgetDao(database: PiastreDatabase): BudgetDao = database.budgetDao()
 }
