@@ -43,4 +43,35 @@
         <item quantity="other">%d achats attendent d\'être révisés.</item>
         <item quantity="many">%d d\'achats attendent d\'être révisés.</item>
     </plurals>
+    <string name="budgets_title">Budgets</string>
+    <string name="budgets_row_premium">Un montant par mois par catégorie ou groupe, avec Premium</string>
+    <string name="budgets_row_none">Aucun budget pour l\'instant</string>
+    <plurals name="budgets_row_count">
+        <item quantity="one">%d budget ce mois-ci</item>
+        <item quantity="other">%d budgets ce mois-ci</item>
+        <item quantity="many">%d budgets ce mois-ci</item>
+    </plurals>
+    <string name="budgets_previous">Mois précédent</string>
+    <string name="budgets_next">Mois suivant</string>
+    <string name="budgets_premium_off">Les budgets viennent avec Premium. Ceux que vous avez fixés sont gardés, et l\'exportation les écrit toujours.</string>
+    <string name="budgets_none_this_month">Aucun budget ce mois-ci.</string>
+    <string name="budgets_add">Ajouter un budget</string>
+    <string name="budgets_past_month">Un mois passé garde les budgets d\'après lesquels il a été jugé.</string>
+    <plurals name="budgets_other_currency">
+        <item quantity="one">%d achat dans une autre devise n\'est pas compté.</item>
+        <item quantity="other">%d achats dans une autre devise ne sont pas comptés.</item>
+        <item quantity="many">%d achats dans une autre devise ne sont pas comptés.</item>
+    </plurals>
+    <string name="budget_spent_of">%1$s sur %2$s</string>
+    <string name="budget_left">Reste %1$s</string>
+    <string name="budget_left_per_day">, soit %1$s par jour</string>
+    <string name="budget_over">Dépassé de %1$s</string>
+    <string name="budget_new">Nouveau budget</string>
+    <string name="budget_on">Sur</string>
+    <string name="budget_group_label">%1$s (groupe)</string>
+    <string name="budget_each_month">Chaque mois</string>
+    <string name="budget_from">Dès %1$s</string>
+    <string name="budget_stop">Arrêter ce budget</string>
+    <string name="budget_cancel">Annuler</string>
+    <string name="budget_save">Enregistrer</string>
 </resources>

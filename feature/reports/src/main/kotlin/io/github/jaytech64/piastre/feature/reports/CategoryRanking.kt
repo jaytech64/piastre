@@ -25,7 +25,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.jaytech64.piastre.core.data.BudgetLine
 import io.github.jaytech64.piastre.core.designsystem.Formatters
+import io.github.jaytech64.piastre.core.model.BudgetTarget
 import io.github.jaytech64.piastre.core.model.Money
 import java.util.Locale
 
@@ -67,6 +69,7 @@ internal fun CategoryRanking(
                         ranked,
                         groupId,
                         open = groupId == state.openGroupId,
+                        state,
                         locale,
                         onGroupTapped,
                         onOpenTransactions,
@@ -78,6 +81,7 @@ internal fun CategoryRanking(
                         name = ranked.name,
                         amount = ranked.total,
                         share = ranked.share,
+                        budget = state.budgetOn(BudgetTarget.Category(categoryId)),
                         locale = locale,
                         onClickLabel = stringResource(R.string.reports_see_transactions, ranked.name),
                         onClick = { onOpenTransactions(SpendingOf.OneCategory(categoryId)) },
@@ -96,6 +100,7 @@ private fun GroupRow(
     group: RankedSpending,
     groupId: Long,
     open: Boolean,
+    state: ReportsUiState,
     locale: Locale,
     onGroupTapped: (Long) -> Unit,
     onOpenTransactions: (SpendingOf) -> Unit,
@@ -104,6 +109,7 @@ private fun GroupRow(
         name = group.name,
         amount = group.total,
         share = group.share,
+        budget = state.budgetOn(BudgetTarget.Group(groupId)),
         locale = locale,
         onClickLabel =
             stringResource(
@@ -117,7 +123,9 @@ private fun GroupRow(
 
     Column(Modifier.padding(start = 16.dp)) {
         group.categories.forEach { category ->
-            CategoryRow(category, locale) { onOpenTransactions(SpendingOf.OneCategory(category.categoryId)) }
+            CategoryRow(category, state.budgetOn(BudgetTarget.Category(category.categoryId)), locale) {
+                onOpenTransactions(SpendingOf.OneCategory(category.categoryId))
+            }
         }
         Text(
             stringResource(R.string.reports_see_all_transactions, group.name),
@@ -142,6 +150,7 @@ private fun LeadingRow(
     name: String,
     amount: Money,
     share: Float,
+    budget: BudgetLine?,
     locale: Locale,
     onClickLabel: String,
     onClick: () -> Unit,
@@ -179,12 +188,14 @@ private fun LeadingRow(
             if (opens == null) LeadsToTransactions()
         }
         ShareBar(share)
+        budget?.let { BudgetBar(it, thin = true) }
     }
 }
 
 @Composable
 private fun CategoryRow(
     category: CategoryShare,
+    budget: BudgetLine?,
     locale: Locale,
     onClick: () -> Unit,
 ) {
@@ -213,6 +224,7 @@ private fun CategoryRow(
             LeadsToTransactions()
         }
         ShareBar(category.share)
+        budget?.let { BudgetBar(it, thin = true) }
         Text(
             pluralStringResource(R.plurals.reports_transactions, category.count, category.count),
             style = MaterialTheme.typography.bodySmall,
@@ -244,6 +256,9 @@ private fun Uncategorised(
         LeadsToTransactions()
     }
 }
+
+/** A ranked row's budget, shown only while Premium is on. */
+private fun ReportsUiState.budgetOn(target: BudgetTarget): BudgetLine? = budgets[target]?.takeIf { premiumOn }
 
 @Composable
 private fun LeadsToTransactions() {
