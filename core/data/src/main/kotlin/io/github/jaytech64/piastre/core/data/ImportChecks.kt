@@ -59,6 +59,7 @@ internal fun ExportDocument.check() {
     checkCategoryReferences(categoryIds)
     val recurringIds = checkRecurring(accountIds, merchantIds)
     checkTemplates(accountIds, merchantIds)
+    checkBudgets()
     aliases.forEach { it.checkCodes(merchantIds) }
     val identities = HashSet<Pair<String, String>>()
     transactions.forEach { transaction ->

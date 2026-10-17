@@ -52,6 +52,7 @@ internal data class ExportDocument(
     val categoryGroups: List<ExportedCategoryGroup> = emptyList(),
     val recurring: List<ExportedRecurring> = emptyList(),
     val templates: List<ExportedTemplate> = emptyList(),
+    val budgets: List<ExportedBudget> = emptyList(),
 )
 
 /**
@@ -123,6 +124,21 @@ internal data class ExportedCategory(
     val name: String,
     val groupId: Long? = null,
     val icon: String? = null,
+)
+
+/**
+ * A budget set, changed or stopped on a category or group of the file from [from]
+ * on, as `2026-10`; [amountMinor] is null for a stop. It arrived within version 4
+ * and did not take a new version: a reader that skips it loses the budgets, and
+ * every amount in the file means what it meant.
+ */
+@Serializable
+internal data class ExportedBudget(
+    val targetKind: String,
+    val targetId: Long,
+    val from: String,
+    val amountMinor: Long?,
+    val currency: String,
 )
 
 /** A group categories are arranged under. It arrived within version 2, so a file written before it has none. */
