@@ -30,6 +30,21 @@ Budgets are the first Premium feature; on F-Droid every feature is on.
 
 Any payment source other than Wallet is out of scope so far.
 
+## Two builds, and Premium
+
+Piastre is built for two stores from this one codebase ([ADR-0022](docs/adr/0022-piastre-is-sold-on-play-and-given-on-f-droid.md)).
+
+- **Google Play** sells Premium: a yearly subscription with a 30-day free trial, or a single purchase for life.
+  Everything that is not Premium is free.
+- **F-Droid** has every feature, Premium included, for free.
+  It sells nothing, carries no Google code, and only asks for a donation on [Liberapay](https://liberapay.com/jaytech64), which unlocks nothing.
+
+The two builds are the same app.
+Paying on Google Play supports the work; it buys nothing the F-Droid build does not already have.
+
+The F-Droid build is not listed on F-Droid yet.
+Until it is, anyone can build it from this repository with `./gradlew assembleFossDebug`.
+
 ## Requirements
 
 - JDK 17.
@@ -51,9 +66,7 @@ Any payment source other than Wallet is out of scope so far.
 ./gradlew installFossDebug     # install the F-Droid build on a connected device
 ```
 
-The app is built for two stores ([ADR-0022](docs/adr/0022-piastre-is-sold-on-play-and-given-on-f-droid.md)).
-The Play build sells Premium through Google Play; the F-Droid build has every feature, free, and asks only for a donation.
-Both are the same app under the same `applicationId`, so moving from one to the other goes through export and import.
+Both builds — see [Two builds, and Premium](#two-builds-and-premium) — share one `applicationId` but not a signature, so moving from one to the other goes through export and import.
 
 ## Module graph
 
