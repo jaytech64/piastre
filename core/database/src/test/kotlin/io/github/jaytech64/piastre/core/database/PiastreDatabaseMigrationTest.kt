@@ -423,6 +423,18 @@ class PiastreDatabaseMigrationTest {
         assertEquals(0, migrated.singleInt("SELECT COUNT(icon) FROM category"))
     }
 
+    @Test
+    fun `migrating to schema 20 keeps every category, and budgets none of them`() {
+        helper.createDatabase(NAME, 19).use { database ->
+            database.execSQL("INSERT INTO category (name, normalisedName) VALUES ('Épicerie', 'EPICERIE')")
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 20, true, *PiastreDatabase.MIGRATIONS)
+
+        assertEquals("Épicerie", migrated.singleString("SELECT name FROM category"))
+        assertEquals(0, migrated.count("budget"))
+    }
+
     private fun SupportSQLiteDatabase.singleString(sql: String): String =
         query(sql).use { cursor ->
             cursor.moveToFirst()
