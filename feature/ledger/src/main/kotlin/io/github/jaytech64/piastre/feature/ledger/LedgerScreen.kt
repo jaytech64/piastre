@@ -339,10 +339,14 @@ private fun DayList(
         if (state.isSelecting) {
             item(key = SELECT_ALL_KEY) { SelectAllButton(enabled = !state.allSelected, onClick = onSelectAll) }
         }
-        state.days.forEach { day ->
+        state.days.forEachIndexed { index, day ->
+            if (state.days.opensPastYear(index, today)) {
+                stickyHeader(key = "$YEAR_KEY-${day.date.year}") { YearDivider(day.date.year) }
+            }
             item(key = day.date.toEpochDay()) {
                 DayHeader(
                     label = Formatters.dayHeader(day.date, today, labels, locale),
+                    spokenLabel = Formatters.dayHeader(day.date, today, labels, locale, namesYear = true),
                     total = day.total,
                 )
             }
@@ -363,31 +367,6 @@ private fun DayList(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun DayHeader(
-    label: String,
-    total: Money,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            Formatters.signedMoney(total),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -428,7 +407,21 @@ private fun EmptyLedger(filter: LedgerFilter) {
 @Composable
 internal fun currentLocale(): Locale = LocalConfiguration.current.locales[0]
 
+/**
+ * Whether the day at [index] is the newest shown of a year other than [today]'s,
+ * and so goes under its [YearDivider].
+ */
+private fun List<LedgerDay>.opensPastYear(
+    index: Int,
+    today: LocalDate,
+): Boolean {
+    val year = this[index].date.year
+    return year != today.year && year != getOrNull(index - 1)?.date?.year
+}
+
 private const val SELECT_ALL_KEY = "selectAll"
+
+private const val YEAR_KEY = "year"
 
 /**
  * Room below the last row for the floating add button: its 56 dp height, its
