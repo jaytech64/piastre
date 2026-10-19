@@ -90,16 +90,23 @@ object Formatters {
      *
      * The relative labels are the caller's, because the words belong to the screen's
      * resources and this module has none.
+     *
+     * The year is left out unless [namesYear] asks for it, and then only for a day
+     * outside [today]'s year: the ledger says a year once, above the first day of
+     * it, and only a heading read away from that — a line above today, a screen
+     * reader's — needs to say it again.
      */
     fun dayHeader(
         date: LocalDate,
         today: LocalDate,
         labels: RelativeDayLabels,
         locale: Locale = Locale.getDefault(),
+        namesYear: Boolean = false,
     ): String =
-        when (date) {
-            today -> labels.today
-            today.minusDays(1) -> labels.yesterday
+        when {
+            date == today -> labels.today
+            date == today.minusDays(1) -> labels.yesterday
+            namesYear && date.year != today.year -> DAY_MONTH_AND_YEAR.withLocale(locale).format(date)
             else -> DAY_AND_MONTH.withLocale(locale).format(date)
         }
 
@@ -231,11 +238,14 @@ object Formatters {
     ): String = MONTH_AND_YEAR.withLocale(locale).format(month)
 
     /**
-     * Weekday, day, month — never the year, which on a ledger is always this one.
-     * The day and its month are held together, so a line that wraps never leaves
-     * « jeudi 1 » at the end of one line and « octobre » at the start of the next.
+     * Weekday, day, month. The day and its month are held together, so a line that
+     * wraps never leaves « jeudi 1 » at the end of one line and « octobre » at the
+     * start of the next.
      */
     private val DAY_AND_MONTH = DateTimeFormatter.ofPattern("EEEE d\u00A0MMMM")
+
+    /** [DAY_AND_MONTH] with its year, held to the month the same way. */
+    private val DAY_MONTH_AND_YEAR = DateTimeFormatter.ofPattern("EEEE d\u00A0MMMM\u00A0yyyy")
 
     /**
      * Day then month, as `fr-CA` writes it — the locale this app has to get right,

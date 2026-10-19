@@ -76,7 +76,7 @@ internal fun LazyListScope.upcomingGroup(
                 selection = RowSelection.NONE,
                 onClick = { if (!state.isSelecting) onOpenLine(line) },
                 onLongClick = null,
-                dayLabel = Formatters.dayHeader(line.transaction.localDate, today, labels, locale),
+                dayLabel = Formatters.dayHeader(line.transaction.localDate, today, labels, locale, namesYear = true),
             )
         }
     }

@@ -112,6 +112,42 @@ class FormattersTest {
     }
 
     @Test
+    fun `a day in another year is named with its year when asked`() {
+        val today = LocalDate.of(2026, 12, 30)
+
+        val header =
+            Formatters.dayHeader(LocalDate.of(2027, 1, 1), today, LABELS, Locale.CANADA_FRENCH, namesYear = true)
+
+        assertEquals("vendredi 1 janvier 2027", header)
+    }
+
+    @Test
+    fun `a day in this year keeps its heading short even when the year is asked for`() {
+        val today = LocalDate.of(2026, 9, 7)
+
+        val header =
+            Formatters.dayHeader(LocalDate.of(2026, 9, 4), today, LABELS, Locale.CANADA_FRENCH, namesYear = true)
+
+        assertEquals("vendredi 4 septembre", header)
+    }
+
+    @Test
+    fun `yesterday is still yesterday across new year`() {
+        val today = LocalDate.of(2027, 1, 1)
+
+        val header =
+            Formatters.dayHeader(
+                LocalDate.of(2026, 12, 31),
+                today,
+                LABELS,
+                Locale.CANADA_FRENCH,
+                namesYear = true,
+            )
+
+        assertEquals("Hier", header)
+    }
+
+    @Test
     fun `a day heading never breaks a day from its month`() {
         val header =
             Formatters.dayHeader(
