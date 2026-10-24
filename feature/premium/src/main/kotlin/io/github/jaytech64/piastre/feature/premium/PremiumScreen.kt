@@ -90,7 +90,7 @@ private fun Free(
         }
 
         is PremiumOffers.Available -> {
-            val subscription = offers.trial ?: offers.yearly
+            val subscription = offers.trial ?: offers.monthly
             subscription?.let { offer ->
                 Button(onClick = { buy(offer) }, Modifier.fillMaxWidth()) { Text(offer.label()) }
             }
@@ -137,11 +137,11 @@ private fun PremiumOffer.label(): String {
     return when (kind) {
         PremiumOffer.Kind.TRIAL -> {
             freeDays?.let { stringResource(R.string.premium_buy_trial, it, price) }
-                ?: stringResource(R.string.premium_buy_yearly, price)
+                ?: stringResource(R.string.premium_buy_monthly, price)
         }
 
-        PremiumOffer.Kind.YEARLY -> {
-            stringResource(R.string.premium_buy_yearly, price)
+        PremiumOffer.Kind.MONTHLY -> {
+            stringResource(R.string.premium_buy_monthly, price)
         }
 
         PremiumOffer.Kind.LIFETIME -> {

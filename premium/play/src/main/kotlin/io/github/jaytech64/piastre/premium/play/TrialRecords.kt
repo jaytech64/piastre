@@ -39,8 +39,8 @@ internal class TrialRecords
             store.edit {
                 it[TOKEN] = trial.purchaseToken
                 it[ENDS_AT] = trial.endsAt.toEpochMilli()
-                it[PRICE_MINOR] = trial.yearlyPrice.minor
-                it[PRICE_CURRENCY] = trial.yearlyPrice.currency
+                it[PRICE_MINOR] = trial.monthlyPrice.minor
+                it[PRICE_CURRENCY] = trial.monthlyPrice.currency
                 it[REMINDED] = false
             }
         }
@@ -54,8 +54,8 @@ internal class TrialRecords
         private companion object {
             val TOKEN = stringPreferencesKey("play_trial_purchase_token")
             val ENDS_AT = longPreferencesKey("play_trial_ends_utc_millis")
-            val PRICE_MINOR = longPreferencesKey("play_trial_yearly_price_minor")
-            val PRICE_CURRENCY = stringPreferencesKey("play_trial_yearly_price_currency")
+            val PRICE_MINOR = longPreferencesKey("play_trial_monthly_price_minor")
+            val PRICE_CURRENCY = stringPreferencesKey("play_trial_monthly_price_currency")
             val REMINDED = booleanPreferencesKey("play_trial_reminded")
         }
     }

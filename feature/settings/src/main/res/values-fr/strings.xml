@@ -27,7 +27,7 @@
     <string name="settings_premium">Premium</string>
     <string name="settings_premium_free">Les budgets, et chaque fonction Premium à venir</string>
     <string name="settings_premium_trial">Essai gratuit jusqu\'au %1$s</string>
-    <string name="settings_premium_on">Actif, renouvelé chaque année</string>
+    <string name="settings_premium_on">Actif, renouvelé chaque mois</string>
     <string name="settings_premium_cancelled">Actif jusqu\'à la fin de la période payée</string>
     <string name="settings_premium_lifetime">À vie</string>
 

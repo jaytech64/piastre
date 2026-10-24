@@ -11,7 +11,7 @@ import java.time.format.DateTimeParseException
 /** The products set up in Play Console. Renaming one strands everyone who bought it. */
 internal object PlayProducts {
     const val SUBSCRIPTION = "premium"
-    const val YEARLY_PLAN = "yearly"
+    const val MONTHLY_PLAN = "monthly"
     const val LIFETIME = "premium_lifetime"
 
     /** Play's own page for the subscription, where it is managed or cancelled. */
@@ -32,8 +32,8 @@ internal data class OwnedSubscription(
 internal data class RecordedTrial(
     val purchaseToken: String,
     val endsAt: Instant,
-    /** What each year costs once the trial ends, which the reminder must state. */
-    val yearlyPrice: Money,
+    /** What each month costs once the trial ends, which the reminder must state. */
+    val monthlyPrice: Money,
 )
 
 /**

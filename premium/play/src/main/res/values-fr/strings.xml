@@ -2,5 +2,5 @@
 <resources>
     <string name="trial_channel">Essai Premium</string>
     <string name="trial_ends_title">Votre essai gratuit prend fin le %1$s</string>
-    <string name="trial_ends_body">Piastre Premium coûtera ensuite %1$s par an. Pour ne rien payer, annulez dans Google Play avant cette date.</string>
+    <string name="trial_ends_body">Piastre Premium coûtera ensuite %1$s par mois. Pour ne rien payer, annulez dans Google Play avant cette date.</string>
 </resources>

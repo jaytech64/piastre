@@ -27,7 +27,7 @@
     <string name="settings_premium">Premium</string>
     <string name="settings_premium_free">Budgets, and every Premium feature to come</string>
     <string name="settings_premium_trial">Free trial until %1$s</string>
-    <string name="settings_premium_on">On, renewed every year</string>
+    <string name="settings_premium_on">On, renewed every month</string>
     <string name="settings_premium_cancelled">On until the end of the paid period</string>
     <string name="settings_premium_lifetime">For life</string>
 

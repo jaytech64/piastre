@@ -65,7 +65,7 @@ sealed interface PremiumOffers {
 
     data class Available(
         val trial: PremiumOffer?,
-        val yearly: PremiumOffer?,
+        val monthly: PremiumOffer?,
         val lifetime: PremiumOffer?,
     ) : PremiumOffers
 }
@@ -81,5 +81,5 @@ data class PremiumOffer(
     /** The store's own handle on this offer; nothing outside the store reads it. */
     val token: String,
 ) {
-    enum class Kind { TRIAL, YEARLY, LIFETIME }
+    enum class Kind { TRIAL, MONTHLY, LIFETIME }
 }
