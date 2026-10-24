@@ -14,9 +14,9 @@ internal fun ProductDetails.SubscriptionOfferDetails.asTrial(): PremiumOffer? {
     return PremiumOffer(PremiumOffer.Kind.TRIAL, paid.money(), freeDays(free.billingPeriod), offerToken)
 }
 
-internal fun ProductDetails.SubscriptionOfferDetails.asYearly(): PremiumOffer? {
+internal fun ProductDetails.SubscriptionOfferDetails.asMonthly(): PremiumOffer? {
     val paid = pricingPhases.pricingPhaseList.lastOrNull { it.priceAmountMicros > 0L } ?: return null
-    return PremiumOffer(PremiumOffer.Kind.YEARLY, paid.money(), freeDays = null, offerToken)
+    return PremiumOffer(PremiumOffer.Kind.MONTHLY, paid.money(), freeDays = null, offerToken)
 }
 
 internal fun ProductDetails.OneTimePurchaseOfferDetails.asLifetime(): PremiumOffer? =

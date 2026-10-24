@@ -186,11 +186,11 @@ class PlayPremiumSource
             val plans =
                 subscription?.subscriptionOfferDetails.orEmpty().filter {
                     it.basePlanId ==
-                        PlayProducts.YEARLY_PLAN
+                        PlayProducts.MONTHLY_PLAN
                 }
             return PremiumOffers.Available(
                 trial = plans.firstNotNullOfOrNull { it.asTrial() },
-                yearly = plans.firstOrNull { it.offerId == null }?.asYearly(),
+                monthly = plans.firstOrNull { it.offerId == null }?.asMonthly(),
                 lifetime = lifetime?.oneTimePurchaseOfferDetailsList?.firstOrNull()?.asLifetime(),
             )
         }

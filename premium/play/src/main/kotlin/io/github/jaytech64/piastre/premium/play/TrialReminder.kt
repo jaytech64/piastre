@@ -25,7 +25,7 @@ import javax.inject.Provider
 import javax.inject.Singleton
 
 /**
- * One notification, a week before a trial this app started becomes a paid year,
+ * One notification, a week before a trial this app started becomes paid,
  * saying when, at what price, and how to cancel (decision 12 of the Premium plan).
  *
  * An inexact alarm wakes the app for it and needs no permission; a restart
@@ -60,13 +60,13 @@ internal class TrialReminder
             val due = subscription.renews && now.isAfter(endsAt.minus(NOTICE)) && now.isBefore(endsAt)
             if (!due || trials.reminded()) return
             val trial = trials.current() ?: return
-            if (post(endsAt, trial.yearlyPrice)) trials.markReminded()
+            if (post(endsAt, trial.monthlyPrice)) trials.markReminded()
         }
 
         /** False when notifications are off, so a later grant still gets the reminder out. */
         private fun post(
             endsAt: Instant,
-            yearlyPrice: Money,
+            monthlyPrice: Money,
         ): Boolean {
             val notifications = NotificationManagerCompat.from(context)
             if (!notifications.areNotificationsEnabled()) return false
@@ -78,7 +78,7 @@ internal class TrialReminder
                 ),
             )
             val day = Formatters.date(endsAt.atZone(zoneId.get()).toLocalDate())
-            val body = context.getString(R.string.trial_ends_body, Formatters.money(yearlyPrice))
+            val body = context.getString(R.string.trial_ends_body, Formatters.money(monthlyPrice))
             val manage =
                 PendingIntent.getActivity(
                     context,

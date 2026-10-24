@@ -21,7 +21,7 @@ Version 9.1.0 also merges `INTERNET` and `ACCESS_NETWORK_STATE` into the manifes
 
 **One codebase, two builds, told apart by a `store` flavour on `:app` alone.**
 
-- The `play` build sells Premium through Play Billing: a yearly subscription with a 30-day trial, and a lifetime purchase.
+- The `play` build sells Premium through Play Billing: a monthly subscription with a 30-day trial, and a lifetime purchase.
 - The `foss` build has no tiers: every feature is on, nothing is sold, and one Settings row links to a donation page that unlocks nothing.
 - The Play build never mentions F-Droid or donations, which Play's payments policy bars; the README says openly that the F-Droid build is free.
 
@@ -38,6 +38,14 @@ Their signatures differ, so moving from one store to the other is export, uninst
 
 Rejected: offline licence keys for the F-Droid build.
 They need a seller of record that hands out keys signed in advance, they cannot be revoked without a network, and the GPL lets anyone remove the check, so they would charge the audience most likely to resent it for a lock that protects nothing.
+
+## Revision — the subscription renews every month
+
+- **Decided:** 2026-10-24, before the yearly plan was ever sold.
+
+The subscription was first planned as yearly, and it is now monthly instead, still with a 30-day trial.
+Play cannot change a base plan's period, so the `premium` subscription carries a `monthly` base plan in place of `yearly`; ownership is read by product, never by base plan.
+The trial reminder still comes a week before the trial ends, which stays inside Quebec's 2 to 10 days.
 
 ## Consequences
 

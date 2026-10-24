@@ -13,7 +13,7 @@ import java.time.Instant
 class PlayOwnershipTest {
     private val now = Instant.parse("2026-10-15T12:00:00Z")
     private val inThreeWeeks = now.plus(Duration.ofDays(21))
-    private val yearly = Money(1_500, Money.CAD)
+    private val monthly = Money(1_500, Money.CAD)
     private val subscription = OwnedSubscription(purchaseToken = "token-a", renews = true)
 
     @Test
@@ -28,7 +28,7 @@ class PlayOwnershipTest {
 
     @Test
     fun `a trial this app recorded gives the subscription its end`() {
-        val trial = RecordedTrial("token-a", inThreeWeeks, yearly)
+        val trial = RecordedTrial("token-a", inThreeWeeks, monthly)
         assertEquals(
             Premium.Subscribed(renews = true, trialEndsAt = inThreeWeeks),
             ownedPremium(subscription, lifetimeOwned = false, trial = trial, now = now),
@@ -37,7 +37,7 @@ class PlayOwnershipTest {
 
     @Test
     fun `a trial recorded against another purchase says nothing about this one`() {
-        val trial = RecordedTrial("token-b", inThreeWeeks, yearly)
+        val trial = RecordedTrial("token-b", inThreeWeeks, monthly)
         assertEquals(
             Premium.Subscribed(renews = true, trialEndsAt = null),
             ownedPremium(subscription, lifetimeOwned = false, trial = trial, now = now),
@@ -46,7 +46,7 @@ class PlayOwnershipTest {
 
     @Test
     fun `a trial that has ended is no longer shown`() {
-        val trial = RecordedTrial("token-a", now.minusSeconds(1), yearly)
+        val trial = RecordedTrial("token-a", now.minusSeconds(1), monthly)
         assertEquals(
             Premium.Subscribed(renews = true, trialEndsAt = null),
             ownedPremium(subscription, lifetimeOwned = false, trial = trial, now = now),
