@@ -58,7 +58,7 @@ Rejected: a full dismiss, and a collapse remembered across launches — both let
 
 - **Decided:** 2026-10-11, while planning Premium; built 2026-10-15.
 
-Premium's 30-day trial on Play needs a written notice before it becomes a paid year, and Quebec asks for one 2 to 10 days ahead.
+Premium's 30-day trial on Play needs a written notice before it becomes a paid subscription, and Quebec asks for one 2 to 10 days ahead.
 The Play build therefore declares `POST_NOTIFICATIONS` and `RECEIVE_BOOT_COMPLETED`, and sets one inexact alarm a week before a trial this app started ends.
 
 This does not reopen the capture alarm.

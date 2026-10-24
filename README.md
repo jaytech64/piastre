@@ -34,7 +34,7 @@ Any payment source other than Wallet is out of scope so far.
 
 Piastre is built for two stores from this one codebase ([ADR-0022](docs/adr/0022-piastre-is-sold-on-play-and-given-on-f-droid.md)).
 
-- **Google Play** sells Premium: a yearly subscription with a 30-day free trial, or a single purchase for life.
+- **Google Play** sells Premium: a monthly subscription with a 30-day free trial, or a single purchase for life.
   Everything that is not Premium is free.
 - **F-Droid** has every feature, Premium included, for free.
   It sells nothing, carries no Google code, and only asks for a donation on [Liberapay](https://liberapay.com/jaytech64), which unlocks nothing.
