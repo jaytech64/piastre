@@ -95,7 +95,9 @@ private fun ExportDocument.checkCategoryReferences(categoryIds: Set<Long>) {
                         "a part of transaction ${owner.sourceKey}"
                 }
             } +
-            merchants.map { it.categoryId to "merchant ${it.id}" } +
+            merchants.flatMap { merchant ->
+                listOf(merchant.categoryId, merchant.incomeCategoryId).map { it to "merchant ${merchant.id}" }
+            } +
             accounts.map { it.categoryId to "account ${it.id}" } +
             recurring.map { it.categoryId to "recurring transaction ${it.id}" } +
             templates.map { it.categoryId to "template ${it.id}" }

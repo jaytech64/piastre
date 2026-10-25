@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
+import io.github.jaytech64.piastre.core.model.TransactionKind
+import io.github.jaytech64.piastre.core.model.TransactionSource
 import kotlinx.serialization.Serializable
 
 /**
@@ -26,11 +28,20 @@ import kotlinx.serialization.Serializable
  * is worth and what that account holds. A version-3 reader would have imported
  * it as an ordinary part and left the account short without a word, so it is
  * made to refuse too. Nothing was removed, so a version-3 file is still read.
+ *
+ * Version 5 gives a merchant a category for its incomes apart from the one for
+ * its expenses, and a merchant's `categoryId` stopped meaning both. A version-4
+ * reader would have given the expense category to incomes too, so it is made to
+ * refuse; an older file is still read, its one category going where
+ * [ExportedMerchant.categoryFor] says.
  */
-internal const val LEDGER_FORMAT_VERSION = 4
+internal const val LEDGER_FORMAT_VERSION = 5
 
-/** The versions [decodeExport] reads: this one, and the two before it, which only lack what was added since. */
-internal val READABLE_FORMAT_VERSIONS = setOf(2, 3, LEDGER_FORMAT_VERSION)
+/** The first version in which a merchant's `categoryId` is for its expenses alone. */
+internal const val MERCHANT_CATEGORY_BY_KIND_VERSION = 5
+
+/** The versions [decodeExport] reads: this one, and those before it, which only lack what was added since. */
+internal val READABLE_FORMAT_VERSIONS = setOf(2, 3, 4, LEDGER_FORMAT_VERSION)
 
 /**
  * The JSON export, and what an import reads back.
@@ -172,14 +183,54 @@ internal data class ExportedAccount(
     val categoryId: Long? = null,
 )
 
-/** [categoryId] is the category every purchase there is given, when you set one. */
+/**
+ * [categoryId] is the category every expense there is given, and
+ * [incomeCategoryId] every income, when you set one. Before version 5 there was
+ * one [categoryId] for both, and no [incomeCategoryId].
+ */
 @Serializable
 internal data class ExportedMerchant(
     val id: Long,
     val displayName: String,
     val normalisedName: String,
     val categoryId: Long? = null,
+    val incomeCategoryId: Long? = null,
 )
+
+/**
+ * The category, in the file, this merchant gives a [kind] transaction.
+ *
+ * A file before version 5 has one category for both kinds, so it goes where
+ * schema 21's migration sends a merchant's: to incomes when only the file's
+ * incomes there carry it, and to expenses otherwise. A captured row is no
+ * evidence, its category having been copied from the merchant.
+ */
+internal fun ExportedMerchant.categoryFor(
+    kind: TransactionKind,
+    document: ExportDocument,
+): Long? {
+    if (document.version >= MERCHANT_CATEGORY_BY_KIND_VERSION) {
+        return when (kind) {
+            TransactionKind.EXPENSE -> categoryId
+            TransactionKind.INCOME -> incomeCategoryId
+            TransactionKind.TRANSFER -> null
+        }
+    }
+    val carriers =
+        document.transactions
+            .filter {
+                it.merchantId == id &&
+                    it.categoryId == categoryId &&
+                    it.source != TransactionSource.NOTIFICATION.name
+            }.map { it.kind }
+            .toSet()
+    val forIncome = carriers == setOf(TransactionKind.INCOME.name)
+    return when (kind) {
+        TransactionKind.EXPENSE -> categoryId.takeUnless { forIncome }
+        TransactionKind.INCOME -> categoryId.takeIf { forIncome }
+        TransactionKind.TRANSFER -> null
+    }
+}
 
 @Serializable
 internal data class ExportedAlias(

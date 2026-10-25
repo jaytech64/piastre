@@ -15,6 +15,13 @@ import io.github.jaytech64.piastre.core.model.TransactionPart
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -126,7 +133,7 @@ class LedgerImportTest : LedgerImportFixture() {
     @Test
     fun `a file from a version yet to come is refused`() =
         runTest {
-            assertEquals(refused(ImportProblem.UnsupportedVersion(5)), target.reading(document(version = 5)))
+            assertEquals(refused(ImportProblem.UnsupportedVersion(6)), target.reading(document(version = 6)))
         }
 
     @Test
@@ -347,6 +354,76 @@ class LedgerImportTest : LedgerImportFixture() {
         }
 
     @Test
+    fun `a merchant's income category comes back apart from the one it gives its expenses`() =
+        runTest {
+            val categories = source.categoryRepository()
+            val pharmacy = categories.named("Pharmacie")!!
+            val pay = categories.named("Paye")!!
+            source.enter(
+                1_00,
+                TransactionKind.EXPENSE,
+                merchant = "Horizon Santé",
+                categoryId = pharmacy,
+                fromNowOn = true,
+            )
+            source.enter(
+                1000_00,
+                TransactionKind.INCOME,
+                merchant = "Horizon Santé",
+                categoryId = pay,
+                fromNowOn = true,
+            )
+
+            target.importing(source.export())
+
+            assertEquals(listOf("Horizon Santé" to "Pharmacie"), target.merchantDefaults(TransactionKind.EXPENSE))
+            assertEquals(listOf("Horizon Santé" to "Paye"), target.merchantDefaults(TransactionKind.INCOME))
+        }
+
+    @Test
+    fun `an older file's merchant category goes to its incomes when only incomes there carry it`() =
+        runTest {
+            val categories = source.categoryRepository()
+            source.enter(
+                1_00,
+                TransactionKind.EXPENSE,
+                merchant = "Horizon Santé",
+                categoryId = categories.named("Pharmacie"),
+            )
+            val pay = categories.named("Paye")!!
+            source.enter(
+                1000_00,
+                TransactionKind.INCOME,
+                merchant = "Horizon Santé",
+                categoryId = pay,
+                fromNowOn = true,
+            )
+
+            target.importing(asVersion4(source.export()))
+
+            assertEquals(emptyList<Pair<String, String?>>(), target.merchantDefaults(TransactionKind.EXPENSE))
+            assertEquals(listOf("Horizon Santé" to "Paye"), target.merchantDefaults(TransactionKind.INCOME))
+        }
+
+    @Test
+    fun `an older file's merchant category goes to its expenses when expenses there carry it`() =
+        runTest {
+            val groceries = source.categoryRepository().named("Épicerie")!!
+            source.enter(
+                40_00,
+                TransactionKind.EXPENSE,
+                merchant = "Metro Plus",
+                categoryId = groceries,
+                fromNowOn = true,
+            )
+
+            target.importing(asVersion4(source.export()))
+
+            assertEquals(listOf("Metro Plus" to "Épicerie"), target.merchantDefaults(TransactionKind.EXPENSE))
+            assertEquals(emptyList<Pair<String, String?>>(), target.merchantDefaults(TransactionKind.INCOME))
+        }
+
+    @Test
     fun `a file naming a category it does not list is refused before anything is written`() =
         runTest {
             source.enter(40_00, TransactionKind.EXPENSE, merchant = "Metro Plus")
@@ -558,9 +635,29 @@ class LedgerImportTest : LedgerImportFixture() {
         return categoryDao().allOnce().map { it.groupId?.let(groups::get) to it.name }.toSet()
     }
 
-    private suspend fun PiastreDatabase.merchantDefaults(): List<Pair<String, String?>> {
+    /**
+     * [json] as a version-4 phone would have written it: one category on each
+     * merchant, whichever kind it was set from, and no income category beside it.
+     */
+    private fun asVersion4(json: String): String {
+        val root = Json.parseToJsonElement(json).jsonObject
+        val merchants =
+            root.getValue("merchants").jsonArray.map { element ->
+                val merchant = element.jsonObject
+                val income = merchant.getValue("incomeCategoryId")
+                val one = if (income is JsonNull) merchant.getValue("categoryId") else income
+                JsonObject(merchant - "incomeCategoryId" + ("categoryId" to one))
+            }
+        return JsonObject(root + ("version" to JsonPrimitive(4)) + ("merchants" to JsonArray(merchants))).toString()
+    }
+
+    private suspend fun PiastreDatabase.merchantDefaults(
+        kind: TransactionKind = TransactionKind.EXPENSE,
+    ): List<Pair<String, String?>> {
         val names = categoryDao().allOnce().associate { it.id to it.name }
-        return merchantDao().allOnce().filter { it.categoryId != null }.map { it.displayName to names[it.categoryId] }
+        return merchantDao().allOnce().mapNotNull { merchant ->
+            merchant.categoryFor(kind)?.let { merchant.displayName to names[it] }
+        }
     }
 
     private suspend fun PiastreDatabase.accountDefaults(): List<Pair<String?, String?>> {

@@ -119,6 +119,20 @@ class CategoryReachTest {
         }
 
     @Test
+    fun `an income's category from now on reaches the next income there, and no Wallet purchase`() =
+        runTest {
+            val pay = categories.named("Paye")!!
+            addIncome("METRO PLUS", pay, CategoryReach(others = false, fromNowOn = true))
+
+            captureAt("METRO PLUS", "tag-1")
+
+            assertNull(confirmedAt("METRO PLUS").single { it.kind == TransactionKind.EXPENSE }.categoryId)
+            val merchant = database.merchantDao().allOnce().single()
+            assertEquals(pay, merchant.incomeCategoryId)
+            assertNull(merchant.expenseCategoryId)
+        }
+
+    @Test
     fun `a purchase that waits for review arrives with its merchant's category`() =
         runTest {
             val groceries = categories.named("Épicerie")!!
@@ -212,7 +226,7 @@ class CategoryReachTest {
             addExpense("Fruiterie du marché", groceries, CategoryReach(others = false, fromNowOn = true))
             val merchant = database.merchantDao().allOnce().single()
 
-            assertEquals(groceries, merchant.categoryId)
+            assertEquals(groceries, merchant.expenseCategoryId)
         }
 
     @Test
@@ -374,6 +388,22 @@ class CategoryReachTest {
         occurredAt = Instant.ofEpochMilli(POSTED_AT),
         note = null,
         kind = TransactionKind.EXPENSE,
+        accountId = null,
+        toAccountId = null,
+        categoryId = categoryId,
+        reach = reach,
+    )
+
+    private suspend fun addIncome(
+        merchant: String,
+        categoryId: Long,
+        reach: CategoryReach,
+    ) = transactions.addManual(
+        amount = Money(100_000, Money.CAD),
+        merchantName = merchant,
+        occurredAt = Instant.ofEpochMilli(POSTED_AT),
+        note = null,
+        kind = TransactionKind.INCOME,
         accountId = null,
         toAccountId = null,
         categoryId = categoryId,

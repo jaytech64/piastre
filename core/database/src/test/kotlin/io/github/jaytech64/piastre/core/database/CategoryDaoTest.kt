@@ -131,16 +131,19 @@ class CategoryDaoTest {
     fun `deleting a category leaves its purchases, merchants and accounts without one`() =
         runTest {
             val groceries = category("Épicerie")
+            val pay = category("Paye")
             val metro = merchant("METRO PLUS")
             val mortgage = account("Prêt hypothécaire")
-            database.merchantDao().setCategory(metro, groceries)
+            database.merchantDao().setExpenseCategory(metro, groceries)
+            database.merchantDao().setIncomeCategory(metro, pay)
             database.accountDao().setCategory(mortgage, groceries)
             val id = transactions.insert(row(merchantId = metro, categoryId = groceries))
 
             categories.delete(groceries)
 
             assertNull(transactions.byId(id)?.categoryId)
-            assertNull(database.merchantDao().byId(metro)?.categoryId)
+            assertNull(database.merchantDao().byId(metro)?.expenseCategoryId)
+            assertEquals(pay, database.merchantDao().byId(metro)?.incomeCategoryId)
             assertNull(
                 database
                     .accountDao()
@@ -148,7 +151,7 @@ class CategoryDaoTest {
                     .single()
                     .categoryId,
             )
-            assertEquals(emptyList<CategoryEntity>(), categories.allOnce())
+            assertEquals(listOf("Paye"), categories.allOnce().map { it.name })
         }
 
     @Test
@@ -180,11 +183,11 @@ class CategoryDaoTest {
         }
 
     @Test
-    fun `a category counts its confirmed transactions and what gives it automatically`() =
+    fun `a category counts its confirmed transactions and what gives it automatically, for either kind`() =
         runTest {
             val groceries = category("Épicerie")
-            database.merchantDao().setCategory(merchant("METRO PLUS"), groceries)
-            database.merchantDao().setCategory(merchant("IGA"), groceries)
+            database.merchantDao().setExpenseCategory(merchant("METRO PLUS"), groceries)
+            database.merchantDao().setIncomeCategory(merchant("IGA"), groceries)
             database.accountDao().setCategory(account("Épargne"), groceries)
             transactions.insert(row("a", categoryId = groceries))
             transactions.insert(row("b", categoryId = groceries, status = TransactionStatus.NEEDS_REVIEW))

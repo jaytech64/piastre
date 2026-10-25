@@ -101,7 +101,7 @@ data class ExpenseTransactionEntity(
     /**
      * Yours to set, so a re-parse keeps it. A merchant's category is copied in
      * when the row is recorded rather than read through at display time: see
-     * [MerchantEntity.categoryId].
+     * [MerchantEntity.expenseCategoryId].
      */
     val categoryId: Long?,
     val source: TransactionSource,
@@ -230,15 +230,29 @@ data class MerchantEntity(
     val displayName: String,
     val normalisedName: String,
     /**
-     * The category every purchase here is given as it is recorded, or null.
+     * The category every expense here is given as it is recorded, or null.
      *
      * Copied into each transaction rather than read through at display time, so
      * changing it changes the purchases to come and never the ones already in the
      * ledger — past and future are separate choices, and a purchase you
      * categorised differently by hand stays the way you left it.
      */
-    val categoryId: Long? = null,
-)
+    val expenseCategoryId: Long? = null,
+    /**
+     * The category every income from here is given, kept apart from
+     * [expenseCategoryId]: the pharmacy you buy from can be the employer that
+     * pays you, and its pay is no purchase.
+     */
+    val incomeCategoryId: Long? = null,
+) {
+    /** The category a [kind] transaction recorded here is given, or null; a transfer names no merchant. */
+    fun categoryFor(kind: TransactionKind): Long? =
+        when (kind) {
+            TransactionKind.EXPENSE -> expenseCategoryId
+            TransactionKind.INCOME -> incomeCategoryId
+            TransactionKind.TRANSFER -> null
+        }
+}
 
 /**
  * A kind of spending or income you named.

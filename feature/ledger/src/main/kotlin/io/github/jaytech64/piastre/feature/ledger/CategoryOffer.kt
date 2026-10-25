@@ -79,7 +79,7 @@ internal fun ExpenseFormUiState.place(
                 CategoryPlace(
                     anchor = known?.let { CategoryAnchor.AtMerchant(it.id) },
                     name = PlaceName.AtMerchant(known?.displayName ?: typed.displayName),
-                    defaultCategoryId = known?.categoryId,
+                    defaultCategoryId = known?.categoryFor(kind),
                 )
             }
         }

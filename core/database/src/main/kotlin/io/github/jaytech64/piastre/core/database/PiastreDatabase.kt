@@ -50,7 +50,7 @@ abstract class PiastreDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
 
     companion object {
-        const val VERSION: Int = 20
+        const val VERSION: Int = 21
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -77,6 +77,7 @@ abstract class PiastreDatabase : RoomDatabase() {
                 MIGRATION_17_18,
                 MIGRATION_18_19,
                 MIGRATION_19_20,
+                MIGRATION_20_21,
             )
 
         const val NAME: String = "piastre.db"
@@ -583,6 +584,41 @@ private val MIGRATION_19_20 =
             db.execSQL(
                 "CREATE UNIQUE INDEX IF NOT EXISTS `index_budget_targetKind_targetId_fromMonth` " +
                     "ON `budget` (`targetKind`, `targetId`, `fromMonth`)",
+            )
+        }
+    }
+
+/**
+ * Schema 21 lets a merchant give an income a category of its own, apart from
+ * the one it gives an expense.
+ *
+ * Until now one category served both, so each merchant's goes to the kind it was
+ * evidently set for: to income when only incomes there carry it, and to expense
+ * otherwise — when only expenses carry it, both kinds do, or nothing does.
+ * A captured row is no evidence, since its category was copied from the merchant
+ * in the first place, and capture records only expenses. No row's own category
+ * is touched.
+ */
+private val MIGRATION_20_21 =
+    object : Migration(20, 21) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE merchant RENAME COLUMN categoryId TO expenseCategoryId")
+            db.execSQL("ALTER TABLE merchant ADD COLUMN incomeCategoryId INTEGER")
+            db.execSQL(
+                """
+                UPDATE merchant SET incomeCategoryId = expenseCategoryId, expenseCategoryId = NULL
+                WHERE expenseCategoryId IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1 FROM expense_transaction t
+                        WHERE t.merchantId = merchant.id AND t.categoryId = merchant.expenseCategoryId
+                            AND t.source <> 'NOTIFICATION' AND t.kind = 'INCOME'
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM expense_transaction t
+                        WHERE t.merchantId = merchant.id AND t.categoryId = merchant.expenseCategoryId
+                            AND t.source <> 'NOTIFICATION' AND t.kind <> 'INCOME'
+                    )
+                """,
             )
         }
     }

@@ -85,8 +85,11 @@ class MerchantRepository
             return merchant.id
         }
 
-        /** The category a transaction recorded at [merchantId] is given, or null. */
-        suspend fun categoryOf(merchantId: Long?): Long? = merchantId?.let { merchants.byId(it)?.categoryId }
+        /** The category a [kind] transaction recorded at [merchantId] is given, or null. */
+        suspend fun categoryOf(
+            merchantId: Long?,
+            kind: TransactionKind,
+        ): Long? = merchantId?.let { merchants.byId(it)?.categoryFor(kind) }
 
         /**
          * The merchant a name belongs to, created when there is none yet. One already
@@ -141,5 +144,17 @@ private fun MerchantEntity.toDomain() =
         id = id,
         displayName = displayName,
         normalisedName = normalisedName,
-        categoryId = categoryId,
+        expenseCategoryId = expenseCategoryId,
+        incomeCategoryId = incomeCategoryId,
     )
+
+/** Makes [categoryId] what every [kind] transaction recorded at merchant [id] is given; null stops it. */
+internal suspend fun MerchantDao.setCategory(
+    id: Long,
+    kind: TransactionKind,
+    categoryId: Long?,
+) = when (kind) {
+    TransactionKind.EXPENSE -> setExpenseCategory(id, categoryId)
+    TransactionKind.INCOME -> setIncomeCategory(id, categoryId)
+    TransactionKind.TRANSFER -> error("A transfer names no merchant to give its category")
+}
