@@ -17,13 +17,8 @@
     <string name="settings_support_body">Piastre est gratuit et le restera. Un don l\'aide à avancer, et ne débloque rien.</string>
     <string name="settings_support_no_browser">Aucun navigateur ne peut ouvrir la page de dons. Son adresse : %1$s</string>
     <string name="settings_suggest">Suggérer une fonctionnalité</string>
-    <string name="settings_suggest_body">Ouvre votre application de courriel avec un message au développeur.</string>
-    <string name="settings_suggest_no_mail">Aucune application de courriel ne peut ouvrir le message. Écrivez à %1$s</string>
-    <string name="suggest_subject">Piastre : suggestion [%1$s]</string>
-    <string name="suggest_build">%1$s · Piastre %2$s</string>
-    <string name="suggest_order">Commande Premium :</string>
-    <string name="suggest_keep_block">Ne modifiez pas ce bloc.\nSinon, votre message\nne sera jamais lu.</string>
-    <string name="suggest_placeholder">[Remplacez le texte entre ces crochets par votre idée. Ne modifiez PAS l\'objet ni le bas de ce message, sinon il sera ignoré.]</string>
+    <string name="settings_suggest_body">Ouvre une demande de fonctionnalité sur la page GitHub du projet, dans votre navigateur. Un compte GitHub est requis.</string>
+    <string name="settings_suggest_no_browser">Aucun navigateur ne peut ouvrir la page de suggestions. Son adresse : %1$s</string>
     <string name="settings_premium">Premium</string>
     <string name="settings_premium_free">Les budgets, et chaque fonction Premium à venir</string>
     <string name="settings_premium_trial">Essai gratuit jusqu\'au %1$s</string>

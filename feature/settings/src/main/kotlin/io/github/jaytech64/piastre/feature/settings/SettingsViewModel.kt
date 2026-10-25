@@ -90,14 +90,6 @@ class SettingsViewModel
         /** Which build a suggestion comes from, by its store's name. */
         val storeName: String = premiumRepository.storeName
 
-        /** The Premium order a suggestion quotes to claim its priority, or null for none. */
-        val orderNumber: StateFlow<String?> =
-            premiumRepository.orderNumber.stateIn(
-                viewModelScope,
-                SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
-                null,
-            )
-
         /** Null until the store has answered once; the F-Droid build answers Unlocked, and shows no Premium row. */
         val premium: StateFlow<Premium?> =
             premiumRepository.premium.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)

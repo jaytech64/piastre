@@ -17,13 +17,8 @@
     <string name="settings_support_body">Piastre is free and will stay free. A donation helps it keep going, and unlocks nothing.</string>
     <string name="settings_support_no_browser">No browser can open the donation page. Its address is %1$s</string>
     <string name="settings_suggest">Suggest a feature</string>
-    <string name="settings_suggest_body">Opens your mail app with a message to the developer.</string>
-    <string name="settings_suggest_no_mail">No mail app can open the message. Write to %1$s</string>
-    <string name="suggest_subject">Piastre: suggestion [%1$s]</string>
-    <string name="suggest_build">%1$s · Piastre %2$s</string>
-    <string name="suggest_order">Premium order:</string>
-    <string name="suggest_keep_block">Do not edit this block.\nOtherwise, your message\nis never read.</string>
-    <string name="suggest_placeholder">[Replace the text within these brackets with your idea. Do NOT edit the subject nor the footer of this message, otherwise it will be discarded.]</string>
+    <string name="settings_suggest_body">Opens a feature request on the project\'s GitHub page, in your browser. A GitHub account is needed.</string>
+    <string name="settings_suggest_no_browser">No browser can open the suggestion page. Its address is %1$s</string>
     <string name="settings_premium">Premium</string>
     <string name="settings_premium_free">Budgets, and every Premium feature to come</string>
     <string name="settings_premium_trial">Free trial until %1$s</string>
