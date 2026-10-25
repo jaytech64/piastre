@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Jérémy Mailhot
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Opened from Settings › Suggest a feature, which fills in `build` by its id
+# (SuggestRow.kt, suggestionPage): rename one and the other changes with it.
+name: Feature request
+description: Suggest an idea for Piastre.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Write in English or in French.
+
+        This page is public: never paste an amount, a merchant or a card number from your own spending.
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What would you like Piastre to do?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What would it help you with?
+  - type: input
+    id: build
+    attributes:
+      label: Version
+      description: Filled in by the app.
