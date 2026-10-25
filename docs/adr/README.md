@@ -19,7 +19,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0007](0007-a-report-counts-spending-not-the-balance.md) | A report counts spending, not the balance | Accepted, revised once — amended by 0009 and 0017 |
 | [0008](0008-the-ledger-header-says-what-the-balance-is-made-of.md) | The ledger header says what the balance is made of | Accepted — amended by 0017 |
 | [0009](0009-a-report-says-what-its-balance-is-made-of.md) | A report says what its balance is made of | Accepted — amended by 0017 |
-| [0010](0010-a-merchants-category-is-written-onto-each-purchase.md) | A merchant's category is written onto each purchase, not read through | Accepted — implemented |
+| [0010](0010-a-merchants-category-is-written-onto-each-purchase.md) | A merchant's category is written onto each purchase, not read through | Accepted — amended by 0024 |
 | [0011](0011-a-transfer-under-a-category-is-money-that-left.md) | A transfer under a category is money that left for it | Superseded by 0017 |
 | [0012](0012-a-total-counts-one-currency.md) | A total counts one currency | Accepted — implemented |
 | [0013](0013-a-recurring-transaction-is-written-on-its-day.md) | A recurring transaction is written on its day, never projected | Accepted, revised three times — implemented |
@@ -33,6 +33,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0021](0021-depenses-became-piastre-and-the-ledger-crossed-by-hand.md) | Dépenses became Piastre, and the ledger crossed by hand | Accepted — implemented |
 | [0022](0022-piastre-is-sold-on-play-and-given-on-f-droid.md) | Piastre is sold on Play and given on F-Droid | Accepted — partly implemented |
 | [0023](0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md) | A budget counts what a report counts, from the month it was set | Accepted — implemented |
+| [0024](0024-a-merchant-gives-each-kind-its-own-category.md) | A merchant gives each kind its own category | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan.
 Each record after them was written with the branch that made the decision.
