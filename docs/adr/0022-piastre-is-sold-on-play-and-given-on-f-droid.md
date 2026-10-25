@@ -63,4 +63,4 @@ Every build task now names its store: `installPlayDebug`, `installFossDebug`.
 - `core/data/.../PremiumSource.kt` — what a store lets the app ask.
 - `premium/play/`, `premium/foss/` — one binding each.
 - `feature/settings/.../SettingsScreen.kt` — `SupportRow`.
-- `spike-billing/README.md` — the spike's results, and how to run it again.
+- [`docs/play-billing-without-network.md`](../play-billing-without-network.md) — the spike's results.

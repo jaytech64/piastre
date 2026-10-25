@@ -6,8 +6,9 @@
       The billing library merges both of these in for its telemetry. Play Billing
       talks to the Play Store app on the device, which does the networking, and
       the spike proved it buys, acknowledges and restores without them
-      (spike-billing/README.md). Removing them keeps the no-network claim true of
-      the Play build too, which verifyPlay*HasNoNetworkPermission enforces.
+      (docs/play-billing-without-network.md). Removing them keeps the
+      no-network claim true of the Play build too, which
+      verifyPlay*HasNoNetworkPermission enforces.
     -->
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
