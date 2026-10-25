@@ -10,10 +10,10 @@ import org.robolectric.RobolectricTestRunner
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
-class SuggestionPageTest {
+class IssuePageTest {
     @Test
     fun `a suggestion opens the feature request form on the project's issues`() {
-        val page = suggestionPage(build = "Piastre 1.4.0 · F-Droid")
+        val page = issuePage(IssueForm.Suggestion, build = "Piastre 1.4.0 · F-Droid")
 
         assertEquals("github.com", page.host)
         assertEquals("/jaytech64/piastre/issues/new", page.path)
@@ -21,16 +21,26 @@ class SuggestionPageTest {
     }
 
     @Test
+    fun `a bug opens the bug report form on the project's issues`() {
+        val page = issuePage(IssueForm.Bug, build = "Piastre 1.4.0 · F-Droid")
+
+        assertEquals("/jaytech64/piastre/issues/new", page.path)
+        assertEquals("bug_report.yml", page.getQueryParameter("template"))
+    }
+
+    @Test
     fun `the form's version field arrives as the app wrote it`() {
-        val page = suggestionPage(build = "Piastre 1.4.0 · Google Play")
+        val page = issuePage(IssueForm.Bug, build = "Piastre 1.4.0 · Google Play")
 
         assertEquals("Piastre 1.4.0 · Google Play", page.getQueryParameter("build"))
     }
 
     @Test
-    fun `the form the app fills in has the field it fills`() {
-        val form = File("../../.github/ISSUE_TEMPLATE/${suggestionPage(build = "").getQueryParameter("template")}")
+    fun `every form the app opens has the field it fills`() {
+        IssueForm.entries.forEach { form ->
+            val template = File("../../.github/ISSUE_TEMPLATE/${form.template}")
 
-        assertTrue(form.readText().contains("\n    id: build\n"))
+            assertTrue(form.template, template.readText().contains("\n    id: build\n"))
+        }
     }
 }

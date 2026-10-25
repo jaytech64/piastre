@@ -85,7 +85,9 @@ fun SettingsScreen(
 
         DataSection(lastAction = lastAction, viewModel = viewModel)
 
-        SuggestRow(viewModel)
+        IssueRow(IssueForm.Suggestion, viewModel.storeName)
+
+        IssueRow(IssueForm.Bug, viewModel.storeName)
 
         viewModel.donationPage?.let { SupportRow(it) }
 

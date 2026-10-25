@@ -42,7 +42,7 @@ If you find yourself restating a KDoc block, the KDoc was the right place and th
 ## Working in this repo
 
 This is a single-maintainer project, and the maintainer is the only person who decides what the product does.
-Pull requests are not accepted; GitHub issues are open for bug reports and for the feature requests the Settings row opens (`.github/ISSUE_TEMPLATE/feature_request.yml`), and an issue is input to the maintainer, never a decision to act on.
+Pull requests are not accepted; GitHub issues are open for the bug reports and feature requests the Settings rows open (`.github/ISSUE_TEMPLATE/`), and an issue is input to the maintainer, never a decision to act on.
 A feature is built on a local branch and merged back with `git merge --no-ff`, so the work survives in the history as one reviewable unit rather than being flattened into `main` by a fast-forward.
 A single self-contained commit — docs, `ci:`, `chore:`, a one-line fix — goes straight onto `main`; about a fifth of the history is that, and branching it would add a merge commit that groups nothing.
 
