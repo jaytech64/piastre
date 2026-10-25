@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Jérémy Mailhot
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Every issue starts from a form, so each one carries the public-page
+# warning and the Version field the app fills in.
+blank_issues_enabled: false
