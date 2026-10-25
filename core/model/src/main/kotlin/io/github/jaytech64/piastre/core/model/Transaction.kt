@@ -210,6 +210,16 @@ data class Merchant(
     val id: Long,
     val displayName: String,
     val normalisedName: String,
-    /** The category every transaction recorded here is given, or null. */
-    val categoryId: Long? = null,
-)
+    /** The category every expense recorded here is given, or null. */
+    val expenseCategoryId: Long? = null,
+    /** The category every income recorded from here is given, or null. */
+    val incomeCategoryId: Long? = null,
+) {
+    /** The category a [kind] transaction recorded here is given, or null; a transfer names no merchant. */
+    fun categoryFor(kind: TransactionKind): Long? =
+        when (kind) {
+            TransactionKind.EXPENSE -> expenseCategoryId
+            TransactionKind.INCOME -> incomeCategoryId
+            TransactionKind.TRANSFER -> null
+        }
+}

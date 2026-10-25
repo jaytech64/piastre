@@ -226,7 +226,7 @@ class ExpenseFormSplitTest {
                     .merchantDao()
                     .allOnce()
                     .single()
-                    .categoryId,
+                    .expenseCategoryId,
             )
         }
 

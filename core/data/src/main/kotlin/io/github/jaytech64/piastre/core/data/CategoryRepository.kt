@@ -119,10 +119,13 @@ class CategoryRepository
 
         suspend fun delete(id: Long) = categories.delete(id)
 
-        /** The category [anchor] gives what is recorded there, or null. */
-        suspend fun defaultAt(anchor: CategoryAnchor): Long? =
+        /** The category [anchor] gives a [kind] transaction recorded there, or null. */
+        private suspend fun defaultAt(
+            anchor: CategoryAnchor,
+            kind: TransactionKind,
+        ): Long? =
             when (anchor) {
-                is CategoryAnchor.AtMerchant -> merchants.byId(anchor.merchantId)?.categoryId
+                is CategoryAnchor.AtMerchant -> merchants.byId(anchor.merchantId)?.categoryFor(kind)
                 is CategoryAnchor.IntoAccount -> accounts.categoryOf(anchor.accountId)
             }
 
@@ -177,11 +180,11 @@ class CategoryRepository
             val default =
                 when {
                     reach.fromNowOn -> categoryId
-                    defaultAt(anchor) == categoryId -> null
+                    defaultAt(anchor, kind) == categoryId -> null
                     else -> return
                 }
             when (anchor) {
-                is CategoryAnchor.AtMerchant -> merchants.setCategory(anchor.merchantId, default)
+                is CategoryAnchor.AtMerchant -> merchants.setCategory(anchor.merchantId, kind, default)
                 is CategoryAnchor.IntoAccount -> accounts.setCategory(anchor.accountId, default)
             }
         }

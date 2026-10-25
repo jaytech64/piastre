@@ -165,7 +165,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON).filterNot(Char::isWhitespace)
 
-            assertTrue(json, "\"version\":4" in json)
+            assertTrue(json, "\"version\":5" in json)
             assertTrue(json, "\"amountMinor\":18742" in json)
             assertTrue(json, "{\"amountMinor\":12000,\"categoryId\":$groceries,\"categoryName\":\"Épicerie\"" in json)
             assertTrue(json, "\"note\":\"Ampoules\"" in json)
@@ -213,7 +213,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 4" in json)
+            assertTrue(json, "\"version\": 5" in json)
             assertTrue(json, "\"name\": \"Débit Desrives\"" in json)
             assertTrue(json, "\"type\": \"CARD\"" in json)
             assertTrue(json, "\"issuerLabel\": \"Carte d'accès Desrives\"" in json)
@@ -230,7 +230,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 4" in json)
+            assertTrue(json, "\"version\": 5" in json)
             assertTrue(json, "\"openingBalanceMinor\": -64025" in json)
             assertTrue(json, "\"openingBalanceMinor\": null" in json)
         }
@@ -284,7 +284,7 @@ class LedgerExportTest {
 
             val json = write(ExportFormat.JSON)
 
-            assertTrue(json, "\"version\": 4" in json)
+            assertTrue(json, "\"version\": 5" in json)
             assertTrue(json, "\"sourceKey\": \"tag-1\"" in json)
             assertTrue(json, "\"sourcePackage\": \"com.google.android.apps.walletnfcrel\"" in json)
             assertTrue(json, "\"normalisedName\": \"MARCHE ST DAVID\"" in json)

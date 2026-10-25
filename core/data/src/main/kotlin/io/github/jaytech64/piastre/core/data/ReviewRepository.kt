@@ -80,12 +80,21 @@ class ReviewRepository
                     )
                 }
             val merchantChanged = merchantId != null && merchantId != existing.merchantId
+            val categoryId =
+                if (merchantChanged) {
+                    merchants.categoryOf(
+                        merchantId,
+                        existing.kind,
+                    )
+                } else {
+                    existing.categoryId
+                }
             transactions.update(
                 existing.copy(
                     amountMinor = amount.minor,
                     currency = amount.currency,
                     merchantId = merchantId ?: existing.merchantId,
-                    categoryId = if (merchantChanged) merchants.categoryOf(merchantId) else existing.categoryId,
+                    categoryId = categoryId,
                     status = TransactionStatus.CONFIRMED,
                     reviewReason = null,
                     reviewedAtUtcMillis = clock.millis(),

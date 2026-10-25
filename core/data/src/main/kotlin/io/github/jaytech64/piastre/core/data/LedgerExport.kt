@@ -253,7 +253,13 @@ class LedgerExport
                     exportedAtUtc = DateTimeFormatter.ISO_INSTANT.format(clock.instant()),
                     merchants =
                         merchants.allOnce().map {
-                            ExportedMerchant(it.id, it.displayName, it.normalisedName, it.categoryId)
+                            ExportedMerchant(
+                                it.id,
+                                it.displayName,
+                                it.normalisedName,
+                                it.expenseCategoryId,
+                                it.incomeCategoryId,
+                            )
                         },
                     aliases =
                         merchants.allAliases().map {

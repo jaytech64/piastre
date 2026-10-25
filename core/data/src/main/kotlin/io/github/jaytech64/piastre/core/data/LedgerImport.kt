@@ -17,6 +17,7 @@ import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
 import io.github.jaytech64.piastre.core.model.MerchantNormaliser
 import io.github.jaytech64.piastre.core.model.Money
+import io.github.jaytech64.piastre.core.model.TransactionKind
 import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -233,8 +234,12 @@ class LedgerImport
         ) {
             document.merchants.forEach { file ->
                 val merchant = merchantIds[file.id]?.let { merchantRows.byId(it) } ?: return@forEach
-                val category = file.categoryId?.let { categoryIds[it] } ?: return@forEach
-                if (merchant.categoryId == null) merchantRows.setCategory(merchant.id, category)
+                listOf(TransactionKind.EXPENSE, TransactionKind.INCOME).forEach { kind ->
+                    val category = file.categoryFor(kind, document)?.let { categoryIds[it] }
+                    if (category != null && merchant.categoryFor(kind) == null) {
+                        merchantRows.setCategory(merchant.id, kind, category)
+                    }
+                }
             }
             document.accounts.forEach { file ->
                 val account = accountIds[file.id] ?: return@forEach

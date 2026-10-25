@@ -435,6 +435,85 @@ class PiastreDatabaseMigrationTest {
         assertEquals(0, migrated.count("budget"))
     }
 
+    /**
+     * One category served both kinds before schema 21, so each merchant's goes to
+     * the kind its rows show it was set for, and to expenses when they do not say.
+     */
+    @Test
+    fun `migrating to schema 21 gives each merchant's category to the kind its rows carry it on`() {
+        helper.createDatabase(NAME, 20).use { database ->
+            database.execSQL(
+                "INSERT INTO category (id, name, normalisedName) VALUES " +
+                    "(1, 'Paye', 'PAYE'), (2, 'Épicerie', 'EPICERIE'), (3, 'Maison', 'MAISON'), " +
+                    "(4, 'Restaurants', 'RESTAURANTS'), (5, 'Pharmacie', 'PHARMACIE')",
+            )
+            database.execSQL(
+                "INSERT INTO merchant (id, displayName, normalisedName, categoryId) VALUES " +
+                    "(1, 'Horizon Santé', 'HORIZON SANTE', 1), (2, 'Metro', 'METRO', 2), " +
+                    "(3, 'Costco', 'COSTCO', 3), (4, 'Zoo Cafe', 'ZOO CAFE', 4), " +
+                    "(5, 'Clinique Horizon', 'CLINIQUE HORIZON', 1), (6, 'IGA', 'IGA', NULL)",
+            )
+            database.insertCategorised("income-only", merchantId = 1, categoryId = 1, kind = "INCOME")
+            database.insertCategorised("other-category", merchantId = 1, categoryId = 5, kind = "EXPENSE")
+            database.insertCategorised("expense-only", merchantId = 2, categoryId = 2, kind = "EXPENSE")
+            database.insertCategorised("both-expense", merchantId = 3, categoryId = 3, kind = "EXPENSE")
+            database.insertCategorised("both-income", merchantId = 3, categoryId = 3, kind = "INCOME")
+            database.insertCategorised("typed-income", merchantId = 5, categoryId = 1, kind = "INCOME")
+            database.insertCategorised(
+                "captured",
+                merchantId = 5,
+                categoryId = 1,
+                kind = "EXPENSE",
+                source = "NOTIFICATION",
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 21, true, *PiastreDatabase.MIGRATIONS)
+
+        assertEquals(
+            listOf(
+                "Horizon Santé" to (null to 1L),
+                "Metro" to (2L to null),
+                "Costco" to (3L to null),
+                "Zoo Cafe" to (4L to null),
+                "Clinique Horizon" to (null to 1L),
+                "IGA" to (null to null),
+            ),
+            migrated.merchantCategories(),
+        )
+        assertEquals(
+            listOf(1, 5, 2, 3, 3, 1, 1),
+            migrated.query("SELECT categoryId FROM expense_transaction ORDER BY id").use { cursor ->
+                generateSequence { if (cursor.moveToNext()) cursor.getInt(0) else null }.toList()
+            },
+        )
+    }
+
+    private fun SupportSQLiteDatabase.merchantCategories(): List<Pair<String, Pair<Long?, Long?>>> =
+        query("SELECT displayName, expenseCategoryId, incomeCategoryId FROM merchant ORDER BY id").use { cursor ->
+            generateSequence {
+                if (!cursor.moveToNext()) return@generateSequence null
+                cursor.getString(0) to (cursor.longOrNull(1) to cursor.longOrNull(2))
+            }.toList()
+        }
+
+    private fun android.database.Cursor.longOrNull(column: Int): Long? = if (isNull(column)) null else getLong(column)
+
+    private fun SupportSQLiteDatabase.insertCategorised(
+        sourceKey: String,
+        merchantId: Long,
+        categoryId: Long,
+        kind: String,
+        source: String = "MANUAL",
+    ) = execSQL(
+        "INSERT INTO expense_transaction " +
+            "(rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay, merchantId, " +
+            "merchantRaw, categoryId, source, status, confidence, sourcePackage, sourceKey, kind) " +
+            "VALUES (NULL, 100, 'CAD', ?, 'America/Toronto', 20707, ?, NULL, ?, ?, 'CONFIRMED', 1.0, " +
+            "'io.github.jaytech64.piastre', ?, ?)",
+        arrayOf<Any?>(FIRST_POST, merchantId, categoryId, source, sourceKey, kind),
+    )
+
     private fun SupportSQLiteDatabase.singleString(sql: String): String =
         query(sql).use { cursor ->
             cursor.moveToFirst()

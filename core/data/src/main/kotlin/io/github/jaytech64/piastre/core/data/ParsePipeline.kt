@@ -8,6 +8,7 @@ import io.github.jaytech64.piastre.core.database.RawNotificationEventEntity
 import io.github.jaytech64.piastre.core.database.TransactionDao
 import io.github.jaytech64.piastre.core.model.ParseState
 import io.github.jaytech64.piastre.core.model.ReviewReason
+import io.github.jaytech64.piastre.core.model.TransactionKind
 import io.github.jaytech64.piastre.core.model.TransactionSource
 import io.github.jaytech64.piastre.core.model.TransactionStatus
 import io.github.jaytech64.piastre.core.model.localDateEpochDay
@@ -138,7 +139,7 @@ class ParsePipeline
                         reviewReason,
                         merchantId,
                         accounts.resolve(draft.cardLabel, draft.cardLast4),
-                        merchants.categoryOf(merchantId),
+                        merchants.categoryOf(merchantId, TransactionKind.EXPENSE),
                     ),
                 )
             events.markParsed(event.id, ParseState.PARSED, parser?.version)

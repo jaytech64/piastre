@@ -218,7 +218,7 @@ class RecurringRepositoryTest {
             val internet = categories.named("Internet")!!
             val cellphone = categories.named("Cellulaire")!!
             val first = typed(on = LocalDate.of(2026, 8, 25), categoryId = internet)
-            database.merchantDao().setCategory(ledger().single().merchantId!!, cellphone)
+            database.merchantDao().setExpenseCategory(ledger().single().merchantId!!, cellphone)
 
             recurring.repeat(first, Rhythm.MONTHLY, lastDate = null)
 

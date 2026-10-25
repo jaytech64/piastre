@@ -531,9 +531,16 @@ interface MerchantDao {
     @Query("SELECT * FROM merchant WHERE id = :id")
     suspend fun byId(id: Long): MerchantEntity?
 
-    /** Null stops it: purchases there arrive with no category again. */
-    @Query("UPDATE merchant SET categoryId = :categoryId WHERE id = :id")
-    suspend fun setCategory(
+    /** Null stops it: expenses there arrive with no category again. */
+    @Query("UPDATE merchant SET expenseCategoryId = :categoryId WHERE id = :id")
+    suspend fun setExpenseCategory(
+        id: Long,
+        categoryId: Long?,
+    )
+
+    /** Null stops it: incomes from there arrive with no category again. */
+    @Query("UPDATE merchant SET incomeCategoryId = :categoryId WHERE id = :id")
+    suspend fun setIncomeCategory(
         id: Long,
         categoryId: Long?,
     )
@@ -709,7 +716,14 @@ interface CategoryClearing {
     @Query("UPDATE expense_transaction SET categoryId = NULL WHERE categoryId = :id")
     suspend fun clearFromTransactions(id: Long)
 
-    @Query("UPDATE merchant SET categoryId = NULL WHERE categoryId = :id")
+    @Query(
+        """
+        UPDATE merchant SET
+            expenseCategoryId = CASE WHEN expenseCategoryId = :id THEN NULL ELSE expenseCategoryId END,
+            incomeCategoryId = CASE WHEN incomeCategoryId = :id THEN NULL ELSE incomeCategoryId END
+        WHERE expenseCategoryId = :id OR incomeCategoryId = :id
+        """,
+    )
     suspend fun clearFromMerchants(id: Long)
 
     @Query("UPDATE account SET categoryId = NULL WHERE categoryId = :id")
@@ -831,7 +845,8 @@ interface CategoryDao : CategoryClearing {
         SELECT c.*,
             (SELECT COUNT(*) FROM """ + CATEGORISED + """ t
              WHERE t.categoryId = c.id AND t.status = 'CONFIRMED') AS transactionCount,
-            (SELECT COUNT(*) FROM merchant m WHERE m.categoryId = c.id) AS merchantCount,
+            (SELECT COUNT(*) FROM merchant m
+             WHERE m.expenseCategoryId = c.id OR m.incomeCategoryId = c.id) AS merchantCount,
             (SELECT COUNT(*) FROM account a WHERE a.categoryId = c.id) AS accountCount
         FROM category c
         ORDER BY c.normalisedName

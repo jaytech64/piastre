@@ -85,7 +85,7 @@ class LedgerImportSplitTest : LedgerImportFixture() {
     fun `a file written before a part could go into an account is still read`() =
         runTest {
             source.enterSplit(TransactionPart(cad(120_00), null), TransactionPart(cad(67_42), null))
-            val older = source.export().replace("\"version\": 4", "\"version\": 3")
+            val older = source.export().replace("\"version\": 5", "\"version\": 3")
 
             target.importing(older)
 

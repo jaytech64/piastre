@@ -145,6 +145,20 @@ class ExpenseFormCategoryTest {
         }
 
     @Test
+    fun `an expense at a merchant arrives with no category when only its income gives one`() =
+        runTest {
+            addPurchase("Horizon Santé", categories.named("Pharmacie"))
+            val pay = categories.named("Paye")!!
+            addPurchase("Horizon Santé", pay, CategoryReach(others = false, fromNowOn = true), TransactionKind.INCOME)
+            open()
+            viewModel.knownMerchants.first { it.isNotEmpty() }
+
+            viewModel.onMerchantChange("Horizon Santé")
+
+            assertNull(viewModel.uiState.value.categoryId)
+        }
+
+    @Test
     fun `a category you chose is not replaced by the merchant's`() =
         runTest {
             val groceries = categories.named("Épicerie")!!
@@ -176,7 +190,7 @@ class ExpenseFormCategoryTest {
                     .merchantDao()
                     .allOnce()
                     .single()
-                    .categoryId,
+                    .expenseCategoryId,
             )
             assertEquals(groceries, transactions.byId(id)?.categoryId)
         }
@@ -225,7 +239,7 @@ class ExpenseFormCategoryTest {
                     .merchantDao()
                     .allOnce()
                     .single()
-                    .categoryId,
+                    .expenseCategoryId,
             )
         }
 
@@ -352,13 +366,14 @@ class ExpenseFormCategoryTest {
         merchant: String,
         categoryId: Long? = null,
         reach: CategoryReach? = null,
+        kind: TransactionKind = TransactionKind.EXPENSE,
     ): Long =
         transactions.addManual(
             amount = Money(4_000, Money.CAD),
             merchantName = merchant,
             occurredAt = Instant.parse("2026-09-24T11:00:00Z"),
             note = null,
-            kind = TransactionKind.EXPENSE,
+            kind = kind,
             accountId = null,
             toAccountId = null,
             categoryId = categoryId,
