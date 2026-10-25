@@ -5,30 +5,37 @@ An Android app that turns Google Wallet payment notifications into a private, lo
 Everything stays on the device.
 The app has no `INTERNET` permission and no network code, and the build fails if either ever appears — see [Privacy](#privacy) below.
 
-## Status
+## What it does
 
-Phase 3 — reports.
-Google Wallet payment notifications are captured, parsed and recorded, and the app has been run against real spending on a device.
-The ledger with editing, deletion and filters by account, category, merchant, dates, amount and note, the review inbox, manual entry, accounts and transfers, capture-health onboarding, export, import and erasure are in place.
+- **Captures what you pay with your phone.**
+  Each Google Wallet payment notification becomes a ledger row: merchant, amount, card, time.
+  A notification the parser cannot read with certainty waits in a review inbox instead of being guessed at.
+- **Keeps the rest by hand.**
+  Cash, income, transfers between accounts and recurring transactions are typed in, and a recurring one is written into the ledger on its own day.
+- **Sorts it.**
+  Categories, arranged in groups, can follow a merchant so that its next purchases arrive already categorised.
+  A transaction can be split among several categories, or between spending and another account, as a mortgage payment divides into interest and capital.
+- **Reads it back.**
+  A balance for the month, filters by account, category, merchant, dates, amount and note, and reports by day, week or month with the merchants the money went to and a calendar of the month's spending.
+- **Budgets**, by category or by group, judged against exactly what the reports count.
+- **Lets the data go.**
+  Export writes CSV and JSON, import merges a JSON export back in, and erasure removes everything.
 
-Reports now read the ledger back: a day, week or month you step through, its balance with what came in and what was spent, the spending against the period before it, the merchants it went to, and a calendar of the month shaded by each day's spending.
-The ranking and the calendar count spending alone — never income, never a transfer — as [ADR-0007](docs/adr/0007-a-report-counts-spending-not-the-balance.md) and [ADR-0009](docs/adr/0009-a-report-says-what-its-balance-is-made-of.md) explain.
+It is written for Quebec, in English and French, and counts Canadian dollars; a purchase in another currency is kept and left out of totals.
 
-The Wallet parser is tested against a corpus captured over two weeks on a real device, and the raw notification log lets a parser fix repair history rather than only improve the future.
+## Requirements
 
-Transactions take a category, and giving one to a purchase can also give it to the merchant's others and to everything bought there from now on — or, for a transfer, to everything moved into the same account ([ADR-0010](docs/adr/0010-a-merchants-category-is-written-onto-each-purchase.md)).
-Categories are arranged in groups on a page of their own in Settings, and the ledger can be filtered by a whole group ([ADR-0016](docs/adr/0016-a-categorys-group-is-read-through.md)).
+- Android 12 or later.
+- Google Wallet, used to pay with the phone.
+  No other payment source is read yet.
+- Notification access, which the app asks for on first launch.
+  Android hands every notification on the device to an app holding it, so Piastre filters by package before opening anything: a notification from any app other than Google Wallet is dropped unread.
+  The one thing kept is the time the listener last heard from Android, which is how the app knows capture still works.
 
-One transaction can be split among several categories: it stays one row, and its parts say what the amount was for wherever a category is read ([ADR-0018](docs/adr/0018-a-split-divides-one-transaction-among-categories.md)).
-A part of an expense can go into another account, as the capital of a mortgage payment does while its interest is spent, and the split is then worth what its parts would be entered apart ([ADR-0019](docs/adr/0019-a-part-of-a-split-can-go-into-another-account.md)).
+## Getting it
 
-A transaction typed by hand can repeat — every week, every two weeks, every month or every year — and each time it falls due it is written into the ledger, dated on its own day, as an ordinary row ([ADR-0013](docs/adr/0013-a-recurring-transaction-is-written-on-its-day.md)).
-Nothing wakes the app to do it: due days are caught up whenever the app or its listener runs.
-
-A category or a group can carry a monthly budget, judged against exactly what the report's ranking counts, from the month it was set ([ADR-0023](docs/adr/0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md)).
-Budgets are the first Premium feature; on F-Droid every feature is on.
-
-Any payment source other than Wallet is out of scope so far.
+Piastre is not on Google Play or F-Droid yet.
+Until it is, build it from this repository — see [Building](#building).
 
 ## Two builds, and Premium
 
@@ -36,39 +43,47 @@ Piastre is built for two stores from this one codebase ([ADR-0022](docs/adr/0022
 
 - **Google Play** sells Premium: a monthly subscription with a 30-day free trial, or a single purchase for life.
   Everything that is not Premium is free.
+  Budgets are the first Premium feature.
 - **F-Droid** has every feature, Premium included, for free.
   It sells nothing, carries no Google code, and only asks for a donation on [Liberapay](https://liberapay.com/jaytech64), which unlocks nothing.
 
 The two builds are the same app.
 Paying on Google Play supports the work; it buys nothing the F-Droid build does not already have.
 
-The F-Droid build is not listed on F-Droid yet.
-Until it is, anyone can build it from this repository with `./gradlew assembleFossDebug`.
+## Privacy
 
-## Requirements
+The ledger is financial data about one person, and it is treated that way.
 
-- JDK 17.
-  Gradle 8.14 does not run on JDK 25, which is what Android Studio now bundles, so set **Settings → Build Tools → Gradle → Gradle JDK** to a 17 install.
-  `brew install openjdk@17` provides one.
-  The required version is declared in `gradle/gradle-daemon-jvm.properties`, so a mismatch fails with a readable message rather than a bare version number.
-- Android SDK 36.
-- Git hooks, once per clone: `git config core.hooksPath .githooks`.
-  `.githooks/post-merge` deletes a feature branch once `main` has absorbed it, since the merge commit is the record and the ref has no job left.
-  It prunes only from `main`, only branches git reports as merged, and only with `git branch -d`, which refuses anything still carrying unique commits.
+- **No network permission.**
+  Not in the manifest and not in any dependency: `./gradlew check` reads the *merged* manifest of both builds and fails if `INTERNET` or `ACCESS_NETWORK_STATE` appears.
+  Without the permission the data physically cannot leave the device, which is a stronger guarantee than a promise not to send it.
+  The Play build removes the permissions Google's billing library would add; billing still works, because the Play Store app does the networking ([findings](docs/play-billing-without-network.md)).
+- **No backup, no device transfer.**
+  `allowBackup="false"` plus `data_extraction_rules.xml` excluding every domain.
+  Export is the only way the ledger leaves the phone, and only when you ask for it.
+- **The raw notification log is stripped after 90 days** ([ADR-0001](docs/adr/0001-raw-log-90-day-purge.md)).
+- **Real spending never enters the repository.**
+  Test fixtures are redacted captures: their structure and duplicate pattern are real, while merchants, card digits, dates and which amount belongs to which purchase are not.
 
 ## Building
 
+Requirements:
+
+- JDK 17.
+  Gradle 8.14 does not run on JDK 25, which recent Android Studio releases bundle, so set **Settings → Build Tools → Gradle → Gradle JDK** to a JDK 17 install.
+  The required version is declared in `gradle/gradle-daemon-jvm.properties`, so a mismatch fails with a readable message.
+- Android SDK 36.
+
 ```
-./gradlew assembleDebug        # build both stores
+./gradlew assembleFossDebug    # the F-Droid build
+./gradlew assemblePlayDebug    # the Google Play build
 ./gradlew check                # lint, static analysis, tests, privacy guards
-./gradlew spotlessApply        # format
-./gradlew installPlayDebug     # install the Play build on a connected device
 ./gradlew installFossDebug     # install the F-Droid build on a connected device
 ```
 
-Both builds — see [Two builds, and Premium](#two-builds-and-premium) — share one `applicationId` but not a signature, so moving from one to the other goes through export and import.
+Both builds share one `applicationId` but not a signature, so moving from one to the other goes through export and import.
 
-## Module graph
+## Architecture
 
 Module boundaries are Gradle modules rather than packages, because a package boundary is a convention and a module boundary is enforced.
 
@@ -86,37 +101,24 @@ Module boundaries are Gradle modules rather than packages, because a package bou
 | `:core:testing` | Android lib | Fixtures, fakes, in-memory database. |
 
 `:capture:parsing` and `:core:model` have no Android dependency at all, so the riskiest code in the app is tested on the JVM in milliseconds — no emulator, no Robolectric, no device.
-
-## Privacy
-
-The ledger is financial data about one person, and it is treated that way.
-
-- **No network permission.**
-  Not in the manifest and not in any dependency: `./gradlew check` reads the *merged* manifest of both builds and fails if `INTERNET` or `ACCESS_NETWORK_STATE` appears.
-  Without the permission the data physically cannot leave the device, which is a stronger guarantee than a promise not to send it.
-- **No backup, no device transfer.**
-  `allowBackup="false"` plus `data_extraction_rules.xml` excluding every domain.
-- **Real spending never enters the repository.**
-  Test fixtures are redacted captures: the structure, timing and duplicate pattern are real, the merchants and card digits are not.
+`:capture:parsing` is tested against a corpus of captured notifications, and that test is a contract rather than a smoke test: it asserts the exact number of transactions two weeks of notifications collapse to, with every rejection attributed to a named reason.
 
 ## Decisions
 
 Decisions that would be expensive to reverse are recorded in [`docs/adr/`](docs/adr/), one file each, with what they cost as well as what they bought.
+Engineering decisions that only make sense next to the code live in the KDoc of the class that implements them.
 
-Engineering decisions that only make sense next to the code — parsing inline with a catch-up pass, the raw log's uniqueness rule, the `extrasJson` allowlist — live in the KDoc of the class that implements them instead.
+## Contributing
 
-## Testing
+Bug reports and ideas are welcome as [issues](https://github.com/jaytech64/piastre/issues).
+A bug in capture is most useful with the notification's wording, the language the phone was set to, and what the ledger showed — never with real card digits.
 
-Unit tests run on the JVM.
+Pull requests are not accepted for now: the product is shaped by one maintainer, and every change is planned and proven on a device first.
 
-```
-./gradlew check
-```
-
-`:capture:parsing` is tested against the captured fixture corpus, and the corpus test is a contract rather than a smoke test: it asserts the exact number of transactions a week of notifications collapses to, with every rejection attributed to a named reason.
+Security problems go through [SECURITY.md](SECURITY.md), not a public issue.
 
 ## Licence
 
-GNU General Public License v3.0 — see [LICENSE](LICENSE).
+GNU General Public License, version 3 or later — see [LICENSE](LICENSE) — with an [additional permission](LICENSE-EXCEPTION.md) that lets the Google Play build link Google's billing library.
 
 Every source file carries an `SPDX-License-Identifier: GPL-3.0-or-later` header, so the licence travels with the file rather than only with the repository.
