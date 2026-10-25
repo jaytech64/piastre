@@ -465,7 +465,6 @@ class ReportsViewModelTest {
         override val donationPage: String? = null
         override val managePage: String? = null
         override val storeName: String = "F-Droid"
-        override val orderNumber: Flow<String?> = flowOf(null)
         override val owned: Flow<Premium?> = flowOf(Premium.Unlocked)
         override val offers: Flow<PremiumOffers> = flowOf(PremiumOffers.None)
 

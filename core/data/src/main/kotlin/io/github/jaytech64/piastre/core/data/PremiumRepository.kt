@@ -53,8 +53,6 @@ class PremiumRepository
 
         val storeName: String = source.storeName
 
-        val orderNumber: Flow<String?> = source.orderNumber
-
         fun refresh() = source.refresh()
 
         fun buy(
