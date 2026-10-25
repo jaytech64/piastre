@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Opened from Settings › Suggest a feature, which fills in `build` by its id
-# (SuggestRow.kt, suggestionPage): rename one and the other changes with it.
+# (IssueForm.kt): rename one and the other changes with it.
 name: Feature request
 description: Suggest an idea for Piastre.
 labels: ["enhancement"]

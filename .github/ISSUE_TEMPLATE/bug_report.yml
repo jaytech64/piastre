@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 Jérémy Mailhot
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Opened from Settings › Report a bug, which fills in `build` by its id
+# (IssueForm.kt): rename one and the other changes with it.
+name: Bug report
+description: Report something in Piastre that does not work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Write in English or in French.
+
+        This page is public: never paste an amount, a merchant or a card number from your own spending.
+        If a payment was recorded wrong, describe it in your own words (for example, "a refund was counted as a purchase") rather than pasting the notification or a screenshot of it.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened
+      description: What did Piastre do?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What should it have done instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: If you know them, the steps that make it happen again.
+  - type: input
+    id: build
+    attributes:
+      label: Version
+      description: Filled in by the app.
