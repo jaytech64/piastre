@@ -9,7 +9,10 @@ Merchant names are replaced with structurally equivalent stand-ins that preserve
 Card labels are replaced with equivalents that keep their own hazards, and card digits are masked to `0000`.
 The same real merchant maps to the same stand-in in both files.
 
-Amounts, timing, notification keys, device locales and the duplicate structure are **untouched**, because those are what the parser is tested against.
+Every timestamp is moved by one constant offset, so no purchase sits on the day or at the hour it was made, while every gap between two notifications — the re-posts, the replay lags — is exactly as captured.
+Amounts are exchanged among the transactions of the same file, so each file's total is the real one but no amount stays with its purchase; the amounts a test names, and the purchase exported in both files, keep their own.
+
+Notification keys, device locales, the text formats and the duplicate structure are **untouched**, because those are what the parser is tested against.
 
 ## `wallet-week1.jsonl`
 
