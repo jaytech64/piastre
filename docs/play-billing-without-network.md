@@ -1,19 +1,11 @@
-# Piastre — Play Billing spike
+# Play Billing without a network permission
 
-Throwaway app whose only job is to answer one question:
-**does Play Billing work when the app holds no network permission?**
+Piastre holds no `INTERNET` permission, and Google's Play Billing Library merges one into every app that uses it.
+A throwaway app tested whether billing still works once both merged permissions are removed with `tools:node="remove"`, as [ADR-0022](adr/0022-piastre-is-sold-on-play-and-given-on-f-droid.md) required.
+It ran in two flavours: `asis`, with the library's manifest left alone, and `stripped`, with `INTERNET` and `ACCESS_NETWORK_STATE` removed.
+It used the production `applicationId`, because Play only sells to the package it lists, so it ran on the emulator only.
 
-Delete this directory once the answer is recorded in the Premium plan.
-
-## What it is
-
-One screen with five buttons and a log, built in two flavours from the same code:
-
-- `asis` keeps whatever the billing library merges into the manifest.
-- `stripped` removes `INTERNET` and `ACCESS_NETWORK_STATE` with `tools:node="remove"`.
-
-It uses the production `applicationId`, because Play only sells to the package it lists.
-**Emulator only, never the phone**: it installs over the real debug app, and the phone holds the only copy of the ledger.
+The app itself was removed once these findings were recorded; it is in the history under `spike-billing/`.
 
 ## Found so far, on the emulator, 2026-10-11
 
@@ -48,43 +40,3 @@ All of it on the `stripped` build, which holds no network permission.
 - A test subscription's trial lasts 3 minutes and its year 30 minutes; `purchaseTime` stays the time of the first purchase.
 
 Every check the spike set out to make has passed.
-
-## What is needed to finish it
-
-1. A Google account signed in on the emulator.
-2. The app created in Play Console under `io.github.jaytech64.piastre`, with a build on the internal testing track.
-3. That Google account added as a licence tester.
-4. Two products: a subscription `premium` with a yearly base plan and a 30-day free-trial offer, and a one-time product `premium_lifetime`.
-
-## Running it
-
-```sh
-ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleStrippedDebug
-adb -s emulator-5554 install -r app/build/outputs/apk/stripped/debug/app-stripped-debug.apk
-adb -s emulator-5554 logcat -s BillingSpike:I
-```
-
-Press the buttons top to bottom and keep the log.
-
-| Button | Passes when |
-|---|---|
-| Connect | `connect: code 0` |
-| Query products | both products are `found`, and the subscription lists an offer with a free phase |
-| Buy subscription (trial) | Play's sheet opens, then `purchases updated: code 0` and `acknowledge … code 0` |
-| Buy lifetime | the same |
-| Query purchases | each purchase is listed as owned and acknowledged |
-
-Then cancel the subscription in the Play Store app and press **Query purchases** again: `renews=false` is the pass.
-
-The `json keys` line under each purchase shows everything the app is told about it.
-It settles whether the app can see that a purchase is a trial, which the trial reminder depends on.
-
-## Putting the real app back
-
-From the repository root:
-
-```sh
-ANDROID_SERIAL=emulator-5554 ANDROID_HOME=$HOME/Android/Sdk ./gradlew installDebug
-```
-
-The spike never opens the ledger, and the debug signature is the same, so the emulator's data is untouched.

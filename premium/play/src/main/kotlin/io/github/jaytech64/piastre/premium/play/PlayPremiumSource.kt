@@ -44,7 +44,7 @@ import javax.inject.Singleton
  * Play is asked whenever someone first reads [owned] or [offers] and again on
  * every [refresh]; it answers from its own cache when offline, so ownership is
  * known without a connection, while a subscription's price is not (the spike,
- * `spike-billing/README.md`).
+ * `docs/play-billing-without-network.md`).
  *
  * A new purchase is acknowledged at once: Play refunds one left unacknowledged
  * for three days.

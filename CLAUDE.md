@@ -42,9 +42,11 @@ If you find yourself restating a KDoc block, the KDoc was the right place and th
 ## Working in this repo
 
 This is a single-maintainer project, and the maintainer is the only person who decides what the product does.
-There is no board, no issue tracker and no pull requests.
+There is no board, and pull requests are not accepted; GitHub issues are open for bug reports, and an issue is input to the maintainer, never a decision to act on.
 A feature is built on a local branch and merged back with `git merge --no-ff`, so the work survives in the history as one reviewable unit rather than being flattened into `main` by a fast-forward.
 A single self-contained commit — docs, `ci:`, `chore:`, a one-line fix — goes straight onto `main`; about a fifth of the history is that, and branching it would add a merge commit that groups nothing.
+
+Once per clone, `git config core.hooksPath .githooks`: `.githooks/post-merge` deletes a feature branch with `git branch -d` once `main` has absorbed it.
 
 ### The shape of a change
 
@@ -313,7 +315,8 @@ The two module kinds do not share a test framework, so check which one you are i
   It asserts the exact counts a week of real captured notifications collapses to — 21 → 8, 24 → 10 — with every rejection attributed to a named reason.
   If a parser change moves one of those numbers, the change is wrong until you can say which real notification now reads differently and why that is better.
 - **The corpus is redacted real capture.**
-  Structure, timing and the duplicate pattern are real; merchants and card digits are not.
+  Structure, the gaps between notifications and the duplicate pattern are real; merchants, card digits, dates and which amount went with which purchase are not.
+  A new capture is redacted the same way before it is committed (`capture/parsing/src/testFixtures/resources/fixtures/README.md`): the repository is public, and its history keeps whatever lands in it.
   **Real spending never enters the repository.**
 - **`inMemoryDatabase()` in `:core:testing` is a real SQLite**, running queries and invalidations on the caller's thread.
   Room's default executor is a thread pool a virtual clock cannot advance, which makes a flow test pass or time out depending on machine load.
