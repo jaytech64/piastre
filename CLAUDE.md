@@ -135,6 +135,8 @@ CI (`.github/workflows/ci.yml`) runs `spotlessCheck`, `detekt`, `check` and `ass
 Versions are pinned in `gradle/libs.versions.toml`, and AndroidX is deliberately held at the last line supporting AGP 8.13 / `compileSdk` 36.
 Moving past it requires AGP 9.1 and `compileSdk` 37, which is a deliberate upgrade and never a side effect of a version bump.
 
+A Play release is signed with the upload key in `~/.config/piastre/`, which never enters the repository, and is proven on an AVD that never held the debug build, since R8 runs only there ([`docs/releasing.md`](docs/releasing.md)).
+
 Shared build logic lives in `build-logic/convention/`, not in the module `build.gradle.kts` files.
 A rule that should hold for every module of a kind goes in the convention plugin — that is the point of them.
 

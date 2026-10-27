@@ -2,6 +2,8 @@ import com.android.build.api.artifact.SingleArtifact
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
+import java.io.StringReader
+import java.util.Properties
 
 plugins {
     id("piastre.android.application")
@@ -9,14 +11,46 @@ plugins {
     id("piastre.android.hilt")
 }
 
+/**
+ * The key a Play release is uploaded with, read from outside the repository.
+ *
+ * Play App Signing holds the key users' installs are signed with; this one only
+ * proves an upload came from the maintainer, and Play Console can reset it if it
+ * is lost. Without the file, as on CI, a release builds unsigned, which Play
+ * refuses — so a missing key cannot reach a tester by accident.
+ */
+val uploadKeystore: Properties? =
+    providers
+        .fileContents(
+            layout.projectDirectory.file(
+                "${System.getProperty("user.home")}/.config/piastre/upload-keystore.properties",
+            ),
+        ).asText.orNull
+        ?.let { text -> Properties().apply { load(StringReader(text)) } }
+
+fun Properties.required(key: String): String =
+    checkNotNull(getProperty(key)) { "upload-keystore.properties has no $key." }
+
 android {
     namespace = "io.github.jaytech64.piastre"
 
     defaultConfig {
         applicationId = "io.github.jaytech64.piastre"
-        versionCode = 1
+        // 1 is the billing spike's bundle, still on Play's internal track.
+        versionCode = 2
         versionName = "0.1.0"
         resourceConfigurations += setOf("en", "fr")
+    }
+
+    signingConfigs {
+        uploadKeystore?.let { keystore ->
+            create("upload") {
+                storeFile = file(keystore.required("storeFile"))
+                storePassword = keystore.required("storePassword")
+                keyAlias = keystore.required("keyAlias")
+                keyPassword = keystore.required("keyPassword")
+            }
+        }
     }
 
     // One codebase, two stores (ADR-0022). Each flavour brings the one module
@@ -25,7 +59,11 @@ android {
     // because Android files the ledger under it (ADR-0021).
     flavorDimensions += "store"
     productFlavors {
-        create("play") { dimension = "store" }
+        create("play") {
+            dimension = "store"
+            // Debug keeps its own key: a build type's signing wins over a flavour's.
+            signingConfig = signingConfigs.findByName("upload")
+        }
         create("foss") { dimension = "store" }
     }
 
