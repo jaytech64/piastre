@@ -40,6 +40,11 @@ jobs:
       - name: Assemble
         run: ./gradlew assembleDebug
 
+      # R8 only runs on release builds, so this is where a missing keep rule
+      # shows up. The upload key never reaches CI, so these come out unsigned.
+      - name: Release builds, minified
+        run: ./gradlew assembleRelease
+
       - uses: actions/upload-artifact@v7
         if: always()
         with:
