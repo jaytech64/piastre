@@ -26,4 +26,11 @@
     <string name="premium_remind_allow">Me le rappeler</string>
     <string name="premium_remind_refused">Les notifications de Piastre sont désactivées : aucun rappel ne viendra. Elles s\'activent dans les paramètres d\'Android.</string>
     <string name="premium_remind_settings">Ouvrir les paramètres</string>
+    <string name="premium_review_code_on">Premium est actif sur cet appareil grâce à un code d\'examen.</string>
+    <string name="premium_review_code_action">Entrer un code d\'examen</string>
+    <string name="premium_review_code_title">Code d\'examen</string>
+    <string name="premium_review_code_field">Code</string>
+    <string name="premium_review_code_unlock">Déverrouiller</string>
+    <string name="premium_review_code_cancel">Annuler</string>
+    <string name="premium_review_code_refused">Ce code ne déverrouille rien. Vérifiez-le et réessayez.</string>
 </resources>

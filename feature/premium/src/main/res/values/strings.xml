@@ -26,4 +26,11 @@
     <string name="premium_remind_allow">Remind me</string>
     <string name="premium_remind_refused">Notifications are off for Piastre, so no reminder will come. They can be turned on in Android\'s settings.</string>
     <string name="premium_remind_settings">Open settings</string>
+    <string name="premium_review_code_on">Premium is on for this install, with a review code.</string>
+    <string name="premium_review_code_action">Enter a review code</string>
+    <string name="premium_review_code_title">Review code</string>
+    <string name="premium_review_code_field">Code</string>
+    <string name="premium_review_code_unlock">Unlock</string>
+    <string name="premium_review_code_cancel">Cancel</string>
+    <string name="premium_review_code_refused">This code unlocks nothing. Check it and try again.</string>
 </resources>

@@ -31,6 +31,14 @@ sealed interface Premium {
         override val isOn = true
     }
 
+    /**
+     * A Play build where a review code was entered, so Google's reviewers, who
+     * cannot buy, reach every paid feature. Anything Play says was bought wins.
+     */
+    data object ReviewCode : Premium {
+        override val isOn = true
+    }
+
     /** The F-Droid build, which sells nothing and has everything. */
     data object Unlocked : Premium {
         override val isOn = true

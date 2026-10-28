@@ -30,6 +30,10 @@ internal fun PremiumRow(
                 stringResource(R.string.settings_premium_lifetime)
             }
 
+            Premium.ReviewCode -> {
+                stringResource(R.string.settings_premium_review_code)
+            }
+
             is Premium.Subscribed -> {
                 val trialEnd =
                     premium.trialEndsAt?.let {

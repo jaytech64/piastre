@@ -161,6 +161,8 @@ Two rules matter before you propose a new file:
 Its `store` flavour takes `:premium:play` or `:premium:foss`, each binding `PremiumSource`; a feature never branches on the build, and Google's billing library stays off the F-Droid classpath, which `verifyFoss*HasNoGoogleStoreCode` enforces.
 A feature never touches a DAO, an entity or Room directly.
 
+The Play build's review code lives in `~/.config/piastre/review-code` and never enters the repository, a test or a commit message; the app carries only its SHA-256 ([ADR-0025](docs/adr/0025-a-review-code-turns-premium-on-for-one-install.md), `ReviewCodeUnlock`).
+
 ---
 
 ## Invariants

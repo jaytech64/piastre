@@ -224,4 +224,5 @@
         <item quantity="one">%d template</item>
         <item quantity="other">%d templates</item>
     </plurals>
+    <string name="settings_premium_review_code">On, with a review code</string>
 </resources>

@@ -18,7 +18,7 @@ import javax.inject.Inject
  *
  *     adb shell am broadcast -n io.github.jaytech64.piastre/.ForcePremiumReceiver --es state free
  *
- * `state` is `free`, `lifetime`, `unlocked`, or `subscribed:<renews>:<trial end in epoch millis, or ->`;
+ * `state` is `free`, `lifetime`, `unlocked`, `review-code`, or `subscribed:<renews>:<trial end in epoch millis, or ->`;
  * leaving it out hands the decision back to the store.
  */
 @AndroidEntryPoint
