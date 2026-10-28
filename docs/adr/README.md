@@ -34,6 +34,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0022](0022-piastre-is-sold-on-play-and-given-on-f-droid.md) | Piastre is sold on Play and given on F-Droid | Accepted — partly implemented |
 | [0023](0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md) | A budget counts what a report counts, from the month it was set | Accepted — implemented |
 | [0024](0024-a-merchant-gives-each-kind-its-own-category.md) | A merchant gives each kind its own category | Accepted — implemented |
+| [0025](0025-a-review-code-turns-premium-on-for-one-install.md) | A review code turns Premium on for one install | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan.
 Each record after them was written with the branch that made the decision.

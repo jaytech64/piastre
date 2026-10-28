@@ -16,6 +16,16 @@ The repository only ever meets the **upload key**, which proves an upload came f
 - Its SHA-256 is `7D:B4:E3:AF:1A:B5:80:D1:1B:13:8E:0C:B8:C4:58:98:AF:75:88:08:AE:FD:8E:04:01:C5:18:A6:B4:86:69:E7`, the same as Play Console › App integrity › Upload key.
   A lost or leaked upload key is replaced from that page; it costs about two days, not the app.
 
+## The review code
+
+Google's reviewers cannot buy, so the Play build takes a code that turns Premium on for one install ([ADR-0025](adr/0025-a-review-code-turns-premium-on-for-one-install.md)).
+
+- The code is in `~/.config/piastre/review-code`, and goes into Play Console › App content › App access, and nowhere else.
+- The app carries only its SHA-256, `REVIEW_CODE_SHA256` in `premium/play/.../ReviewCodeUnlock.kt`.
+- To rotate it, write a new code to that file and put its hash in `REVIEW_CODE_SHA256`:
+  16 characters from `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, grouped by four with hyphens in the file, hashed without them.
+  Paste the new code into App access before submitting the release, since that release revokes every unlock made with the old one.
+
 ## A release, step by step
 
 1. Raise `versionCode` in `app/build.gradle.kts` above every code Play has seen, on any track.
