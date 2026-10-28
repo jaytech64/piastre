@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.core.data
 
+import io.github.jaytech64.piastre.core.model.SourceApp
 import io.github.jaytech64.piastre.parsing.NotificationParser
 import io.github.jaytech64.piastre.parsing.ParseResult
 import io.github.jaytech64.piastre.parsing.RawNotification
@@ -21,7 +22,7 @@ internal class StubParser(
 ) : NotificationParser {
     override val packages: Set<String> = setOf(forPackage)
 
-    override val sourceName: String = "Stub"
+    override val sourceApp: SourceApp = SourceApp.GOOGLE_WALLET
 
     override fun handles(notification: RawNotification): Boolean = notification.sourcePackage == forPackage
 

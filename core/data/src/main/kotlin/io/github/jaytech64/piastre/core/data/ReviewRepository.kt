@@ -8,6 +8,7 @@ import io.github.jaytech64.piastre.core.database.TransactionForReview
 import io.github.jaytech64.piastre.core.database.TransactionWithMerchant
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.ReviewItem
+import io.github.jaytech64.piastre.core.model.SourceApp
 import io.github.jaytech64.piastre.core.model.TransactionStatus
 import io.github.jaytech64.piastre.parsing.ParserRegistry
 import kotlinx.coroutines.flow.Flow
@@ -37,7 +38,7 @@ class ReviewRepository
         fun queue(): Flow<List<ReviewItem>> =
             transactions
                 .reviewQueue(TransactionStatus.NEEDS_REVIEW)
-                .map { rows -> rows.map { toReviewItem(it, registry.sourceName(it.transaction.sourcePackage)) } }
+                .map { rows -> rows.map { toReviewItem(it, registry.sourceApp(it.transaction.sourcePackage)) } }
 
         /** Accepts the parser's reading as it stands. */
         suspend fun confirm(id: Long) {
@@ -119,12 +120,13 @@ class ReviewRepository
 
 internal fun toReviewItem(
     row: TransactionForReview,
-    sourceName: String,
+    sourceApp: SourceApp?,
 ): ReviewItem =
     ReviewItem(
         transaction = toDomain(TransactionWithMerchant(row.transaction, row.merchantName)),
         reason = row.transaction.reviewReason,
-        sourceName = sourceName,
+        sourceApp = sourceApp,
+        sourcePackage = row.transaction.sourcePackage,
         rawTitle = row.rawTitle,
         rawText = row.rawText,
         postedAt = row.rawPostedAtUtcMillis?.let(Instant::ofEpochMilli),

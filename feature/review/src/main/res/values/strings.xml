@@ -15,5 +15,6 @@
     <string name="review_reason_missing_merchant">The notification carried no merchant name</string>
     <string name="review_reason_missing_source_key">No stable identity — this purchase cannot be de-duplicated</string>
     <string name="review_reason_unknown">Read before this app recorded reasons</string>
+    <string name="review_source_google_wallet">Google Wallet</string>
     <string name="review_raw_missing">The notification behind this row is no longer stored.</string>
 </resources>

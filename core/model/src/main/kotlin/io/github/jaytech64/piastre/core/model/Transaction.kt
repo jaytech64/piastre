@@ -190,6 +190,15 @@ data class Transaction(
 }
 
 /**
+ * An app whose notifications a parser reads.
+ *
+ * Its name is the screen's to say, in the user's language: the same app is
+ * « Google Portefeuille » on a French phone, and a model without resources can
+ * only name which app it is.
+ */
+enum class SourceApp { GOOGLE_WALLET, }
+
+/**
  * One purchase waiting for a human, with the notification it was read from.
  *
  * The raw title and text are carried verbatim and never cleaned up on the way
@@ -200,7 +209,9 @@ data class Transaction(
 data class ReviewItem(
     val transaction: Transaction,
     val reason: ReviewReason?,
-    val sourceName: String,
+    /** The app that posted the notification, or null when no parser claims [sourcePackage]. */
+    val sourceApp: SourceApp?,
+    val sourcePackage: String,
     val rawTitle: String?,
     val rawText: String?,
     val postedAt: Instant?,

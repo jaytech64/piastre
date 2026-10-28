@@ -11,6 +11,7 @@ import io.github.jaytech64.piastre.core.data.ReviewRepository
 import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.ReviewReason
+import io.github.jaytech64.piastre.core.model.SourceApp
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
 import io.github.jaytech64.piastre.parsing.GoogleWalletParser
 import io.github.jaytech64.piastre.parsing.ParserRegistry
@@ -90,6 +91,14 @@ class ReviewViewModelTest {
             assertEquals(ReviewReason.MISSING_MERCHANT, item.reason)
             assertEquals(UNNAMED_TEXT, item.rawText)
             assertEquals(10_200L, item.transaction.amount.minor)
+        }
+
+    @Test
+    fun `a purchase waiting for review says which app posted it`() =
+        runTest {
+            captureUnnamedMerchant()
+
+            assertEquals(SourceApp.GOOGLE_WALLET, settled().items.single().sourceApp)
         }
 
     @Test
