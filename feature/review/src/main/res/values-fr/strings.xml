@@ -15,5 +15,6 @@
     <string name="review_reason_missing_merchant">La notification ne portait aucun nom de marchand</string>
     <string name="review_reason_missing_source_key">Aucune identité stable — cette dépense ne peut pas être dédoublonnée</string>
     <string name="review_reason_unknown">Lue avant que l\'application n\'enregistre les raisons</string>
+    <string name="review_source_google_wallet">Google Portefeuille</string>
     <string name="review_raw_missing">La notification derrière cette ligne n\'est plus conservée.</string>
 </resources>

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.parsing
 
+import io.github.jaytech64.piastre.core.model.SourceApp
+
 interface NotificationParser {
     /** Stable id, persisted on every transaction this parser produced. */
     val id: String
@@ -25,13 +27,13 @@ interface NotificationParser {
     val packages: Set<String>
 
     /**
-     * What to call the app these notifications come from, on screen.
+     * The app these notifications come from, for the screen to name.
      *
-     * Named here because the parser is the only thing that knows: deriving it from
-     * the package gives "walletnfcrel", and a screen that kept its own mapping
-     * would be a second list to forget to update.
+     * Declared here because the parser is the only thing that knows: deriving it
+     * from the package gives "walletnfcrel", and a screen that kept its own
+     * package mapping would be a second list to forget to update.
      */
-    val sourceName: String
+    val sourceApp: SourceApp
 
     fun handles(notification: RawNotification): Boolean
 
@@ -64,9 +66,8 @@ class ParserRegistry(
      */
     val fingerprint: String = parsers.sortedBy { it.id }.joinToString(",") { "${it.id}:${it.version}" }
 
-    /** What to call [sourcePackage] on screen, or the package itself if none claims it. */
-    fun sourceName(sourcePackage: String): String =
-        parsers.firstOrNull { sourcePackage in it.packages }?.sourceName ?: sourcePackage
+    /** The app [sourcePackage] belongs to, or null if no parser claims it. */
+    fun sourceApp(sourcePackage: String): SourceApp? = parsers.firstOrNull { sourcePackage in it.packages }?.sourceApp
 
     fun parse(notification: RawNotification): ParseResult =
         parsers

@@ -4,6 +4,7 @@ package io.github.jaytech64.piastre.parsing
 
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.ReviewReason
+import io.github.jaytech64.piastre.core.model.SourceApp
 
 /**
  * Parses Google Wallet tap-to-pay notifications.
@@ -34,7 +35,7 @@ class GoogleWalletParser : NotificationParser {
 
     override val packages: Set<String> = setOf(WALLET_PACKAGE)
 
-    override val sourceName: String = "Google Wallet"
+    override val sourceApp: SourceApp = SourceApp.GOOGLE_WALLET
 
     override fun handles(notification: RawNotification): Boolean = notification.sourcePackage == WALLET_PACKAGE
 

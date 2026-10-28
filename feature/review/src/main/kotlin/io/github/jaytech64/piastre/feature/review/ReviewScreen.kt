@@ -42,6 +42,7 @@ import io.github.jaytech64.piastre.core.designsystem.LastButton
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.ReviewItem
 import io.github.jaytech64.piastre.core.model.ReviewReason
+import io.github.jaytech64.piastre.core.model.SourceApp
 import java.util.Locale
 
 @Composable
@@ -111,7 +112,7 @@ private fun ReviewCard(
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                item.provenance(locale),
+                item.provenance(item.sourceApp?.let { stringResource(it.displayName()) } ?: item.sourcePackage, locale),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -247,7 +248,10 @@ private fun EmptyReview() {
 }
 
 /** Which app posted the notification, and when — the account's provenance line. */
-private fun ReviewItem.provenance(locale: Locale): String {
+private fun ReviewItem.provenance(
+    sourceName: String,
+    locale: Locale,
+): String {
     val app = sourceName.uppercase(locale)
     val posted =
         postedAt?.let {
@@ -257,6 +261,12 @@ private fun ReviewItem.provenance(locale: Locale): String {
         }
     return listOfNotNull(app, posted).joinToString(SEPARATOR)
 }
+
+/** The app's name as this phone's language calls it. */
+internal fun SourceApp.displayName(): Int =
+    when (this) {
+        SourceApp.GOOGLE_WALLET -> R.string.review_source_google_wallet
+    }
 
 /**
  * Null covers rows parsed before the reason was recorded, which is honest about

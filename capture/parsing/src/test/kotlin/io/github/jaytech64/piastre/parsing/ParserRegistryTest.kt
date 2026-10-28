@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.parsing
 
+import io.github.jaytech64.piastre.core.model.SourceApp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -26,9 +28,9 @@ class ParserRegistryTest {
     }
 
     @Test
-    fun `names the app a package belongs to, and falls back to the package itself`() {
-        assertEquals("Google Wallet", registry.sourceName("com.google.android.apps.walletnfcrel"))
-        assertEquals("ch.protonmail.android", registry.sourceName("ch.protonmail.android"))
+    fun `knows which app a package belongs to, and claims none it does not read`() {
+        assertEquals(SourceApp.GOOGLE_WALLET, registry.sourceApp("com.google.android.apps.walletnfcrel"))
+        assertNull(registry.sourceApp("ch.protonmail.android"))
     }
 
     @Test
