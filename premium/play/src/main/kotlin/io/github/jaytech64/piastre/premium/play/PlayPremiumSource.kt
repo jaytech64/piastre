@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -46,6 +47,9 @@ import javax.inject.Singleton
  * known without a connection, while a subscription's price is not (the spike,
  * `docs/play-billing-without-network.md`).
  *
+ * A review code entered on this install turns on what Play leaves off
+ * ([ReviewCodeUnlock]).
+ *
  * A new purchase is acknowledged at once: Play refunds one left unacknowledged
  * for three days.
  */
@@ -56,6 +60,7 @@ class PlayPremiumSource
         @ApplicationContext context: Context,
         private val trials: TrialRecords,
         private val reminder: TrialReminder,
+        private val reviewCode: ReviewCodeUnlock,
         private val clock: Clock,
     ) : PremiumSource,
         PurchasesUpdatedListener {
@@ -82,7 +87,8 @@ class PlayPremiumSource
         /** A trial whose purchase screen is open, until Play says how it ended. */
         @Volatile private var trialInFlight: PremiumOffer? = null
 
-        override val owned: Flow<Premium?> = ownedState.onStart { refresh() }
+        override val owned: Flow<Premium?> =
+            combine(ownedState, reviewCode.entered, ::withReviewCode).onStart { refresh() }
 
         override val offers: Flow<PremiumOffers> = offersState.onStart { refresh() }
 
@@ -92,6 +98,8 @@ class PlayPremiumSource
 
         /** [refresh], for a caller that must wait for the answer: a receiver about to give its process back. */
         internal suspend fun refreshNow() = askPlay()
+
+        override suspend fun redeem(code: String) = reviewCode.redeem(code)
 
         override fun buy(
             activity: Activity,

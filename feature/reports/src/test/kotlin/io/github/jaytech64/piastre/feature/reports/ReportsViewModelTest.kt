@@ -470,6 +470,8 @@ class ReportsViewModelTest {
 
         override fun refresh() = Unit
 
+        override suspend fun redeem(code: String) = false
+
         override fun buy(
             activity: Activity,
             offer: PremiumOffer,

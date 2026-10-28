@@ -60,6 +60,8 @@ class PremiumRepository
             offer: PremiumOffer,
         ) = source.buy(activity, offer)
 
+        suspend fun redeem(code: String): Boolean = source.redeem(code)
+
         /**
          * Shows [state] in place of what the store says, or the store again for
          * null, so every screen can be checked in every state without buying.
@@ -82,6 +84,7 @@ class PremiumRepository
             const val FREE = "free"
             const val LIFETIME = "lifetime"
             const val UNLOCKED = "unlocked"
+            const val REVIEW_CODE = "review-code"
             const val SUBSCRIBED = "subscribed"
             const val NO_TRIAL = "-"
 
@@ -97,6 +100,10 @@ class PremiumRepository
 
                     Premium.Unlocked -> {
                         UNLOCKED
+                    }
+
+                    Premium.ReviewCode -> {
+                        REVIEW_CODE
                     }
 
                     is Premium.Subscribed -> {
@@ -118,6 +125,10 @@ class PremiumRepository
 
                     UNLOCKED -> {
                         Premium.Unlocked
+                    }
+
+                    REVIEW_CODE -> {
+                        Premium.ReviewCode
                     }
 
                     SUBSCRIBED -> {

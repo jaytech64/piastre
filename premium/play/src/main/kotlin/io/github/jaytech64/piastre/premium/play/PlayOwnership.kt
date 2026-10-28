@@ -68,6 +68,16 @@ internal fun ownedPremium(
     }
 
 /**
+ * A review code turns on what Play left off, whether Play said Free or could not
+ * be asked at all, as on a reviewer's device or an emulator. Whatever Play says
+ * was bought wins, since it says more.
+ */
+internal fun withReviewCode(
+    play: Premium?,
+    codeEntered: Boolean,
+): Premium? = if (codeEntered && (play == null || play == Premium.Free)) Premium.ReviewCode else play
+
+/**
  * Days in a free period as Play states it, or null for a period not counted in
  * days. Play writes 30 days as `P4W2D`, so the text is parsed, never compared.
  */

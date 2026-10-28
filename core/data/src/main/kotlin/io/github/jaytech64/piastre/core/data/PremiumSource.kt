@@ -41,6 +41,12 @@ interface PremiumSource {
     /** Asks the store again, as when the app comes back on screen. */
     fun refresh()
 
+    /**
+     * Turns Premium on for this install if [code] is the review code, and says
+     * whether it was. A build that sells nothing has no code to take.
+     */
+    suspend fun redeem(code: String): Boolean
+
     /** Hands [offer] to the store's own purchase screen, over [activity]. */
     fun buy(
         activity: Activity,

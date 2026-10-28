@@ -4,6 +4,7 @@ package io.github.jaytech64.piastre.feature.premium
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -34,11 +38,13 @@ import java.time.ZoneId
 /**
  * What Premium is, whether it is on, and the store's ways to buy, manage or
  * cancel it. Play gives no renewal or end date, so none is shown but a trial's,
- * which this app recorded itself when it started one.
+ * which this app recorded itself when it started one. Long-pressing the title
+ * takes a review code, for Google's reviewers, who cannot buy.
  */
 @Composable
 fun PremiumScreen(viewModel: PremiumViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var enteringCode by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val buy: (PremiumOffer) -> Unit = { offer -> context.activity()?.let { viewModel.buy(it, offer) } }
     val manage: () -> Unit = {
@@ -52,16 +58,28 @@ fun PremiumScreen(viewModel: PremiumViewModel = hiltViewModel()) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.premium_title), style = MaterialTheme.typography.headlineSmall)
+        Text(
+            stringResource(R.string.premium_title),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier =
+                Modifier.combinedClickable(
+                    onLongClickLabel = stringResource(R.string.premium_review_code_action),
+                    onLongClick = { enteringCode = true },
+                    onClick = {},
+                ),
+        )
 
         when (val premium = state.premium) {
             null -> CircularProgressIndicator()
             Premium.Free -> Free(state.offers, buy, viewModel::retry)
             is Premium.Subscribed -> Subscribed(premium, state.offers, buy, manage)
             Premium.Lifetime -> Body(stringResource(R.string.premium_lifetime))
+            Premium.ReviewCode -> Body(stringResource(R.string.premium_review_code_on))
             Premium.Unlocked -> Body(stringResource(R.string.premium_unlocked))
         }
     }
+
+    if (enteringCode) ReviewCodeDialog(redeem = viewModel::redeem, onDismiss = { enteringCode = false })
 }
 
 @Composable

@@ -36,6 +36,8 @@ class PremiumViewModel
 
         fun retry() = repository.refresh()
 
+        suspend fun redeem(code: String): Boolean = repository.redeem(code)
+
         fun buy(
             activity: Activity,
             offer: PremiumOffer,

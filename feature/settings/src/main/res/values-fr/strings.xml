@@ -228,4 +228,5 @@
         <item quantity="other">%d modèles</item>
         <item quantity="many">%d modèles</item>
     </plurals>
+    <string name="settings_premium_review_code">Actif, avec un code d\'examen</string>
 </resources>

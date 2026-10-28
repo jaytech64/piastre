@@ -88,6 +88,16 @@ class PremiumRepositoryTest {
             assertEquals(cancelled, repository.premium.first())
         }
 
+    @Test
+    fun `a review code survives the round trip`() =
+        runTest {
+            owned.value = Premium.ReviewCode
+            repository.premium.first()
+
+            owned.value = null
+            assertEquals(Premium.ReviewCode, repository.premium.first())
+        }
+
     private class FakeSource(
         override val owned: Flow<Premium?>,
     ) : PremiumSource {
@@ -97,6 +107,8 @@ class PremiumRepositoryTest {
         override val offers: Flow<PremiumOffers> = flowOf(PremiumOffers.None)
 
         override fun refresh() = Unit
+
+        override suspend fun redeem(code: String) = false
 
         override fun buy(
             activity: Activity,
