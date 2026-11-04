@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -105,46 +106,51 @@ fun OnboardingScreen(
 
     BackHandler(enabled = step != OnboardingStep.WELCOME) { show(steps[step.ordinal - 1]) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            // The only screen outside the Scaffold, so it insets itself: the app
-            // draws edge to edge and the title otherwise sits under the clock.
-            .safeDrawingPadding()
-            .padding(vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // A step's text scrolls and its buttons do not: at the largest system font
-        // the text runs off a phone screen, and an "allow" button you have to go
-        // looking for is how people end up granting without reading.
-        HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                when (steps[page]) {
-                    OnboardingStep.WELCOME -> WelcomeStep()
-                    OnboardingStep.NOTIFICATION_ACCESS -> NotificationAccessStep(granted)
-                    OnboardingStep.WALLET_NOTIFICATIONS -> WalletNotificationsStep(walletInstalled)
+    // The only screen outside the Scaffold, so it paints its own background: without
+    // it the window's light XML background shows through while the text takes the
+    // dark scheme's pale colours, and a phone in dark mode reads white on white.
+    Surface(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                // It insets itself for the same reason: the app draws edge to edge
+                // and the title otherwise sits under the clock.
+                .safeDrawingPadding()
+                .padding(vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // A step's text scrolls and its buttons do not: at the largest system font
+            // the text runs off a phone screen, and an "allow" button you have to go
+            // looking for is how people end up granting without reading.
+            HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                ) {
+                    when (steps[page]) {
+                        OnboardingStep.WELCOME -> WelcomeStep()
+                        OnboardingStep.NOTIFICATION_ACCESS -> NotificationAccessStep(granted)
+                        OnboardingStep.WALLET_NOTIFICATIONS -> WalletNotificationsStep(walletInstalled)
+                    }
                 }
             }
-        }
 
-        StepFooter(
-            step = step,
-            granted = granted,
-            walletInstalled = walletInstalled,
-            onShow = ::show,
-            onGrant = {
-                sentToGrant = true
-                context.startActivity(viewModel.notificationAccessIntent())
-            },
-            onOpenWallet = { context.startActivity(viewModel.walletNotificationsIntent()) },
-            onDone = onDone,
-        )
+            StepFooter(
+                step = step,
+                granted = granted,
+                walletInstalled = walletInstalled,
+                onShow = ::show,
+                onGrant = {
+                    sentToGrant = true
+                    context.startActivity(viewModel.notificationAccessIntent())
+                },
+                onOpenWallet = { context.startActivity(viewModel.walletNotificationsIntent()) },
+                onDone = onDone,
+            )
+        }
     }
 }
 
