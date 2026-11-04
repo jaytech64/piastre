@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A coin with a quarter pulled out: the slice is what was spent, the rest is
+  what is left. Drawn to its own edges, so the launcher icon insets it into the
+  circle an adaptive icon never crops, and a screen sizes it as it is.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="52dp"
+    android:height="52dp"
+    android:viewportWidth="52"
+    android:viewportHeight="52">
+    <path
+        android:fillColor="@color/brand_coin"
+        android:pathData="M24,28 L48,28 A24,24 0 1 1 24,4 Z" />
+    <path
+        android:fillColor="@color/brand_slice"
+        android:pathData="M28,24 L28,0 A24,24 0 0 1 52,24 Z" />
+</vector>
