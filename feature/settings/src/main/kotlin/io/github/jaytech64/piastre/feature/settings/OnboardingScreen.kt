@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -42,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jaytech64.piastre.core.designsystem.BrandMark
+import io.github.jaytech64.piastre.core.designsystem.PiastreBrandScreen
 import io.github.jaytech64.piastre.core.model.CaptureHealth
 import kotlinx.coroutines.launch
 
@@ -63,6 +66,9 @@ private enum class OnboardingStep {
  * Google Wallet's own notifications get a step to themselves because access
  * alone captures nothing while they are off, and that is the one setting the app
  * cannot read: the step can only say so and open the screen.
+ *
+ * It is drawn in Piastre's own colours rather than the wallpaper's, the same
+ * navy and orange as the store listing that brought someone here.
  */
 @Composable
 fun OnboardingScreen(
@@ -105,46 +111,50 @@ fun OnboardingScreen(
 
     BackHandler(enabled = step != OnboardingStep.WELCOME) { show(steps[step.ordinal - 1]) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            // The only screen outside the Scaffold, so it insets itself: the app
-            // draws edge to edge and the title otherwise sits under the clock.
-            .safeDrawingPadding()
-            .padding(vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // A step's text scrolls and its buttons do not: at the largest system font
-        // the text runs off a phone screen, and an "allow" button you have to go
-        // looking for is how people end up granting without reading.
-        HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
-            ) {
-                when (steps[page]) {
-                    OnboardingStep.WELCOME -> WelcomeStep()
-                    OnboardingStep.NOTIFICATION_ACCESS -> NotificationAccessStep(granted)
-                    OnboardingStep.WALLET_NOTIFICATIONS -> WalletNotificationsStep(walletInstalled)
+    // The only screen outside the Scaffold, so it paints its own background: without
+    // it the window's light XML background shows through behind the brand's light text.
+    PiastreBrandScreen {
+        Column(
+            Modifier
+                .fillMaxSize()
+                // It insets itself for the same reason: the app draws edge to edge
+                // and the title otherwise sits under the clock.
+                .safeDrawingPadding()
+                .padding(vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // A step's text scrolls and its buttons do not: at the largest system font
+            // the text runs off a phone screen, and an "allow" button you have to go
+            // looking for is how people end up granting without reading.
+            HorizontalPager(state = pager, modifier = Modifier.weight(1f)) { page ->
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp),
+                ) {
+                    when (steps[page]) {
+                        OnboardingStep.WELCOME -> WelcomeStep()
+                        OnboardingStep.NOTIFICATION_ACCESS -> NotificationAccessStep(granted)
+                        OnboardingStep.WALLET_NOTIFICATIONS -> WalletNotificationsStep(walletInstalled)
+                    }
                 }
             }
-        }
 
-        StepFooter(
-            step = step,
-            granted = granted,
-            walletInstalled = walletInstalled,
-            onShow = ::show,
-            onGrant = {
-                sentToGrant = true
-                context.startActivity(viewModel.notificationAccessIntent())
-            },
-            onOpenWallet = { context.startActivity(viewModel.walletNotificationsIntent()) },
-            onDone = onDone,
-        )
+            StepFooter(
+                step = step,
+                granted = granted,
+                walletInstalled = walletInstalled,
+                onShow = ::show,
+                onGrant = {
+                    sentToGrant = true
+                    context.startActivity(viewModel.notificationAccessIntent())
+                },
+                onOpenWallet = { context.startActivity(viewModel.walletNotificationsIntent()) },
+                onDone = onDone,
+            )
+        }
     }
 }
 
@@ -198,6 +208,7 @@ private fun StepFooter(
 
 @Composable
 private fun WelcomeStep() {
+    BrandMark(Modifier.size(56.dp))
     StepTitle(stringResource(R.string.onboarding_title))
     Promise(
         title = stringResource(R.string.onboarding_capture_title),
@@ -266,7 +277,7 @@ private fun Promise(
     body: String,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
         StepParagraph(body)
     }
 }

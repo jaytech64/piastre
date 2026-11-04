@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Piastre's own colours, the launcher icon's and the onboarding's, kept in one
+  place so the two can never drift apart. The rest of the app follows the
+  wallpaper through Material You and uses none of these.
+-->
+<resources>
+    <color name="brand_navy">#042C53</color>
+    <color name="brand_coin">#EF9F27</color>
+    <color name="brand_slice">#FAC775</color>
+    <!-- Running text on navy: white held back to 9.8:1, so it reads as secondary to a title. -->
+    <color name="brand_on_navy_muted">#D0D8E0</color>
+    <!-- The steps not yet reached: there without competing with the coin of the current one. -->
+    <color name="brand_navy_raised">#2A4C70</color>
+</resources>
