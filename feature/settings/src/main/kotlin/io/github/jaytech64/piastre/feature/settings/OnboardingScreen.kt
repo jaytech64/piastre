@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -22,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.jaytech64.piastre.core.designsystem.BrandMark
+import io.github.jaytech64.piastre.core.designsystem.PiastreBrandScreen
 import io.github.jaytech64.piastre.core.model.CaptureHealth
 import kotlinx.coroutines.launch
 
@@ -64,6 +66,9 @@ private enum class OnboardingStep {
  * Google Wallet's own notifications get a step to themselves because access
  * alone captures nothing while they are off, and that is the one setting the app
  * cannot read: the step can only say so and open the screen.
+ *
+ * It is drawn in Piastre's own colours rather than the wallpaper's, the same
+ * navy and orange as the store listing that brought someone here.
  */
 @Composable
 fun OnboardingScreen(
@@ -107,9 +112,8 @@ fun OnboardingScreen(
     BackHandler(enabled = step != OnboardingStep.WELCOME) { show(steps[step.ordinal - 1]) }
 
     // The only screen outside the Scaffold, so it paints its own background: without
-    // it the window's light XML background shows through while the text takes the
-    // dark scheme's pale colours, and a phone in dark mode reads white on white.
-    Surface(Modifier.fillMaxSize()) {
+    // it the window's light XML background shows through behind the brand's light text.
+    PiastreBrandScreen {
         Column(
             Modifier
                 .fillMaxSize()
@@ -204,6 +208,7 @@ private fun StepFooter(
 
 @Composable
 private fun WelcomeStep() {
+    BrandMark(Modifier.size(56.dp))
     StepTitle(stringResource(R.string.onboarding_title))
     Promise(
         title = stringResource(R.string.onboarding_capture_title),
@@ -272,7 +277,7 @@ private fun Promise(
     body: String,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
         StepParagraph(body)
     }
 }
