@@ -41,10 +41,10 @@ class RawLogRetention
             val RETENTION: Duration = Duration.ofDays(90)
 
             /**
-             * A payload no parser could read is the raw material for the parser that
-             * will one day read it, and a pending one has not been read at all yet.
-             * Stripping either would destroy the only copy.
+             * A pending payload has not been read at all yet, and stripping it would
+             * lose the purchase it holds. One no parser could read is stripped like
+             * any other: the privacy policy promises 90 days without exception.
              */
-            val KEPT_WHOLE = listOf(ParseState.UNPARSED, ParseState.PENDING)
+            val KEPT_WHOLE = listOf(ParseState.PENDING)
         }
     }
