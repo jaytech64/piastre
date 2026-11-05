@@ -51,6 +51,14 @@ data class RawNotificationEventEntity(
     val notificationKey: String,
     val postedAtUtcMillis: Long,
     val deviceLocale: String,
+    /**
+     * The zone the phone was in when this was recorded, and the zone every reading
+     * of it puts the purchase's day in — a parser fix read abroad must not move
+     * months of history to the wrong day.
+     *
+     * Null only on a row recorded before schema 22 that no ledger row vouched for.
+     */
+    val zoneId: String?,
     val title: String?,
     val text: String?,
     val bigText: String?,

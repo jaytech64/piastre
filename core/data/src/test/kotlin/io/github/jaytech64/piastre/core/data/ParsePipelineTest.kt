@@ -6,6 +6,7 @@ import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.ParseState
 import io.github.jaytech64.piastre.core.model.TransactionStatus
+import io.github.jaytech64.piastre.core.model.localDateEpochDay
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
 import io.github.jaytech64.piastre.parsing.FixtureCorpus
 import io.github.jaytech64.piastre.parsing.GoogleWalletParser
@@ -43,7 +44,7 @@ class ParsePipelineTest {
     @Before
     fun open() {
         database = inMemoryDatabase()
-        rawEvents = RawEventRepository(database.rawNotificationEventDao())
+        rawEvents = RawEventRepository(database.rawNotificationEventDao(), Provider { ZONE })
         merchants = MerchantRepository(database.merchantDao())
         pipeline =
             ParsePipeline(
@@ -150,6 +151,31 @@ class ParsePipelineTest {
             assertEquals(DISTINCT_POSTS, drained)
             assertEquals(PURCHASES, database.transactionDao().count().first())
             assertEquals(TOTAL_MINOR, confirmedTotal())
+        }
+
+    /** The process died between recording and reading, and the phone has since crossed an ocean. */
+    @Test
+    fun `a purchase read after travelling is dated in the zone it was recorded in`() =
+        runTest {
+            corpus().forEach { rawEvents.record(it, NO_EXTRAS) }
+            val abroad = ZoneId.of("Asia/Tokyo")
+
+            ParsePipeline(
+                events = database.rawNotificationEventDao(),
+                transactions = database.transactionDao(),
+                registry = ParserRegistry(listOf(GoogleWalletParser())),
+                merchants = merchants,
+                accounts = AccountRepository(database.accountDao()),
+                zoneId = Provider { abroad },
+            ).drainPending()
+
+            val transactions = database.transactionDao().all().first()
+            assertEquals(PURCHASES, transactions.size)
+            assertTrue(transactions.any { localDateEpochDay(it.occurredAtUtcMillis, abroad) != it.localDateEpochDay })
+            transactions.forEach {
+                assertEquals(ZONE.id, it.zoneId)
+                assertEquals(localDateEpochDay(it.occurredAtUtcMillis, ZONE), it.localDateEpochDay)
+            }
         }
 
     @Test

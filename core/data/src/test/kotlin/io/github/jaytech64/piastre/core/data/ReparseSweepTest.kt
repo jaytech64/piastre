@@ -5,6 +5,7 @@ package io.github.jaytech64.piastre.core.data
 import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.ParseState
+import io.github.jaytech64.piastre.core.model.localDateEpochDay
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
 import io.github.jaytech64.piastre.parsing.IgnoreReason
 import io.github.jaytech64.piastre.parsing.NotificationParser
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -230,19 +232,62 @@ class ReparseSweepTest {
             )
         }
 
-    private suspend fun captureWith(parser: NotificationParser) =
-        NotificationCapture(RawEventRepository(database.rawNotificationEventDao()), pipelineWith(parser))
-            .capture(PAYMENT, NO_EXTRAS)
+    /**
+     * The purchase was made at 20:16 in Toronto, which is already 02:16 the next
+     * morning in Paris. A parser fix that ships while you are there re-reads the
+     * last 90 days, and must not move one of them to the next day.
+     */
+    @Test
+    fun `a parser fix read abroad leaves a purchase on the day it was made`() =
+        runTest {
+            captureWith(misreading(version = 1))
+            val spent = theOnlyTransaction()
+            assertNotEquals(spent.localDateEpochDay, localDateEpochDay(POSTED_AT, ABROAD))
 
-    private fun pipelineWith(parser: NotificationParser) =
-        ParsePipeline(
-            events = database.rawNotificationEventDao(),
-            transactions = database.transactionDao(),
-            registry = ParserRegistry(listOf(parser)),
-            merchants = MerchantRepository(database.merchantDao()),
-            accounts = AccountRepository(database.accountDao()),
-            zoneId = Provider { ZONE },
-        )
+            pipelineWith(reading(version = 2), zone = ABROAD).resweep()
+
+            val reread = theOnlyTransaction()
+            assertEquals(AMOUNT_MINOR, reread.amountMinor)
+            assertEquals(spent.localDateEpochDay, reread.localDateEpochDay)
+            assertEquals(ZONE.id, reread.zoneId)
+        }
+
+    /** The row is replaced rather than updated here, so its old zone cannot be what holds the day. */
+    @Test
+    fun `a fix that changes the source key, read abroad, keeps the purchase's day`() =
+        runTest {
+            captureWith(misreading(version = 1))
+            val spent = theOnlyTransaction()
+
+            pipelineWith(reading(version = 2, sourceKey = "wallet-tag-corrected"), zone = ABROAD).resweep()
+
+            assertEquals(spent.localDateEpochDay, theOnlyTransaction().localDateEpochDay)
+        }
+
+    private suspend fun captureWith(parser: NotificationParser) =
+        NotificationCapture(
+            RawEventRepository(database.rawNotificationEventDao(), Provider { ZONE }),
+            pipelineWith(parser),
+        ).capture(PAYMENT, NO_EXTRAS)
+
+    private fun pipelineWith(
+        parser: NotificationParser,
+        zone: ZoneId = ZONE,
+    ) = ParsePipeline(
+        events = database.rawNotificationEventDao(),
+        transactions = database.transactionDao(),
+        registry = ParserRegistry(listOf(parser)),
+        merchants = MerchantRepository(database.merchantDao()),
+        accounts = AccountRepository(database.accountDao()),
+        zoneId = Provider { zone },
+    )
+
+    private suspend fun theOnlyTransaction() =
+        database
+            .transactionDao()
+            .all()
+            .first()
+            .single()
 
     /** The bug: the cents are read as the whole amount. */
     private fun misreading(version: Int) = StubParser(PAY_PACKAGE, version) { parsed(MISREAD_MINOR, SOURCE_KEY) }
@@ -293,6 +338,7 @@ class ReparseSweepTest {
         const val MISREAD_MINOR = 45L
 
         val ZONE: ZoneId = ZoneId.of("America/Toronto")
+        val ABROAD: ZoneId = ZoneId.of("Europe/Paris")
 
         val PAYMENT =
             RawNotification(

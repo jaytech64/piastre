@@ -132,6 +132,7 @@ class RawLogRetentionTest {
                 notificationKey = key,
                 postedAtUtcMillis = NOW.minus(age).toEpochMilli(),
                 deviceLocale = "fr-CA",
+                zoneId = "America/Toronto",
                 title = TITLE,
                 text = TEXT,
                 bigText = TEXT,

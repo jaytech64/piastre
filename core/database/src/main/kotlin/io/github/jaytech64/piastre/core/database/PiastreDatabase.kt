@@ -50,7 +50,7 @@ abstract class PiastreDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
 
     companion object {
-        const val VERSION: Int = 21
+        const val VERSION: Int = 22
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -78,6 +78,7 @@ abstract class PiastreDatabase : RoomDatabase() {
                 MIGRATION_18_19,
                 MIGRATION_19_20,
                 MIGRATION_20_21,
+                MIGRATION_21_22,
             )
 
         const val NAME: String = "piastre.db"
@@ -618,6 +619,29 @@ private val MIGRATION_20_21 =
                         WHERE t.merchantId = merchant.id AND t.categoryId = merchant.expenseCategoryId
                             AND t.source <> 'NOTIFICATION' AND t.kind <> 'INCOME'
                     )
+                """,
+            )
+        }
+    }
+
+/**
+ * Schema 22 records the zone a notification arrived in.
+ *
+ * A row the ledger already holds a purchase from takes that purchase's zone,
+ * which is the zone it was read in. Every other row stays null: nothing
+ * recorded where the phone was when it arrived.
+ */
+private val MIGRATION_21_22 =
+    object : Migration(21, 22) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE raw_notification_event ADD COLUMN zoneId TEXT")
+            db.execSQL(
+                """
+                UPDATE raw_notification_event SET zoneId = (
+                    SELECT t.zoneId FROM expense_transaction t
+                    WHERE t.rawEventId = raw_notification_event.id
+                    ORDER BY t.id LIMIT 1
+                )
                 """,
             )
         }

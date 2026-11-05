@@ -116,6 +116,7 @@ class PiastreDatabaseTest {
                         notificationKey = "0|com.example.unknown|1|tag|10000",
                         postedAtUtcMillis = 1_788_740_166_564,
                         deviceLocale = "fr-CA",
+                        zoneId = "America/Toronto",
                         title = "?",
                         text = "?",
                         bigText = null,
