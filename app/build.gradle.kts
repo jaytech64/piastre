@@ -131,6 +131,35 @@ androidComponents.onVariants { variant ->
 }
 
 /**
+ * The Play build carries Google's telemetry inside the billing library, and none
+ * of it may be wired up: `:premium:play` unregisters its backend and schedulers,
+ * and this fails the build when a billing upgrade brings one back.
+ */
+val telemetryPackage = "com.google.android.datatransport"
+
+androidComponents.onVariants { variant ->
+    val verify =
+        tasks.register("verify${variant.name.replaceFirstChar(Char::uppercase)}HasNoTelemetry") {
+            val manifest = variant.artifacts.get(SingleArtifact.MERGED_MANIFEST)
+            val forbidden = telemetryPackage
+            inputs.file(manifest)
+            outputs.upToDateWhen { true }
+            doLast {
+                val declared =
+                    Regex("""android:name="($forbidden[^"]*)"""")
+                        .findAll(manifest.get().asFile.readText())
+                        .map { it.groupValues[1] }
+                        .toList()
+                check(declared.isEmpty()) {
+                    "Merged manifest declares ${declared.joinToString()}. Remove it with tools:node=\"remove\" " +
+                        "in premium/play/src/main/AndroidManifest.xml."
+                }
+            }
+        }
+    tasks.named("check").configure { dependsOn(verify) }
+}
+
+/**
  * The F-Droid build carries no Google store code and asks for none of what the
  * Play build needs in order to sell. F-Droid refuses a proprietary library, and
  * the people who install from it chose it to be rid of exactly that, so a

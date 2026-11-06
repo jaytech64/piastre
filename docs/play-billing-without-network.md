@@ -40,3 +40,21 @@ All of it on the `stripped` build, which holds no network permission.
 - A test subscription's trial lasts 3 minutes and its year 30 minutes; `purchaseTime` stays the time of the first purchase.
 
 Every check the spike set out to make has passed.
+
+## The telemetry unregistered, 2026-11-06
+
+The billing library also brings Google's telemetry runtime, `com.google.android.datatransport`, which sends billing events over its own HTTPS backend.
+Without the two permissions it could neither store nor send an event, but only because it crashed on the way: reading the network type throws before an event is written, and the upload has no socket to open.
+A later version that caught that exception would start storing device-identifying events it could never send.
+
+`:premium:play` now removes its three manifest components as well: `TransportBackendDiscovery`, `JobInfoSchedulerService` and `AlarmManagerSchedulerBroadcastReceiver`.
+With no backend registered, the runtime drops each event before it reads anything about the device, and logs `Transport backend 'cct' is not registered`.
+`verify*HasNoTelemetry` fails the build if a billing upgrade brings any of them back.
+
+On the `Pixel_10` AVD, with a licence tester signed in:
+
+- Billing connects and the Premium screen loads both products and their prices, exactly as before the change.
+- After a launch, the runtime's event store holds no event and no device metadata.
+- An event left from the `asis` run makes the runtime try to schedule an upload at start; that fails with "non-existent component", is caught by the runtime, and crashes nothing.
+
+Not yet repeated since the change: a purchase and its acknowledgement.
