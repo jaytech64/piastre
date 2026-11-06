@@ -78,9 +78,7 @@ interface RawNotificationEventDao {
      * notification the shade hands back two years later would reappear as a new
      * purchase.
      *
-     * [exempt] is the states whose rows are kept whole — a payload no parser
-     * could read is the raw material for the parser that will one day read it,
-     * and stripping it would destroy the only copy.
+     * [exempt] is the states whose rows are kept whole, which the caller decides.
      *
      * The `redactedAtUtcMillis IS NULL` clause makes the count honest: a second
      * sweep over the same rows reports nothing rather than counting them again.

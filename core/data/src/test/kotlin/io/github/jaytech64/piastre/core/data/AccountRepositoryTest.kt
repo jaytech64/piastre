@@ -48,7 +48,7 @@ class AccountRepositoryTest {
         val merchants = MerchantRepository(database.merchantDao())
         capture =
             NotificationCapture(
-                RawEventRepository(database.rawNotificationEventDao()),
+                RawEventRepository(database.rawNotificationEventDao(), Provider { ZONE }),
                 ParsePipeline(
                     events = database.rawNotificationEventDao(),
                     transactions = database.transactionDao(),

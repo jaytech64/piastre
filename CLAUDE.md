@@ -129,7 +129,7 @@ The toolchain is declared in `gradle/gradle-daemon-jvm.properties`, so a wrong J
 ./gradlew installPlayDebug   # or installFossDebug
 ```
 
-`check` is the whole gate, not just tests: it runs `:detekt`, every module's `spotlessCheck`, Android Lint, every unit test, `:app:verify*HasNoNetworkPermission` on every variant, and `:app:verifyFoss*HasNoGoogleStoreCode`.
+`check` is the whole gate, not just tests: it runs `:detekt`, every module's `spotlessCheck`, Android Lint, every unit test, `:app:verify*HasNoNetworkPermission` and `:app:verify*HasNoTelemetry` on every variant, and `:app:verifyFoss*HasNoGoogleStoreCode`.
 CI (`.github/workflows/ci.yml`) runs `spotlessCheck`, `detekt`, `check` and `assembleDebug` as separate steps only so a failure names itself; it is the backstop, not a second opinion.
 
 Versions are pinned in `gradle/libs.versions.toml`, and AndroidX is deliberately held at the last line supporting AGP 8.13 / `compileSdk` 36.

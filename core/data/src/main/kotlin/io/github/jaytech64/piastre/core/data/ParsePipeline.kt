@@ -148,8 +148,9 @@ class ParsePipeline
 
         /**
          * The local day is resolved here rather than at read time, in the zone the
-         * phone is in at the moment of the purchase. Reading it later would let a
-         * flight re-bucket last month's coffee.
+         * notification was recorded in rather than the one the phone is in now: a
+         * parser fix re-reads months of history, and reading it in today's zone
+         * would let a flight re-bucket last month's coffee.
          *
          * [categoryId] is the merchant's, given to a row waiting for review too, so
          * approving it leaves nothing to redo.
@@ -164,7 +165,7 @@ class ParsePipeline
             accountId: Long?,
             categoryId: Long?,
         ): ExpenseTransactionEntity {
-            val zone = zoneId.get()
+            val zone = recordedZone()
             return ExpenseTransactionEntity(
                 rawEventId = id,
                 amountMinor = draft.amount.minor,
@@ -190,6 +191,10 @@ class ParsePipeline
                 accountId = accountId,
             )
         }
+
+        /** Today's zone stands in only for a row recorded before the zone was. */
+        private fun RawNotificationEventEntity.recordedZone(): ZoneId =
+            zoneId?.let(ZoneId::of) ?: this@ParsePipeline.zoneId.get()
 
         private companion object {
             /** A draft that needs a human carries no confidence by definition. */

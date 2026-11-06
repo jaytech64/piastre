@@ -116,6 +116,7 @@ class DataErasureTest {
                 notificationKey = "0|wallet|1|tag-1|10348",
                 postedAtUtcMillis = NOW.toEpochMilli(),
                 deviceLocale = "fr-CA",
+                zoneId = "America/Toronto",
                 title = "MARCHE ST DAVID",
                 text = "16,09 $",
                 bigText = null,

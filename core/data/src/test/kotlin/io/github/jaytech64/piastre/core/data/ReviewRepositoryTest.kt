@@ -54,7 +54,8 @@ class ReviewRepositoryTest {
                 accounts = AccountRepository(database.accountDao()),
                 zoneId = Provider { ZONE },
             )
-        capture = NotificationCapture(RawEventRepository(database.rawNotificationEventDao()), pipeline)
+        capture =
+            NotificationCapture(RawEventRepository(database.rawNotificationEventDao(), Provider { ZONE }), pipeline)
         review =
             ReviewRepository(
                 transactions = database.transactionDao(),

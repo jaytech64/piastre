@@ -7,7 +7,9 @@ import io.github.jaytech64.piastre.core.database.RawNotificationEventEntity
 import io.github.jaytech64.piastre.core.model.ParseState
 import io.github.jaytech64.piastre.parsing.RawNotification
 import kotlinx.coroutines.flow.Flow
+import java.time.ZoneId
 import javax.inject.Inject
+import javax.inject.Provider
 import javax.inject.Singleton
 
 /**
@@ -24,6 +26,7 @@ class RawEventRepository
     @Inject
     constructor(
         private val events: RawNotificationEventDao,
+        private val zoneId: Provider<ZoneId>,
     ) {
         /**
          * Returns the id of the row that was written, or `null` when this exact post
@@ -44,6 +47,7 @@ class RawEventRepository
                         notificationKey = notification.notificationKey,
                         postedAtUtcMillis = notification.postedAtUtcMillis,
                         deviceLocale = notification.deviceLocale,
+                        zoneId = zoneId.get().id,
                         title = notification.title,
                         text = notification.text,
                         bigText = notification.bigText,

@@ -349,6 +349,7 @@ class LedgerExportTest {
                 notificationKey = "leaked-notification-key",
                 postedAtUtcMillis = OCCURRED_AT.toEpochMilli(),
                 deviceLocale = "fr-CA",
+                zoneId = "America/Toronto",
                 title = "leaked-title",
                 text = "leaked-text",
                 bigText = "leaked-bigtext",

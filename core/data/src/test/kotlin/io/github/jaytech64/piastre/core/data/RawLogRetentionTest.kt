@@ -27,7 +27,7 @@ import java.time.ZoneOffset
  *
  * Tested for what it spares as much as for what it strips: this deletes data the
  * user can never get back, and the row it must not touch is the one no parser
- * could read.
+ * has read yet.
  */
 @RunWith(RobolectricTestRunner::class)
 class RawLogRetentionTest {
@@ -73,17 +73,26 @@ class RawLogRetentionTest {
             assertNull(row.redactedAtUtcMillis)
         }
 
-    /** The exemption: the only copy of a payload no parser has read yet. */
+    /** The exemption: the only copy of a purchase no parser has read yet. */
     @Test
-    fun `an unread row is kept whole however old it is`() =
+    fun `a row not yet read is kept whole however old it is`() =
         runTest {
-            val unparsed = insert(age = Duration.ofDays(400), state = ParseState.UNPARSED)
-            val pending = insert(age = Duration.ofDays(400), state = ParseState.PENDING, key = "$NOTIFICATION_KEY-2")
+            val pending = insert(age = Duration.ofDays(400), state = ParseState.PENDING)
 
             assertEquals(0, retention.purgeExpired())
 
-            assertEquals(TITLE, database.rawNotificationEventDao().byId(unparsed)!!.title)
             assertEquals(TITLE, database.rawNotificationEventDao().byId(pending)!!.title)
+        }
+
+    /** The privacy policy promises 90 days, and a payload no parser could read is no exception to it. */
+    @Test
+    fun `a row no parser could read is stripped at ninety days like any other`() =
+        runTest {
+            val id = insert(age = Duration.ofDays(91), state = ParseState.UNPARSED)
+
+            assertEquals(1, retention.purgeExpired())
+
+            assertNull(database.rawNotificationEventDao().byId(id)!!.title)
         }
 
     @Test
@@ -132,6 +141,7 @@ class RawLogRetentionTest {
                 notificationKey = key,
                 postedAtUtcMillis = NOW.minus(age).toEpochMilli(),
                 deviceLocale = "fr-CA",
+                zoneId = "America/Toronto",
                 title = TITLE,
                 text = TEXT,
                 bigText = TEXT,

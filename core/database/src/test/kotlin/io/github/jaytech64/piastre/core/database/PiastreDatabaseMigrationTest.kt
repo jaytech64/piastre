@@ -489,6 +489,36 @@ class PiastreDatabaseMigrationTest {
         )
     }
 
+    /**
+     * A notification that became a purchase takes the zone that purchase was read
+     * in; one that became nothing has no zone anyone recorded, and stays without.
+     */
+    @Test
+    fun `migrating to schema 22 gives a notification the zone its purchase was read in`() {
+        helper.createDatabase(NAME, 21).use { database ->
+            database.insertRawEvent(postedAtUtcMillis = FIRST_POST)
+            database.insertRawEvent(postedAtUtcMillis = RE_POST)
+            database.execSQL(
+                "INSERT INTO expense_transaction " +
+                    "(rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay, " +
+                    "merchantId, merchantRaw, categoryId, source, status, confidence, sourcePackage, sourceKey, " +
+                    "kind) VALUES ((SELECT id FROM raw_notification_event WHERE postedAtUtcMillis = ?), 2342, " +
+                    "'CAD', ?, 'America/Vancouver', 20707, NULL, 'MARCHE ST JOSEPH', NULL, 'NOTIFICATION', " +
+                    "'CONFIRMED', 1.0, ?, 'tag-1', 'EXPENSE')",
+                arrayOf<Any?>(FIRST_POST, FIRST_POST, WALLET),
+            )
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 22, true, *PiastreDatabase.MIGRATIONS)
+
+        assertEquals(
+            listOf("America/Vancouver", null),
+            migrated.query("SELECT zoneId FROM raw_notification_event ORDER BY postedAtUtcMillis").use { cursor ->
+                buildList { while (cursor.moveToNext()) add(if (cursor.isNull(0)) null else cursor.getString(0)) }
+            },
+        )
+    }
+
     private fun SupportSQLiteDatabase.merchantCategories(): List<Pair<String, Pair<Long?, Long?>>> =
         query("SELECT displayName, expenseCategoryId, incomeCategoryId FROM merchant ORDER BY id").use { cursor ->
             generateSequence {

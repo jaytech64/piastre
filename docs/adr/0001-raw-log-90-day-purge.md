@@ -1,6 +1,6 @@
 # 1. Raw log: 90-day purge, unparsed rows kept
 
-- **Status:** Accepted — implemented in Phase 2.
+- **Status:** Accepted, revised once — implemented in Phase 2.
 - **Decided:** 2026-09-07, during Phase 2 planning (`32caf07`).
 - **Touches:** `:core:database` (`raw_notification_event`), `:core:data`.
 
@@ -36,6 +36,19 @@ If that set ever grows beyond a handful of rows, this record should be revisited
 
 A purged row still appears in the review inbox.
 The inbox's join is a left join for this reason: the ruling stays possible, without the evidence.
+
+## Revision — an unreadable payload is stripped too
+
+- **Decided:** 2026-11-04, after an outside audit set the exemption beside the privacy policy.
+
+The policy published with the first release says, without exception, that a notification's text is deleted 90 days after it arrived.
+The `UNPARSED` exemption made that untrue, so it is gone: a payload no parser could read is stripped at 90 days like any other.
+
+A new parser now reaches only the last 90 days of what nobody could read, which is the same reach a parser fix has always had over what was read.
+What the exemption protected turned out to be close to nothing in practice — the Wallet parser never produces `UNPARSED`, and every Wallet notification that is not a payment is `IGNORED` and was already stripped — while a permanent exception to a published promise is exactly what Law 25's minimisation asks this app not to keep.
+
+`PENDING` stays exempt.
+A pending row has not been read at all, so stripping it would lose a purchase rather than evidence, and the sweep runs only after the pass that drains pending rows has finished, so in practice it never meets one older than 90 days.
 
 ## Where this lives in the code
 
