@@ -2,10 +2,14 @@
 <!--
   The brand mark, placed where it always sat in the 108dp canvas: inside the
   66dp circle an adaptive icon guarantees is never cropped.
+
+  The insets are fractions of the canvas (30 and 26 of its 108dp), never dp:
+  the splash screen draws this foreground far larger than the launcher does,
+  and fixed insets would leave the mark filling the whole circle there.
 -->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:drawable="@drawable/brand_mark"
-    android:insetLeft="30dp"
-    android:insetTop="26dp"
-    android:insetRight="26dp"
-    android:insetBottom="30dp" />
+    android:insetLeft="27.778%"
+    android:insetTop="24.074%"
+    android:insetRight="24.074%"
+    android:insetBottom="27.778%" />
