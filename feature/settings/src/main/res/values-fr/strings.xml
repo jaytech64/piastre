@@ -72,6 +72,8 @@
     <string name="onboarding_access_reads_body">Android montre toutes les notifications à une application qui a cet accès. Piastre n\'ouvre que celles de Google Portefeuille et ignore les autres sans en garder de trace.</string>
     <string name="onboarding_access_keeps_title">Ce qu\'elle garde</string>
     <string name="onboarding_access_keeps_body">D\'un paiement, le montant, le marchand et l\'heure. Le texte de la notification est retiré après 90 jours.</string>
+    <string name="onboarding_access_optional_title">Facultatif, mais recommandé</string>
+    <string name="onboarding_access_optional_body">Piastre fonctionne quand même sans cet accès : vous pouvez toujours ajouter chaque transaction à la main. Si autorisé, vos paiements faits avec Google Portefeuille s\'inscriront d\'eux-mêmes automatiquement.</string>
     <string name="onboarding_access_granted">L\'accès est accordé.</string>
     <string name="onboarding_wallet_title">Gardez les notifications de Google Portefeuille activées</string>
     <string name="onboarding_wallet_why">Piastre inscrit un paiement à partir de la notification que Google Portefeuille affiche. Si elles sont désactivées, rien n\'arrive et rien n\'est inscrit, même avec l\'accès accordé.</string>

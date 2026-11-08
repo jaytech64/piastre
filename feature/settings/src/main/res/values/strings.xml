@@ -72,6 +72,8 @@
     <string name="onboarding_access_reads_body">Android shows every notification to an app with this access. Piastre opens only Google Wallet\'s and ignores the rest without keeping a trace.</string>
     <string name="onboarding_access_keeps_title">What it keeps</string>
     <string name="onboarding_access_keeps_body">From a payment, the amount, the merchant and the time. The notification\'s text is removed after 90 days.</string>
+    <string name="onboarding_access_optional_title">Optional, but recommended</string>
+    <string name="onboarding_access_optional_body">Piastre still works without this access: you can always add every transaction by hand. If granted, your payments made with Google Wallet will record themselves automatically.</string>
     <string name="onboarding_access_granted">Access is granted.</string>
     <string name="onboarding_wallet_title">Keep Google Wallet notifications on</string>
     <string name="onboarding_wallet_why">Piastre records a payment from the notification Google Wallet shows for it. If they are off, nothing arrives and nothing is recorded, even with access granted.</string>

@@ -1,6 +1,6 @@
 # 4. A banner for broken capture, and no notification
 
-- **Status:** Accepted, revised twice — implemented in `35024ee` (Phase 2, commit 7); the collapse on `feat/room-at-large-font-sizes`.
+- **Status:** Accepted, revised four times — implemented in `35024ee` (Phase 2, commit 7); the collapse on `feat/room-at-large-font-sizes`.
 - **Decided:** 2026-09-07, during Phase 2 planning (`32caf07`).
   Revised 2026-09-09 (`e18c3ae`), before any of it was built, and again 2026-09-23.
 - **Touches:** `:core:model` (`CaptureHealth`), `:capture:listener`, `:feature:settings`, and the manifest that was not changed.
@@ -68,6 +68,20 @@ The trial is different because its date is known in advance.
 The F-Droid build has no trial and declares neither permission; `verifyFoss*HasNoGoogleStoreCode` fails the build if either reaches it ([ADR-0022](0022-piastre-is-sold-on-play-and-given-on-f-droid.md)).
 Recurring transactions still never use an alarm, since the F-Droid build could not keep one through a restart.
 
+## Revision — refused access is raised on Settings only
+
+- **Decided:** 2026-11-08.
+
+Piastre works without notification access: every transaction can be typed in by hand, and onboarding now says so beside the button that asks for it.
+Someone who chose that was being told on every screen, for as long as they used the app, that something was broken.
+
+So revoked access raises the banner on the Settings screen alone, and every other screen carries a "!" badge on the Settings tab instead.
+The badge stands for any failure, and TalkBack hears the alarm's words on the tab, since a labelled tab hides its icon from it.
+
+Silence keeps the banner on every screen.
+Nobody chose a listener Android unbound on its own, it is the failure this record was written for, and a badge would let it live out of sight for weeks.
+Access cannot tell a refusal from a revocation by a system update, so a revocation nobody made now waits behind the badge too; that is accepted, because the badge still points at the fix, and the alternative is nagging everyone who said no.
+
 ## Consequences
 
 The alarm is only seen by a user who opens the app.
@@ -80,8 +94,8 @@ There is deliberately no "granted at" timestamp: before the first delivery `last
 
 ## Where this lives in the code
 
-- `core/model/src/main/kotlin/.../CaptureHealth.kt` — the rule, the four states, `SILENT_AFTER = 48h`.
+- `core/model/src/main/kotlin/.../CaptureHealth.kt` — the rule, the four states, `SILENT_AFTER = 48h`, and `alarmsEveryScreen`.
 - `capture/listener/src/main/kotlin/.../PiastreListenerService.kt` — `noteAlive()`, called before the package filter.
 - `capture/listener/src/main/kotlin/.../CaptureHealthRepository.kt` — the live verdict.
-- `feature/settings/src/main/kotlin/.../CaptureHealthBanner.kt` — the banner and its collapsed strip, above the nav host in `PiastreApp`.
+- `feature/settings/src/main/kotlin/.../CaptureHealthBanner.kt` — the banner and its collapsed strip, above the nav host in `PiastreApp`, and `captureAlarm`, which the Settings tab's badge reads.
 - `SettingsRepository.noteListenerEvent` — the throttle.
