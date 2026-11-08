@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -30,8 +31,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -43,10 +46,12 @@ import java.time.Instant
 /**
  * The alarm for the one failure no other screen can show.
  *
- * It sits above every destination rather than on the ledger alone, because the
- * thing it reports — nothing is being captured — makes *all* the numbers in the
- * app quietly wrong, not just the ones on one screen. It renders nothing while
- * capture is working, which is nearly always.
+ * Silence sits above every destination rather than on the ledger alone, because
+ * a listener Android unbound without asking makes *all* the numbers in the app
+ * quietly wrong, not just the ones on one screen. Refused access is raised only
+ * [onSettings]: it was a choice, the app works without it, and every other screen
+ * carries only the badge on the Settings tab ([captureAlarm]). It renders nothing
+ * while capture is working, which is nearly always.
  *
  * It can be collapsed to a strip but never dismissed (ADR-0004): the strip keeps
  * the alarm and the fix, and gives up only the explanation. The collapse lives in
@@ -56,6 +61,7 @@ import java.time.Instant
  */
 @Composable
 fun CaptureHealthBanner(
+    onSettings: Boolean,
     modifier: Modifier = Modifier,
     viewModel: CaptureHealthViewModel = hiltViewModel(),
 ) {
@@ -68,6 +74,7 @@ fun CaptureHealthBanner(
 
     val health = state.health
     if (health == null || !health.needsAttention) return
+    if (!onSettings && !health.alarmsEveryScreen) return
 
     var collapsed by rememberSaveable(health::class.simpleName) { mutableStateOf(false) }
     val context = LocalContext.current
@@ -128,6 +135,43 @@ private fun ExpandedBanner(
         }
     }
 }
+
+/**
+ * The alarm's words while capture needs fixing, and null while it works: what
+ * the Settings tab wears as a badge, which every other screen shows in place of
+ * the banner when access was refused.
+ *
+ * Any failure counts, silence included, because Settings is where either one is
+ * fixed.
+ */
+@Composable
+fun captureAlarm(viewModel: CaptureHealthViewModel = hiltViewModel()): String? {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LifecycleResumeEffect(Unit) {
+        viewModel.refresh()
+        onPauseOrDispose {}
+    }
+
+    return if (state.health?.needsAttention == true) stringResource(R.string.health_interrupted) else null
+}
+
+/**
+ * The "!" on the Settings tab while [captureAlarm] has words to say.
+ *
+ * It is drawn and not read, so whatever it sits on must carry those words for
+ * TalkBack. It keeps an icon's size rather than a letter's: at a large font size
+ * a "!" that grew with the text would cover the tab it marks.
+ */
+@Composable
+fun CaptureAlarmBadge() {
+    Badge(Modifier.clearAndSetSemantics {}) {
+        val glyph = with(LocalDensity.current) { ALARM_BADGE_GLYPH.toSp() }
+        Text("!", fontSize = glyph, lineHeight = glyph)
+    }
+}
+
+private val ALARM_BADGE_GLYPH = 11.dp
 
 /**
  * The alarm and the fix on one line, tapping anywhere else on it opens it back

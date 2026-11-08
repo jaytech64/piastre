@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -25,6 +26,8 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
@@ -50,15 +53,17 @@ import io.github.jaytech64.piastre.feature.reports.BudgetsScreen
 import io.github.jaytech64.piastre.feature.reports.ReportsScreen
 import io.github.jaytech64.piastre.feature.review.ReviewScreen
 import io.github.jaytech64.piastre.feature.settings.CATEGORY_GROUP_ID_ARG
+import io.github.jaytech64.piastre.feature.settings.CaptureAlarmBadge
 import io.github.jaytech64.piastre.feature.settings.CaptureHealthBanner
 import io.github.jaytech64.piastre.feature.settings.CategoriesScreen
 import io.github.jaytech64.piastre.feature.settings.CategoryGroupScreen
 import io.github.jaytech64.piastre.feature.settings.OnboardingScreen
 import io.github.jaytech64.piastre.feature.settings.OnboardingViewModel
 import io.github.jaytech64.piastre.feature.settings.SettingsScreen
+import io.github.jaytech64.piastre.feature.settings.captureAlarm
 
 /**
- * Review is not drawn with a warning sign: the capture banner is, and once the
+ * Review is not drawn with a warning sign: the capture alarm is, and once the
  * bar drops its labels an icon is all a tab has to say what it is.
  */
 private enum class Destination(
@@ -114,8 +119,9 @@ private fun MainShell() {
         Column(Modifier.padding(padding)) {
             // Above the NavHost rather than on the ledger: a capture that has
             // stopped makes every number in the app quietly wrong, not the ones
-            // on one screen.
-            CaptureHealthBanner()
+            // on one screen. One call for every route, so a collapse made on one
+            // tab holds on the next.
+            CaptureHealthBanner(onSettings = currentRoute == Destination.SETTINGS.route)
 
             NavHost(
                 navController = navController,
@@ -231,6 +237,10 @@ private fun NavGraphBuilder.templatePages(navController: NavHostController) {
  * Labels under the icons while every one of them fits on a line, and icons alone
  * as soon as one does not, rather than a label broken mid-word at a large font
  * size.
+ *
+ * Settings wears the capture alarm as a badge, since that is where it is fixed.
+ * TalkBack hears the alarm's words on the whole tab rather than the "!", because
+ * a labelled tab hides its icon from it.
  */
 @Composable
 private fun DestinationBar(
@@ -240,13 +250,20 @@ private fun DestinationBar(
     BoxWithConstraints {
         val labels = Destination.entries.map { stringResource(it.labelRes) }
         val labelled = rememberLabelsFit(labels, maxWidth)
+        val alarm = captureAlarm()
 
         NavigationBar {
             Destination.entries.forEachIndexed { index, destination ->
+                val tabAlarm = alarm.takeIf { destination == Destination.SETTINGS }
                 NavigationBarItem(
                     selected = currentRoute == destination.route || currentRoute in destination.pagesOverIt,
                     onClick = { onOpen(destination) },
-                    icon = { DestinationIcon(destination, labels[index], labelled) },
+                    modifier = tabAlarm?.let { Modifier.semantics { stateDescription = it } } ?: Modifier,
+                    icon = {
+                        BadgedBox(badge = { if (tabAlarm != null) CaptureAlarmBadge() }) {
+                            DestinationIcon(destination, labels[index], labelled)
+                        }
+                    },
                     label = if (labelled) ({ Text(labels[index], maxLines = 1) }) else null,
                 )
             }

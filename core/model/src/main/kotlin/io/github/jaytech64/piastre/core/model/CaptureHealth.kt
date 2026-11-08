@@ -44,6 +44,15 @@ sealed interface CaptureHealth {
     /** Whether this is something the user has to go and fix. */
     val needsAttention: Boolean get() = this is AccessRevoked || this is Silent
 
+    /**
+     * Whether the alarm belongs on every screen, rather than on Settings alone.
+     *
+     * Only silence does: nobody chose a listener Android unbound on its own. The
+     * app works without access, so refusing it is a choice, raised where it can
+     * be undone and nowhere else (ADR-0004).
+     */
+    val alarmsEveryScreen: Boolean get() = this is Silent
+
     companion object {
         /**
          * How long the shade may stay quiet before the app stops trusting itself.

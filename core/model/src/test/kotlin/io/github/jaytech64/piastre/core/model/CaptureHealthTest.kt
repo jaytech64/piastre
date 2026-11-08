@@ -56,6 +56,14 @@ class CaptureHealthTest {
         assertFalse(CaptureHealth.Listening(NOW).needsAttention)
     }
 
+    @Test
+    fun `silence alarms on every screen, and refused access only where it is undone`() {
+        assertTrue(CaptureHealth.Silent(NOW).alarmsEveryScreen)
+        assertFalse(CaptureHealth.AccessRevoked(NOW).alarmsEveryScreen)
+        assertFalse(CaptureHealth.Paused(NOW).alarmsEveryScreen)
+        assertFalse(CaptureHealth.Listening(NOW).alarmsEveryScreen)
+    }
+
     private fun health(
         accessGranted: Boolean = true,
         captureEnabled: Boolean = true,
