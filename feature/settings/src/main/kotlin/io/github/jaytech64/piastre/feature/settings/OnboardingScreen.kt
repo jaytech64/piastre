@@ -235,6 +235,10 @@ private fun NotificationAccessStep(granted: Boolean) {
         title = stringResource(R.string.onboarding_access_keeps_title),
         body = stringResource(R.string.onboarding_access_keeps_body),
     )
+    Promise(
+        title = stringResource(R.string.onboarding_access_optional_title),
+        body = stringResource(R.string.onboarding_access_optional_body),
+    )
     if (granted) {
         Text(
             stringResource(R.string.onboarding_access_granted),
