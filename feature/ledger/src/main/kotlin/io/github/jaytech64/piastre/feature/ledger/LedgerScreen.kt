@@ -61,6 +61,7 @@ import io.github.jaytech64.piastre.core.designsystem.accountLabel
 import io.github.jaytech64.piastre.core.model.Account
 import io.github.jaytech64.piastre.core.model.Money
 import java.time.LocalDate
+import java.time.YearMonth
 import java.util.Locale
 
 @Composable
@@ -230,8 +231,8 @@ private fun LedgerTop(
 }
 
 /**
- * The balance, what it is a balance of, what it is made of, and the purchases no
- * total has counted yet.
+ * The balance, what it is a balance of, what it is made of, where it lands by
+ * the month's end, and the purchases no total has counted yet.
  */
 @Composable
 private fun MonthHeader(
@@ -253,6 +254,13 @@ private fun MonthHeader(
 
             HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
             SummaryFigures(state.headline, locale)
+
+            val expected = state.expectedByMonthEnd
+            val today = state.today
+            if (expected != null && today != null) {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                ExpectedBalance(expected, YearMonth.from(today).atEndOfMonth(), locale)
+            }
 
             // Shown only when there is something to say. Totals exclude unreviewed
             // purchases, so without this a low number would be a silent lie — and
