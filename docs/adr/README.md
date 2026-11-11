@@ -24,7 +24,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0012](0012-a-total-counts-one-currency.md) | A total counts one currency | Accepted — implemented |
 | [0013](0013-a-recurring-transaction-is-written-on-its-day.md) | A recurring transaction is written on its day, never projected | Accepted, revised three times — implemented |
 | [0014](0014-a-dated-filters-headline-is-the-balance-of-its-dates.md) | A dated filter's headline is the balance of its dates | Accepted, revised once — implemented |
-| [0015](0015-a-transaction-counts-from-its-day.md) | A transaction counts from its day | Accepted — implemented |
+| [0015](0015-a-transaction-counts-from-its-day.md) | A transaction counts from its day | Accepted — amended by 0026 |
 | [0016](0016-a-categorys-group-is-read-through.md) | A category's group is read through, never written onto the row | Accepted, revised once — implemented |
 | [0017](0017-a-transfer-counts-by-the-accounts-it-joins.md) | A transfer counts by the accounts it joins | Accepted — amended by 0019 |
 | [0018](0018-a-split-divides-one-transaction-among-categories.md) | A split divides one transaction among categories | Accepted — amended by 0019 |
@@ -35,6 +35,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0023](0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md) | A budget counts what a report counts, from the month it was set | Accepted — implemented |
 | [0024](0024-a-merchant-gives-each-kind-its-own-category.md) | A merchant gives each kind its own category | Accepted — implemented |
 | [0025](0025-a-review-code-turns-premium-on-for-one-install.md) | A review code turns Premium on for one install | Accepted — implemented |
+| [0026](0026-the-ledger-says-where-the-month-lands.md) | The ledger says where the month lands | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan.
 Each record after them was written with the branch that made the decision.

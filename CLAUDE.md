@@ -207,6 +207,7 @@ The ledger header's figures always add up to the balance above them: income and 
 The headline is this month's, except under a filter with dates, where it is every row shown ([ADR-0014](docs/adr/0014-a-dated-filters-headline-is-the-balance-of-its-dates.md), `LedgerViewModel.headlineRows`).
 A budget counts what the category ranking counts, through `ReportRepository.categorySpending` and never a query of its own, and a change applies from its month on, so a past month keeps its amount ([ADR-0023](docs/adr/0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md)).
 A row dated after today counts in no figure anywhere until its day — headline, day, selection, report, account balance — and waits in the line above today ([ADR-0015](docs/adr/0015-a-transaction-counts-from-its-day.md)); a new total must stop at today too.
+The one exception is the header's *Expected by* line, a labelled forecast of the month's balance that counts every day a schedule falls on through the month's end ([ADR-0026](docs/adr/0026-the-ledger-says-where-the-month-lands.md), `LedgerViewModel.expectedByMonthEnd`).
 
 ### A category is written onto the row, never read through
 
