@@ -2,14 +2,25 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.feature.ledger
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import io.github.jaytech64.piastre.core.designsystem.BalanceFigure
 import io.github.jaytech64.piastre.core.designsystem.BalanceFigures
 import io.github.jaytech64.piastre.core.designsystem.Formatters
+import io.github.jaytech64.piastre.core.model.Money
+import java.time.LocalDate
 import java.util.Locale
 
 /**
@@ -51,5 +62,39 @@ internal fun SummaryFigures(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * Where the balance lands on [monthEnd] (ADR-0026), under a divider of its own
+ * so it is not read as one of the figures that add up to the balance.
+ *
+ * The amount is measured before the label, so at a large font size the French
+ * label wraps and the amount is never cut. A screen reader hears the two as one.
+ */
+@Composable
+internal fun ExpectedBalance(
+    expected: Money,
+    monthEnd: LocalDate,
+    locale: Locale,
+) {
+    Row(
+        Modifier.semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painterResource(R.drawable.ic_event),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            stringResource(R.string.ledger_expected_by, Formatters.dayAndMonth(monthEnd, locale)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(Formatters.signedMoney(expected, locale), style = MaterialTheme.typography.titleMedium)
     }
 }

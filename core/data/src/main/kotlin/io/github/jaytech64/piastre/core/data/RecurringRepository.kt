@@ -53,7 +53,29 @@ class RecurringRepository
             recurring.allWithNames().map { rows ->
                 val zone = posting.zone()
                 rows.mapNotNull { row ->
-                    row.recurring.nextDueEpochDay?.let { row.nextRowOn(LocalDate.ofEpochDay(it.toLong()), zone) }
+                    row.recurring.nextDueEpochDay?.let { row.rowOn(LocalDate.ofEpochDay(it.toLong()), zone) }
+                }
+            }
+
+        /**
+         * Every row the schedules will write on a day after [today] and up to
+         * [through], as each will read once written: what the ledger's expected
+         * balance adds to what has happened (ADR-0026). Unlike [nextRows], a
+         * schedule falling on several of those days gives a row for each.
+         * Ids are 0, as there.
+         */
+        fun rowsAfter(
+            today: LocalDate,
+            through: LocalDate,
+        ): Flow<List<Transaction>> =
+            recurring.allWithNames().map { rows ->
+                val zone = posting.zone()
+                rows.flatMap { row ->
+                    val next = row.recurring.nextDueEpochDay?.let { LocalDate.ofEpochDay(it.toLong()) }
+                    if (next == null) return@flatMap emptyList()
+                    (listOf(next) + row.recurring.recurrence().datesBetween(next, through))
+                        .filter { it > today && it <= through }
+                        .map { row.rowOn(it, zone) }
                 }
             }
 
@@ -208,7 +230,7 @@ internal fun RecurringTransactionEntity.recurrence(): Recurrence =
         lastDate = lastEpochDay?.let { LocalDate.ofEpochDay(it.toLong()) },
     )
 
-private fun RecurringWithNames.nextRowOn(
+private fun RecurringWithNames.rowOn(
     day: LocalDate,
     zone: ZoneId,
 ): Transaction =

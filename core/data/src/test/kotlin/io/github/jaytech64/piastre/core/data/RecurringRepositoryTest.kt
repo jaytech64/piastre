@@ -337,6 +337,26 @@ class RecurringRepositoryTest {
             )
         }
 
+    @Test
+    fun `the rows to come are one per day a schedule falls on, up to the last day asked for`() =
+        runTest {
+            recurring.repeat(
+                typed(on = LocalDate.of(2026, 10, 1)),
+                Rhythm.WEEKLY,
+                lastDate = LocalDate.of(2026, 10, 15),
+            )
+            val schedule = recurring.all().first().single()
+
+            val rows = recurring.rowsAfter(TODAY, LocalDate.of(2026, 10, 31)).first()
+
+            assertEquals(
+                listOf(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 8), LocalDate.of(2026, 10, 15)),
+                rows.map { it.localDate },
+            )
+            assertTrue(rows.all { it.id == 0L && it.recurringId == schedule.id })
+            assertTrue(recurring.rowsAfter(TODAY, LocalDate.of(2026, 9, 30)).first().isEmpty())
+        }
+
     /** It shows its hour from then on, and is still the row for that day: the day is not written beside it. */
     @Test
     fun `a written row given an hour stays its schedule's, and its day is not written again`() =

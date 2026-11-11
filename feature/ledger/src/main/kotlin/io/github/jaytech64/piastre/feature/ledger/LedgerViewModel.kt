@@ -209,8 +209,14 @@ data class LedgerUiState(
     val upcomingOpen: Boolean = false,
     /** Null until the clock has been read once; never a sentinel date. */
     val today: LocalDate? = null,
-    /** This month's rows, or the filter's days once it has some. */
+    /** This month's rows so far, or the filter's days once it has some. */
     val headline: BalanceSummary = BalanceSummary(),
+    /**
+     * What [headline]'s balance comes to once the rest of the month has come
+     * (ADR-0026); null while nothing is still to come this month, and under a
+     * filter with dates. It counts in no other figure.
+     */
+    val expectedByMonthEnd: Money? = null,
     val needsReview: Int = 0,
     /** Every account, including ones nothing has ever been spent from. */
     val accounts: List<Account> = emptyList(),
@@ -283,6 +289,15 @@ class LedgerViewModel
                 combine(accounts.all(today), categories.all(), categoryGroups.all(), merchants.all(), ::Known)
             }
 
+        /**
+         * Every row the schedules will write from tomorrow to the month's last
+         * day, a schedule's on each day it falls on: the expected balance counts
+         * them all, where the line above today lists only each one's next.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        private val dueThisMonth: Flow<List<Transaction>> =
+            ticker.dates().flatMapLatest { today -> recurring.rowsAfter(today, YearMonth.from(today).atEndOfMonth()) }
+
         /** Whether what is dated after today is shown open or as its one line. */
         val upcoming = UpcomingGroup(savedState)
 
@@ -296,12 +311,12 @@ class LedgerViewModel
          */
         val uiState: StateFlow<LedgerUiState> =
             combine(
-                combine(repository.confirmed(), recurring.nextRows(), ::Pair),
+                combine(repository.confirmed(), recurring.nextRows(), dueThisMonth, ::Triple),
                 repository.needsReviewCount(),
                 ticker.dates(),
                 known,
                 filtering,
-            ) { (transactions, nextRows), needsReview, today, known, (keys, rowIds, upcomingOpen) ->
+            ) { (transactions, nextRows, due), needsReview, today, known, (keys, rowIds, upcomingOpen) ->
                 val filter = known.resolve(keys)
                 val (typedAhead, happened) = transactions.mapNotNull(filter::shown).partition { it.localDate > today }
                 val amounts = transactions.associate { it.id to it.amount }
@@ -314,13 +329,16 @@ class LedgerViewModel
                     ).sortedBy { it.transaction.occurredAt }
                 val selected = happened.filter { it.id in rowIds }
                 val days = happened.groupByLocalDay(filter)
+                val headlineRows = days.headlineRows(filter, today)
                 LedgerUiState(
                     days = days,
                     upcoming = ahead,
                     upcomingSummary = ahead.map { it.transaction }.summaryOf(filter),
                     upcomingOpen = upcomingOpen,
                     today = today,
-                    headline = days.headlineRows(filter, today).summaryOf(filter),
+                    headline = headlineRows.summaryOf(filter),
+                    expectedByMonthEnd =
+                        expectedByMonthEnd(headlineRows, typedAhead + due.filter(filter::admits), filter, today),
                     needsReview = needsReview,
                     accounts = known.accounts,
                     categories = transactions.categoryOptions(today, known.categories),
@@ -410,9 +428,8 @@ class LedgerViewModel
         /**
          * The rows the headline adds up. Under a filter with dates, every row
          * shown: the dates are the period, so the headline and the list below it
-         * are one set of rows (ADR-0014). Otherwise this month's — every day of
-         * the calendar month, including one dated ahead of today, since a purchase
-         * the list shows is a purchase the headline above it has counted.
+         * are one set of rows (ADR-0014). Otherwise this month's so far: the days
+         * hold nothing dated after today (ADR-0015).
          */
         private fun List<LedgerDay>.headlineRows(
             filter: LedgerFilter,
@@ -420,6 +437,26 @@ class LedgerViewModel
         ): List<Transaction> {
             val month = YearMonth.from(today)
             return filter { filter.hasDates || YearMonth.from(it.date) == month }.flatMap { it.transactions }
+        }
+
+        /**
+         * Where the headline lands once each day still to come this month has
+         * come (ADR-0026): its rows and every one of [ahead] dated this month,
+         * counted as the headline is. Null under a filter with dates, which are
+         * the period rather than the month, and while nothing is still to come
+         * this month, where it would only say the headline again.
+         */
+        private fun expectedByMonthEnd(
+            headlineRows: List<Transaction>,
+            ahead: List<Transaction>,
+            filter: LedgerFilter,
+            today: LocalDate,
+        ): Money? {
+            if (filter.hasDates) return null
+            val month = YearMonth.from(today)
+            val restOfMonth = ahead.filter { YearMonth.from(it.localDate) == month }
+            if (restOfMonth.isEmpty()) return null
+            return (headlineRows + restOfMonth).summaryOf(filter).balance
         }
 
         /** What exists to be filtered to. */
