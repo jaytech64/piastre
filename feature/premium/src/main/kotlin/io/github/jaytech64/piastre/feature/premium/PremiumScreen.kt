@@ -91,6 +91,7 @@ private fun Free(
     Body(stringResource(R.string.premium_free_lead))
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Bullet(stringResource(R.string.premium_benefit_budgets))
+        Bullet(stringResource(R.string.premium_benefit_trends))
         Bullet(stringResource(R.string.premium_benefit_future))
     }
     when (offers) {

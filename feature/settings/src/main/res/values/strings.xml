@@ -23,7 +23,7 @@
     <string name="settings_report_bug_body">Opens a bug report on the project\'s GitHub page, in your browser. A GitHub account is needed.</string>
     <string name="settings_report_bug_no_browser">No browser can open the bug report page. Its address is %1$s</string>
     <string name="settings_premium">Premium</string>
-    <string name="settings_premium_free">Budgets, and every Premium feature to come</string>
+    <string name="settings_premium_free">Budgets, trends, and every Premium feature to come</string>
     <string name="settings_premium_trial">Free trial until %1$s</string>
     <string name="settings_premium_on">On, renewed every month</string>
     <string name="settings_premium_cancelled">On until the end of the paid period</string>
