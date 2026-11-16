@@ -51,6 +51,7 @@ internal fun CategoryRanking(
     locale: Locale,
     onGroupTapped: (Long) -> Unit,
     onOpenTransactions: (SpendingOf) -> Unit,
+    onOpenTrends: (groupId: Long) -> Unit,
 ) {
     if (state.ranking.isEmpty() && state.uncategorised.minor == 0L) return
 
@@ -73,6 +74,7 @@ internal fun CategoryRanking(
                         locale,
                         onGroupTapped,
                         onOpenTransactions,
+                        onOpenTrends,
                     )
                 }
 
@@ -104,6 +106,7 @@ private fun GroupRow(
     locale: Locale,
     onGroupTapped: (Long) -> Unit,
     onOpenTransactions: (SpendingOf) -> Unit,
+    onOpenTrends: (groupId: Long) -> Unit,
 ) {
     LeadingRow(
         name = group.name,
@@ -127,18 +130,30 @@ private fun GroupRow(
                 onOpenTransactions(SpendingOf.OneCategory(category.categoryId))
             }
         }
-        Text(
-            stringResource(R.string.reports_see_all_transactions, group.name),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(role = Role.Button) { onOpenTransactions(SpendingOf.OneGroup(groupId)) }
-                    .heightIn(min = 48.dp)
-                    .padding(vertical = 12.dp),
-        )
+        GroupLink(stringResource(R.string.reports_see_all_transactions, group.name)) {
+            onOpenTransactions(SpendingOf.OneGroup(groupId))
+        }
+        GroupLink(stringResource(R.string.reports_over_a_year, group.name)) { onOpenTrends(groupId) }
     }
+}
+
+/** A line under an open group that leads away from the ranking. */
+@Composable
+private fun GroupLink(
+    text: String,
+    onClick: () -> Unit,
+) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onClick)
+                .heightIn(min = 48.dp)
+                .padding(vertical = 12.dp),
+    )
 }
 
 /**

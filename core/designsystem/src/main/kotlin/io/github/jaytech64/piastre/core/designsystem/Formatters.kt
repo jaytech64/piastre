@@ -238,6 +238,29 @@ object Formatters {
     ): String = MONTH_AND_YEAR.withLocale(locale).format(month)
 
     /**
+     * A month in a word short enough for one end of a span of months: `Dec 2025`
+     * and `déc. 2025`.
+     */
+    fun shortMonthYear(
+        month: YearMonth,
+        locale: Locale = Locale.getDefault(),
+    ): String = SHORT_MONTH_AND_YEAR.withLocale(locale).format(month)
+
+    /**
+     * A month as one letter, for the foot of a bar in a chart of twelve: `D`,
+     * `J`. It cannot tell June from July alone, so it is only ever drawn under
+     * a bar whose month is also said in full.
+     */
+    fun monthInitial(
+        month: YearMonth,
+        locale: Locale = Locale.getDefault(),
+    ): String = MONTH_INITIAL.withLocale(locale).format(month).uppercase(locale)
+
+    private val SHORT_MONTH_AND_YEAR = DateTimeFormatter.ofPattern("MMM yyyy")
+
+    private val MONTH_INITIAL = DateTimeFormatter.ofPattern("MMMMM")
+
+    /**
      * Weekday, day, month. The day and its month are held together, so a line that
      * wraps never leaves « jeudi 1 » at the end of one line and « octobre » at the
      * start of the next.
