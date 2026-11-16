@@ -18,6 +18,7 @@ The app has no `INTERNET` permission and no network code, and the build fails if
 - **Reads it back.**
   A balance for the month, filters by account, category, merchant, dates, amount and note, and reports by day, week or month with the merchants the money went to and a calendar of the month's spending.
 - **Budgets**, by category or by group, judged against exactly what the reports count.
+- **Trends**: a category, a group or everything over a year beside the year before, and any two periods side by side.
 - **Lets the data go.**
   Export writes CSV and JSON, import merges a JSON export back in, and erasure removes everything.
 
@@ -43,7 +44,7 @@ Piastre is built for two stores from this one codebase ([ADR-0022](docs/adr/0022
 
 - **Google Play** sells Premium: a monthly subscription with a 30-day free trial, or a single purchase for life.
   Everything that is not Premium is free.
-  Budgets are the first Premium feature.
+  Budgets and trends are the Premium features so far.
 - **F-Droid** has every feature, Premium included, for free.
   It sells nothing, carries no Google code, and only asks for a donation on [Liberapay](https://liberapay.com/jaytech64), which unlocks nothing.
 
