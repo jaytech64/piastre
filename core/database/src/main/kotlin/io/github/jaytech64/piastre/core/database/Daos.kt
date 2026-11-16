@@ -1252,6 +1252,13 @@ data class DailyTotal(
     val count: Int,
 )
 
+/** A month's total, one row per calendar month, the month written `2026-09`. */
+data class MonthlyTotal(
+    val month: String,
+    val totalMinor: Long,
+    val count: Int,
+)
+
 /**
  * What went to one category over a period, with the group the category is in
  * now. Every name is null on the row for what has no category, and the group's
@@ -1265,6 +1272,18 @@ data class CategoryTotal(
     val totalMinor: Long,
     val count: Int,
 )
+
+/** What [ReportDao.monthlyTotals] can be asked about: every row it counts. */
+const val SPENT_ON_EVERYTHING = "EVERYTHING"
+
+/** One category's rows, by id. */
+const val SPENT_ON_CATEGORY = "CATEGORY"
+
+/** The rows of every category in one group, as the categories are grouped now (ADR-0016). */
+const val SPENT_ON_GROUP = "GROUP"
+
+/** The rows with no category, which the ranking says under itself rather than ranks. */
+const val SPENT_ON_NO_CATEGORY = "NONE"
 
 /**
  * A transfer counts by the two accounts it joins, and these are that rule in
@@ -1399,6 +1418,52 @@ interface ReportDao {
         toDay: Int,
         currency: String,
     ): Flow<List<CategoryTotal>>
+
+    /**
+     * What [categoryTotals] counts, month by month, for one thing it can be
+     * asked about: [onKind] is [SPENT_ON_EVERYTHING], [SPENT_ON_CATEGORY] or
+     * [SPENT_ON_GROUP] with [onId], or [SPENT_ON_NO_CATEGORY]. A month is the
+     * sum of the rows [categoryTotals] gives for it, so a trend and the report
+     * of the same month cannot disagree.
+     *
+     * Filtered here rather than summed from per-category rows, because a split
+     * across two categories of one group is one transaction of that group, and
+     * only a `COUNT(DISTINCT)` over the group's own rows says so.
+     *
+     * The month is grouped in SQL, from the day number as seconds, so a year of
+     * rows never crosses into Kotlin.
+     */
+    @Query(
+        """
+        SELECT strftime('%Y-%m', t.day * 86400, 'unixepoch') AS month,
+               SUM(t.amountMinor) AS totalMinor, COUNT(DISTINCT t.transactionId) AS count
+        FROM """ + MOVEMENTS + """
+        LEFT JOIN category c ON c.id = t.categoryId
+        WHERE """ + MONEY_OUT + """
+          AND t.currency = :currency
+          AND (:onKind = '""" + SPENT_ON_EVERYTHING + """'
+               OR (:onKind = '""" + SPENT_ON_CATEGORY + """' AND c.id = :onId)
+               OR (:onKind = '""" + SPENT_ON_GROUP + """' AND c.groupId = :onId)
+               OR (:onKind = '""" + SPENT_ON_NO_CATEGORY + """' AND c.id IS NULL))
+        GROUP BY month
+        ORDER BY month
+        """,
+    )
+    fun monthlyTotals(
+        fromDay: Int,
+        toDay: Int,
+        currency: String,
+        onKind: String,
+        onId: Long,
+    ): Flow<List<MonthlyTotal>>
+
+    /**
+     * The day of the ledger's earliest confirmed row, of any kind and in any
+     * currency: before it the ledger holds nothing, which is not the same as a
+     * month in which nothing was spent.
+     */
+    @Query("SELECT MIN(localDateEpochDay) FROM expense_transaction WHERE status = 'CONFIRMED'")
+    fun firstConfirmedDay(): Flow<Int?>
 
     /**
      * How many transactions in the range the figures above would have counted,
