@@ -220,24 +220,16 @@ private fun opensCategories(
 
 @Composable
 private fun ChangeLabel(change: Comparison) {
-    when (change) {
-        Comparison.NothingEither -> {
-            Unit
-        }
-
-        Comparison.NothingBefore -> {
-            Supporting(stringResource(R.string.trends_new))
-        }
-
-        is Comparison.Change -> {
-            Text(
-                (if (change.percent >= 0) "▲ " else "▼ ") + "${kotlin.math.abs(change.percent)} %",
-                style = MaterialTheme.typography.bodyMedium,
-                color = changeColor(change.percent),
-                modifier = Modifier.padding(start = 8.dp),
-            )
-        }
-    }
+    val label =
+        change.movement()
+            ?: stringResource(R.string.trends_new).takeIf { change == Comparison.NothingBefore }
+            ?: return
+    Text(
+        label,
+        style = MaterialTheme.typography.bodyMedium,
+        color = change.judgedColor(),
+        modifier = Modifier.padding(start = 8.dp),
+    )
 }
 
 /**

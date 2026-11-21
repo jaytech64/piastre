@@ -7,8 +7,9 @@ import io.github.jaytech64.piastre.core.model.Money
 /**
  * How a figure compares with the same figure for an earlier span.
  *
- * Three states rather than a number, because two of the three cases have no
- * percentage to report and printing one anyway would be a fabrication.
+ * States rather than a number, because most of them have no percentage to
+ * report, and printing one anyway would be a fabrication: « ▲ 0 % » says a
+ * figure rose by nothing.
  */
 sealed interface Comparison {
     /** The figure was zero both times; there is nothing to compare. */
@@ -17,7 +18,15 @@ sealed interface Comparison {
     /** The figure was zero the earlier time, so the change is not a percentage of anything. */
     data object NothingBefore : Comparison
 
-    /** Negative is less than the earlier time, which for spending is the good direction. */
+    /** The figure is exactly what it was. */
+    data object Unchanged : Comparison
+
+    /** The figure moved by less than a whole percent, which is too little to judge and too much to call the same. */
+    data class Slight(
+        val up: Boolean,
+    ) : Comparison
+
+    /** Never zero. Negative is less than the earlier time, which for spending is the good direction. */
     data class Change(
         val percent: Int,
     ) : Comparison
@@ -41,20 +50,13 @@ internal fun comparisonOf(
     beforeDays: Long = 1,
 ): Comparison {
     require(nowDays > 0 && beforeDays > 0) { "A span compared per day has at least one day: $nowDays, $beforeDays" }
+    val moved = now.minor * beforeDays - before.minor * nowDays
+    val percent = if (before.minor == 0L) 0 else ((moved * PERCENT) / (before.minor * nowDays)).toInt()
     return when {
-        before.minor != 0L -> {
-            Comparison.Change(
-                (((now.minor * beforeDays - before.minor * nowDays) * PERCENT) / (before.minor * nowDays)).toInt(),
-            )
-        }
-
-        now.minor != 0L -> {
-            Comparison.NothingBefore
-        }
-
-        else -> {
-            Comparison.NothingEither
-        }
+        before.minor == 0L -> if (now.minor == 0L) Comparison.NothingEither else Comparison.NothingBefore
+        moved == 0L -> Comparison.Unchanged
+        percent == 0 -> Comparison.Slight(up = moved > 0)
+        else -> Comparison.Change(percent)
     }
 }
 

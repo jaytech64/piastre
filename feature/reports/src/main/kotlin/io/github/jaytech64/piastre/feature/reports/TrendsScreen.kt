@@ -216,10 +216,6 @@ private fun SelectedMonth(
 }
 
 @Composable
-internal fun changeColor(percent: Int) =
-    if (percent >= 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
-
-@Composable
 internal fun Supporting(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }

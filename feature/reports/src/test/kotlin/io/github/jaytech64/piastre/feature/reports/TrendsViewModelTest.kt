@@ -220,7 +220,7 @@ class TrendsViewModelTest {
             assertTrue(compare.perDay)
             assertEquals(Money(31_000, Money.CAD), compare.everything.first)
             assertEquals(Money(16_000, Money.CAD), compare.everything.second)
-            assertEquals(Comparison.Change(0), compare.everything.change)
+            assertEquals(Comparison.Unchanged, compare.everything.change)
         }
 
     @Test

@@ -133,26 +133,10 @@ private fun YearBeforeLine(
     comparison: Comparison,
     yearBefore: String,
 ) {
-    when (comparison) {
-        Comparison.NothingEither -> {
-            Unit
-        }
-
-        Comparison.NothingBefore -> {
-            Supporting(stringResource(R.string.trends_nothing_in, yearBefore))
-        }
-
-        is Comparison.Change -> {
-            Text(
-                (if (comparison.percent >= 0) "▲ " else "▼ ") +
-                    stringResource(
-                        R.string.reports_change,
-                        kotlin.math.abs(comparison.percent),
-                        stringResource(R.string.trends_versus, yearBefore),
-                    ),
-                style = MaterialTheme.typography.bodySmall,
-                color = changeColor(comparison.percent),
-            )
-        }
-    }
+    val line =
+        comparison.movement()?.let {
+            stringResource(R.string.reports_change, it, stringResource(R.string.trends_versus, yearBefore))
+        } ?: stringResource(R.string.trends_nothing_in, yearBefore).takeIf { comparison == Comparison.NothingBefore }
+            ?: return
+    Text(line, style = MaterialTheme.typography.bodySmall, color = comparison.judgedColor())
 }
