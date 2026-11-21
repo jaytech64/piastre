@@ -166,14 +166,20 @@ class TrendsViewModel
             val (first, second) = inputs.spans.orDefaults(inputs.today)
             val firstDays = first.daysThrough(inputs.today).coerceAtLeast(1)
             val secondDays = second.daysThrough(inputs.today).coerceAtLeast(1)
+            val perDay = firstDays != secondDays && !sameDaysOfTheirMonths(first, second)
             return combine(
                 reports.categorySpending(first, inputs.today),
                 reports.categorySpending(second, inputs.today),
                 reports.otherCurrencyCount(first, inputs.today),
                 reports.otherCurrencyCount(second, inputs.today),
             ) { firstSpent, secondSpent, firstOther, secondOther ->
-                val (everything, rows) = compared(firstSpent, secondSpent, firstDays, secondDays)
-                TrendsCompare(first, second, firstDays, secondDays, everything, rows, firstOther + secondOther)
+                val (everything, rows) =
+                    if (perDay) {
+                        compared(firstSpent, secondSpent, firstDays, secondDays)
+                    } else {
+                        compared(firstSpent, secondSpent, firstDays = 1, secondDays = 1)
+                    }
+                TrendsCompare(first, second, firstDays, secondDays, perDay, everything, rows, firstOther + secondOther)
             }
         }
 
@@ -212,7 +218,7 @@ class TrendsViewModel
             }
         }
 
-        /** This month so far, against the whole of the month before or of the same month a year earlier. */
+        /** This month so far, against the same days of the month before or of the same month a year earlier. */
         fun onShortcut(shortcut: CompareShortcut) {
             val today = uiState.value.today ?: return
             val month = YearMonth.from(today)
@@ -221,7 +227,7 @@ class TrendsViewModel
                     CompareShortcut.LAST_MONTH -> month.minusMonths(1)
                     CompareShortcut.A_YEAR_EARLIER -> month.minusYears(1)
                 }
-            savedState.keepSpans(first = wholeMonth(against), second = thisMonthSoFar(today))
+            savedState.keepSpans(first = sameDaysIn(against, today), second = thisMonthSoFar(today))
         }
 
         /** One group is open at a time, and tapping the open one closes it. */
@@ -245,13 +251,13 @@ class TrendsViewModel
             val secondFrom: Long? = null,
             val secondTo: Long? = null,
         ) {
-            /** Last month against this one so far, until a span is chosen. */
+            /** This month so far against the same days of last month, until a span is chosen. */
             fun orDefaults(today: LocalDate): Pair<Days, Days> {
                 val first =
                     if (firstFrom != null && firstTo != null) {
                         Days(LocalDate.ofEpochDay(firstFrom), LocalDate.ofEpochDay(firstTo))
                     } else {
-                        wholeMonth(YearMonth.from(today).minusMonths(1))
+                        sameDaysIn(YearMonth.from(today).minusMonths(1), today)
                     }
                 val second =
                     if (secondFrom != null && secondTo != null) {
@@ -314,7 +320,11 @@ private const val FIRST_TO = "trendsFirstTo"
 private const val SECOND_FROM = "trendsSecondFrom"
 private const val SECOND_TO = "trendsSecondTo"
 
-private fun wholeMonth(month: YearMonth) = Days(month.atDay(1), month.atEndOfMonth())
+/** The first of [month] up to today's day of the month, or to its last day when it is shorter. */
+private fun sameDaysIn(
+    month: YearMonth,
+    today: LocalDate,
+) = Days(month.atDay(1), month.atDay(minOf(today.dayOfMonth, month.lengthOfMonth())))
 
 private fun thisMonthSoFar(today: LocalDate) = Days(today.withDayOfMonth(1), today)
 

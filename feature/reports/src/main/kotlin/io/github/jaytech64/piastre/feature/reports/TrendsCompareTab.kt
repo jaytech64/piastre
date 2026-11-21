@@ -48,8 +48,8 @@ import java.util.Locale
 
 /**
  * Two spans of days side by side, broken down the way the ranking breaks down
- * one period. It opens on last month against this one so far, so it is never
- * empty, and either span can be any run of days up to today.
+ * one period. It opens on this month so far against the same days of last
+ * month, and either span can be any run of days up to today.
  */
 @Composable
 internal fun CompareTab(

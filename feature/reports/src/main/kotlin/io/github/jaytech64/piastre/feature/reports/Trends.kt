@@ -109,7 +109,7 @@ data class ComparedSpending(
     val name: String?,
     val first: Money,
     val second: Money,
-    /** The second span against the first, per day when their lengths differ. */
+    /** The second span against the first, per day when [TrendsCompare.perDay]. */
     val change: Comparison,
     /** Heaviest first, and empty but for a group. */
     val categories: List<ComparedSpending> = emptyList(),
@@ -122,12 +122,32 @@ data class TrendsCompare(
     /** How many of each span's days have come, which is what a per-day figure divides by. */
     val firstDays: Long,
     val secondDays: Long,
+    /** Whether each change compares what went out per day rather than the two totals. */
+    val perDay: Boolean,
     val everything: ComparedSpending,
     /** Groups and categories in no group, heaviest first, then what has no category. */
     val rows: List<ComparedSpending>,
     val otherCurrencyCount: Int,
-) {
-    val perDay: Boolean get() = firstDays != secondDays
+)
+
+/**
+ * Whether two spans are the same days of their own months: from the same day
+ * to the same day, or to the end of the shorter month. Their lengths can differ
+ * by the days a month does not have, and a bill paid once a month falls in
+ * both, so their totals are what compares. Per day, a rent of the same amount
+ * would read as a rise every February.
+ */
+internal fun sameDaysOfTheirMonths(
+    a: Days,
+    b: Days,
+): Boolean {
+    fun Days.inOneMonth() = YearMonth.from(start) == YearMonth.from(endInclusive)
+
+    fun Days.reachesMonthEnd() = endInclusive.dayOfMonth == endInclusive.lengthOfMonth()
+
+    if (!a.inOneMonth() || !b.inOneMonth() || a.start.dayOfMonth != b.start.dayOfMonth) return false
+    val (earlierEnd, laterEnd) = listOf(a, b).sortedBy { it.endInclusive.dayOfMonth }
+    return earlierEnd.endInclusive.dayOfMonth == laterEnd.endInclusive.dayOfMonth || earlierEnd.reachesMonthEnd()
 }
 
 /**

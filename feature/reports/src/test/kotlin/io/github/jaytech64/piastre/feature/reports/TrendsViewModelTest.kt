@@ -201,21 +201,84 @@ class TrendsViewModelTest {
         }
 
     @Test
-    fun `a comparison opens on last month against this one so far`() =
+    fun `a comparison opens on this month so far against the same days of last month`() =
         runTest {
             val compare = compare()
 
-            assertEquals(Days(OCTOBER.atDay(1), OCTOBER.atEndOfMonth()), compare.first)
+            assertEquals(Days(OCTOBER.atDay(1), OCTOBER.atDay(16)), compare.first)
             assertEquals(Days(NOVEMBER.atDay(1), TODAY), compare.second)
+            assertFalse(compare.perDay)
         }
 
     @Test
-    fun `two spans of different lengths are compared per day, and their totals stay as they are`() =
+    fun `a bill of the same amount in both months reads as no change`() =
         runTest {
-            spend(31_000, OCTOBER.atDay(3))
-            spend(16_000, TODAY)
+            spend(11_111, OCTOBER.atDay(2))
+            spend(11_111, NOVEMBER.atDay(2))
+
+            assertEquals(Comparison.Unchanged, compare().everything.change)
+        }
+
+    @Test
+    fun `what was paid after these days last month is not set against this month so far`() =
+        runTest {
+            spend(10_000, OCTOBER.atDay(16))
+            spend(99_000, OCTOBER.atDay(17))
+            spend(10_000, TODAY)
 
             val compare = compare()
+
+            assertEquals(Money(10_000, Money.CAD), compare.everything.first)
+            assertEquals(Comparison.Unchanged, compare.everything.change)
+        }
+
+    @Test
+    fun `on the last day of a longer month, last month runs to its own last day and the totals compare`() =
+        runTest {
+            val lastOfMarch = LocalDate.of(2027, 3, 31)
+            viewModel =
+                trendsViewModel(
+                    SavedStateHandle(),
+                    Clock.fixed(lastOfMarch.atTime(NOON, 0).atZone(ZONE).toInstant(), ZONE),
+                )
+            spend(77_777, LocalDate.of(2027, 2, 1))
+            spend(77_777, LocalDate.of(2027, 3, 1))
+
+            val compare = compare()
+
+            assertEquals(Days(LocalDate.of(2027, 2, 1), LocalDate.of(2027, 2, 28)), compare.first)
+            assertFalse(compare.perDay)
+            assertEquals(Comparison.Unchanged, compare.everything.change)
+        }
+
+    @Test
+    fun `two whole months of different lengths compare their totals`() =
+        runTest {
+            compare()
+            val september = Days(SEPTEMBER.atDay(1), SEPTEMBER.atEndOfMonth())
+            val october = Days(OCTOBER.atDay(1), OCTOBER.atEndOfMonth())
+            spend(7_777, SEPTEMBER.atDay(5))
+            spend(7_777, OCTOBER.atDay(5))
+
+            viewModel.onSpanPicked(SpanEnd.FIRST, september)
+            viewModel.uiState.first { it.compare?.first == september }
+            viewModel.onSpanPicked(SpanEnd.SECOND, october)
+            val compare = viewModel.uiState.first { it.compare?.second == october }.compare!!
+
+            assertFalse(compare.perDay)
+            assertEquals(Comparison.Unchanged, compare.everything.change)
+        }
+
+    @Test
+    fun `spans you pick of different lengths are compared per day, and their totals stay as they are`() =
+        runTest {
+            compare()
+            val october = Days(OCTOBER.atDay(1), OCTOBER.atEndOfMonth())
+            spend(31_000, OCTOBER.atDay(20))
+            spend(16_000, TODAY)
+
+            viewModel.onSpanPicked(SpanEnd.FIRST, october)
+            val compare = viewModel.uiState.first { it.compare?.first == october }.compare!!
 
             assertTrue(compare.perDay)
             assertEquals(Money(31_000, Money.CAD), compare.everything.first)
@@ -262,7 +325,7 @@ class TrendsViewModelTest {
             )
 
             viewModel.onShortcut(CompareShortcut.A_YEAR_EARLIER)
-            val yearBefore = Days(NOVEMBER.minusYears(1).atDay(1), NOVEMBER.minusYears(1).atEndOfMonth())
+            val yearBefore = Days(NOVEMBER.minusYears(1).atDay(1), NOVEMBER.minusYears(1).atDay(16))
             val compare = viewModel.uiState.first { it.compare?.first == yearBefore }.compare!!
             assertEquals(Days(NOVEMBER.atDay(1), TODAY), compare.second)
         }
@@ -332,24 +395,26 @@ class TrendsViewModelTest {
             CategoryGroupRepository(database.categoryGroupDao(), database.categoryDao()),
         )
 
-    private fun trendsViewModel(state: SavedStateHandle) =
-        TrendsViewModel(
-            reports = ReportRepository(database.reportDao()),
-            budgets = budgets(),
-            categories = categories(),
-            groups = CategoryGroupRepository(database.categoryGroupDao(), database.categoryDao()),
-            premium = premium,
-            transactions =
-                TransactionRepository(
-                    database = database,
-                    transactions = database.transactionDao(),
-                    merchants = MerchantRepository(database.merchantDao()),
-                    categories = categories(),
-                    zoneId = Provider { ZONE },
-                ),
-            ticker = LocalDateTicker(CLOCK, Provider { ZONE }),
-            savedState = state,
-        )
+    private fun trendsViewModel(
+        state: SavedStateHandle,
+        clock: Clock = CLOCK,
+    ) = TrendsViewModel(
+        reports = ReportRepository(database.reportDao()),
+        budgets = budgets(),
+        categories = categories(),
+        groups = CategoryGroupRepository(database.categoryGroupDao(), database.categoryDao()),
+        premium = premium,
+        transactions =
+            TransactionRepository(
+                database = database,
+                transactions = database.transactionDao(),
+                merchants = MerchantRepository(database.merchantDao()),
+                categories = categories(),
+                zoneId = Provider { ZONE },
+            ),
+        ticker = LocalDateTicker(clock, Provider { ZONE }),
+        savedState = state,
+    )
 
     private object UnlockedBuild : PremiumSource {
         override val donationPage: String? = null
