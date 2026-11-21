@@ -51,6 +51,12 @@ import io.github.jaytech64.piastre.feature.premium.PremiumScreen
 import io.github.jaytech64.piastre.feature.reports.BUDGET_MONTH_ARG
 import io.github.jaytech64.piastre.feature.reports.BudgetsScreen
 import io.github.jaytech64.piastre.feature.reports.ReportsScreen
+import io.github.jaytech64.piastre.feature.reports.TRENDS_ID_ARG
+import io.github.jaytech64.piastre.feature.reports.TRENDS_ON_ARG
+import io.github.jaytech64.piastre.feature.reports.TRENDS_ON_EVERYTHING
+import io.github.jaytech64.piastre.feature.reports.TRENDS_ROUTE
+import io.github.jaytech64.piastre.feature.reports.TrendsScreen
+import io.github.jaytech64.piastre.feature.reports.trendsRoute
 import io.github.jaytech64.piastre.feature.review.ReviewScreen
 import io.github.jaytech64.piastre.feature.settings.CATEGORY_GROUP_ID_ARG
 import io.github.jaytech64.piastre.feature.settings.CaptureAlarmBadge
@@ -79,7 +85,7 @@ private enum class Destination(
 
     /** The pages that are not this tab and still belong under it, because back from them returns to it. */
     val pagesOverIt: Set<String>
-        get() = if (this == REPORTS) setOf(REPORT_TRANSACTIONS_ROUTE) else emptySet()
+        get() = if (this == REPORTS) setOf(REPORT_TRANSACTIONS_ROUTE, TRENDS_ROUTE) else emptySet()
 }
 
 /**
@@ -151,15 +157,7 @@ private fun MainShell() {
                 ) {
                     ExpenseFormScreen(onDone = { navController.popBackStack() })
                 }
-                composable(Destination.REPORTS.route) {
-                    ReportsScreen(
-                        onOpenTransactions = { of, period ->
-                            navController.navigate(reportTransactionsRoute(of, period))
-                        },
-                        onOpenBudgets = { month -> navController.navigate("$BUDGETS_ROUTE_BASE/$month") },
-                        onOpenPremium = { navController.navigate(PREMIUM_ROUTE) },
-                    )
-                }
+                reportPages(navController, Destination.REPORTS.route)
                 composable(Destination.REVIEW.route) { ReviewScreen() }
                 settingsPages(navController)
             }
@@ -302,8 +300,8 @@ private const val EDIT_EXPENSE_ROUTE = "ledger/edit/{$EXPENSE_ID_ARG}"
 private fun editExpenseRoute(id: Long) = "ledger/edit/$id"
 
 /** Reached from Settings and returning to it; the categories in no group have a page of their own. */
-private const val PREMIUM_ROUTE = "settings/premium"
-private const val BUDGETS_ROUTE_BASE = "reports/budgets"
+internal const val PREMIUM_ROUTE = "settings/premium"
+internal const val BUDGETS_ROUTE_BASE = "reports/budgets"
 private const val CATEGORIES_ROUTE = "settings/categories"
 private const val CATEGORY_GROUP_ROUTE = "settings/categories/group/{$CATEGORY_GROUP_ID_ARG}"
 private const val UNGROUPED_CATEGORIES_ROUTE = "settings/categories/ungrouped"

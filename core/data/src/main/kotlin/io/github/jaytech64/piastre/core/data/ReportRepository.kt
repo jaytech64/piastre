@@ -3,13 +3,19 @@
 package io.github.jaytech64.piastre.core.data
 
 import io.github.jaytech64.piastre.core.database.ReportDao
+import io.github.jaytech64.piastre.core.database.SPENT_ON_CATEGORY
+import io.github.jaytech64.piastre.core.database.SPENT_ON_EVERYTHING
+import io.github.jaytech64.piastre.core.database.SPENT_ON_GROUP
+import io.github.jaytech64.piastre.core.database.SPENT_ON_NO_CATEGORY
 import io.github.jaytech64.piastre.core.model.Category
 import io.github.jaytech64.piastre.core.model.CategoryGroup
+import io.github.jaytech64.piastre.core.model.DaySpan
+import io.github.jaytech64.piastre.core.model.Days
 import io.github.jaytech64.piastre.core.model.Money
-import io.github.jaytech64.piastre.core.model.ReportPeriod
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.time.YearMonth
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +30,24 @@ data class CategorySpending(
     val count: Int,
 )
 
+/**
+ * What a figure counts the spending of: all of it, one category, one group as
+ * its categories are grouped now, or what was given no category.
+ */
+sealed interface SpentOn {
+    data object Everything : SpentOn
+
+    data class OneCategory(
+        val categoryId: Long,
+    ) : SpentOn
+
+    data class OneGroup(
+        val groupId: Long,
+    ) : SpentOn
+
+    data object NoCategory : SpentOn
+}
+
 /** What went out over a period, and how many transactions that was. */
 data class PeriodSpending(
     val total: Money,
@@ -35,8 +59,8 @@ data class PeriodSpending(
  * in SQL on an indexed column rather than in Kotlin over the whole table.
  *
  * Kept apart from [TransactionRepository] because nothing here reads or writes a
- * transaction — it reads aggregates, and a period is the only thing it is ever
- * asked about.
+ * transaction — it reads aggregates, and a span of days is the only thing it is
+ * ever asked about.
  *
  * Every query keys on one currency. That is not an oversight: converting needs a
  * rate, a rate needs a network, and this app has none. [otherCurrencyCount] is
@@ -57,17 +81,17 @@ class ReportRepository
         private val reports: ReportDao,
     ) {
         /**
-         * What went out on each day of [period], days with no spending absent rather than
+         * What went out on each day of [span], days with no spending absent rather than
          * present as zero — "nothing" and "not yet" are different facts, and only the
          * caller knows which one an absent day is.
          */
         fun dailyTotals(
-            period: ReportPeriod,
+            span: DaySpan,
             today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<Map<LocalDate, Money>> =
             reports
-                .dailyTotals(period.start.epochDay, period.lastDayThrough(today), currency)
+                .dailyTotals(span.start.epochDay, span.lastDayThrough(today), currency)
                 .map { rows ->
                     rows.associate { LocalDate.ofEpochDay(it.day.toLong()) to Money(it.totalMinor, currency) }
                 }
@@ -80,12 +104,12 @@ class ReportRepository
          * first one just returned.
          */
         fun spending(
-            period: ReportPeriod,
+            span: DaySpan,
             today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<PeriodSpending> =
             reports
-                .dailyTotals(period.start.epochDay, period.lastDayThrough(today), currency)
+                .dailyTotals(span.start.epochDay, span.lastDayThrough(today), currency)
                 .map { rows ->
                     PeriodSpending(
                         total = Money(rows.sumOf { it.totalMinor }, currency),
@@ -98,26 +122,26 @@ class ReportRepository
          * comparison needs no counts and no breakdown, so it does not pay for them.
          */
         fun total(
-            period: ReportPeriod,
+            span: DaySpan,
             today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<Money> =
             reports
-                .totalForRange(period.start.epochDay, period.lastDayThrough(today), currency)
+                .totalForRange(span.start.epochDay, span.lastDayThrough(today), currency)
                 .map { Money(it ?: 0L, currency) }
 
         /**
-         * What came in over [period], money moved back out of a bank account
+         * What came in over [span], money moved back out of a bank account
          * included. A report reads it beside the spending to say what the period's
          * balance is made of; nothing else on this repository counts an income.
          */
         fun income(
-            period: ReportPeriod,
+            span: DaySpan,
             today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<Money> =
             reports
-                .incomeForRange(period.start.epochDay, period.lastDayThrough(today), currency)
+                .incomeForRange(span.start.epochDay, span.lastDayThrough(today), currency)
                 .map { Money(it ?: 0L, currency) }
 
         /**
@@ -126,12 +150,12 @@ class ReportRepository
          * in now, so a report follows a category that was moved (ADR-0016).
          */
         fun categorySpending(
-            period: ReportPeriod,
+            span: DaySpan,
             today: LocalDate,
             currency: String = Money.CAD,
         ): Flow<List<CategorySpending>> =
             reports
-                .categoryTotals(period.start.epochDay, period.lastDayThrough(today), currency)
+                .categoryTotals(span.start.epochDay, span.lastDayThrough(today), currency)
                 .map { rows ->
                     rows.map { row ->
                         val groupId = row.groupId
@@ -159,12 +183,50 @@ class ReportRepository
                     }
                 }
 
-        /** The rows in [period] that every other figure on this repository left out for their currency. */
-        fun otherCurrencyCount(
-            period: ReportPeriod,
+        /**
+         * What [categorySpending] counts for [on], in each calendar month from
+         * [from] through [through], and up to today in the month it falls in.
+         * A month with nothing spent is absent rather than zero, as a day is in
+         * [dailyTotals]; whether that means nothing or not yet is [firstDay]'s
+         * to say.
+         */
+        fun monthlySpending(
+            from: YearMonth,
+            through: YearMonth,
+            on: SpentOn,
             today: LocalDate,
             currency: String = Money.CAD,
-        ): Flow<Int> = reports.otherCurrencyCount(period.start.epochDay, period.lastDayThrough(today), currency)
+        ): Flow<Map<YearMonth, PeriodSpending>> {
+            val (onKind, onId) =
+                when (on) {
+                    SpentOn.Everything -> SPENT_ON_EVERYTHING to 0L
+                    is SpentOn.OneCategory -> SPENT_ON_CATEGORY to on.categoryId
+                    is SpentOn.OneGroup -> SPENT_ON_GROUP to on.groupId
+                    SpentOn.NoCategory -> SPENT_ON_NO_CATEGORY to 0L
+                }
+            val span = Days(from.atDay(1), through.atEndOfMonth())
+            return reports
+                .monthlyTotals(span.start.epochDay, span.lastDayThrough(today), currency, onKind, onId)
+                .map { rows ->
+                    rows.associate {
+                        YearMonth.parse(it.month) to
+                            PeriodSpending(Money(it.totalMinor, currency), it.count)
+                    }
+                }
+        }
+
+        /** The day of the ledger's first confirmed row, or null while it has none. */
+        fun firstDay(): Flow<LocalDate?> =
+            reports.firstConfirmedDay().map { day ->
+                day?.let { LocalDate.ofEpochDay(it.toLong()) }
+            }
+
+        /** The rows in [span] that every other figure on this repository left out for their currency. */
+        fun otherCurrencyCount(
+            span: DaySpan,
+            today: LocalDate,
+            currency: String = Money.CAD,
+        ): Flow<Int> = reports.otherCurrencyCount(span.start.epochDay, span.lastDayThrough(today), currency)
     }
 
 /**
@@ -173,5 +235,5 @@ class ReportRepository
  */
 private val LocalDate.epochDay: Int get() = toEpochDay().toInt()
 
-/** The period's last day, or [today] while the period is still running. */
-private fun ReportPeriod.lastDayThrough(today: LocalDate): Int = minOf(endInclusive, today).epochDay
+/** The span's last day, or [today] while the span is still running. */
+private fun DaySpan.lastDayThrough(today: LocalDate): Int = minOf(endInclusive, today).epochDay

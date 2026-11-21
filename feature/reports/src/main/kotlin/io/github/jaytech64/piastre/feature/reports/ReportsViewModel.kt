@@ -70,25 +70,6 @@ data class RankedSpending(
     val categories: List<CategoryShare> = emptyList(),
 )
 
-/**
- * How a figure for a period compares with the same figure the period before.
- *
- * Three states rather than a number, because two of the three cases have no
- * percentage to report and printing one anyway would be a fabrication.
- */
-sealed interface Comparison {
-    /** The figure was zero in both periods; there is nothing to compare. */
-    data object NothingEither : Comparison
-
-    /** The figure was zero last time, so the change is not a percentage of anything. */
-    data object NothingBefore : Comparison
-
-    /** Negative is less than last time, which for spending is the good direction. */
-    data class Change(
-        val percent: Int,
-    ) : Comparison
-}
-
 data class ReportsUiState(
     /** Meaningless until [today] is known, and the screen draws nothing until then. */
     val period: ReportPeriod = ReportPeriod(PeriodUnit.WEEK, LocalDate.ofEpochDay(0)),
@@ -216,9 +197,9 @@ class ReportsViewModel
                     today = today,
                     total = spending.total,
                     spendingCount = spending.count,
-                    comparison = if (spending.count == 0) null else compare(spending.total, before),
+                    comparison = if (spending.count == 0) null else comparisonOf(spending.total, before),
                     income = income,
-                    incomeComparison = incomeBefore?.let { compare(income, it) },
+                    incomeComparison = incomeBefore?.let { comparisonOf(income, it) },
                     ranking = categories.rankedWithin(spending.total),
                     uncategorised =
                         categories
@@ -274,22 +255,6 @@ class ReportsViewModel
         }
 
         /**
-         * The change as a whole percent, in `Long` arithmetic the whole way.
-         *
-         * [Money] is exact minor units and never becomes a `Double`; a percentage is
-         * a ratio, so it converts at the edge and comes straight back as an `Int`.
-         */
-        private fun compare(
-            now: Money,
-            before: Money,
-        ): Comparison =
-            when {
-                before.minor != 0L -> Comparison.Change((((now.minor - before.minor) * PERCENT) / before.minor).toInt())
-                now.minor != 0L -> Comparison.NothingBefore
-                else -> Comparison.NothingEither
-            }
-
-        /**
          * Categories roll up into the group each is in, a category in no group
          * stands as itself, and the five heaviest of those are kept. What has no
          * category is in none of them.
@@ -343,7 +308,6 @@ class ReportsViewModel
             const val UNIT = "periodUnit"
             const val ANCHOR_EPOCH_DAY = "periodAnchorEpochDay"
             const val OPEN_GROUP = "openGroupId"
-            const val PERCENT = 100L
 
             /** Five is what fits above the fold beside the calendar. */
             const val TOP_RANKED = 5

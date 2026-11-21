@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package io.github.jaytech64.piastre.feature.reports
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,8 +29,8 @@ import java.time.YearMonth
 import java.util.Locale
 
 /**
- * One scroll: the period, what its balance is made of, where the spending went,
- * and the month it sits in. A category, a group or what has no category opens
+ * One scroll: the period, what its balance is made of, the ways into budgets
+ * and trends, where the spending went, and the month it sits in. A category, a group or what has no category opens
  * its transactions through [onOpenTransactions], which is all this screen knows
  * of where they are shown.
  *
@@ -37,6 +42,7 @@ import java.util.Locale
 fun ReportsScreen(
     onOpenTransactions: (SpendingOf, ReportPeriod) -> Unit,
     onOpenBudgets: (YearMonth) -> Unit,
+    onOpenTrends: (groupId: Long?) -> Unit,
     onOpenPremium: () -> Unit,
     viewModel: ReportsViewModel = hiltViewModel(),
 ) {
@@ -66,12 +72,14 @@ fun ReportsScreen(
         if (state.period.unit == PeriodUnit.MONTH) {
             BudgetsRow(state) { if (state.premiumOn) onOpenBudgets(state.period.month) else onOpenPremium() }
         }
+        TrendsRow(state.premiumOn) { if (state.premiumOn) onOpenTrends(null) else onOpenPremium() }
 
         CategoryRanking(
             state = state,
             locale = locale,
             onGroupTapped = viewModel::onGroupTapped,
             onOpenTransactions = { of -> onOpenTransactions(of, state.period) },
+            onOpenTrends = { groupId -> if (state.premiumOn) onOpenTrends(groupId) else onOpenPremium() },
         )
 
         MonthHeatGrid(
@@ -83,7 +91,33 @@ fun ReportsScreen(
             onDaySelected = viewModel::onDaySelected,
         )
 
-        Footnotes(state)
+        Footnotes(state.otherCurrencyCount, state.needsReviewCount)
+    }
+}
+
+/**
+ * The way into trends, under the period for every unit: a year of months does
+ * not depend on which day, week or month the report is on.
+ */
+@Composable
+internal fun TrendsRow(
+    premiumOn: Boolean,
+    onClick: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(stringResource(R.string.trends_title), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(if (premiumOn) R.string.trends_row else R.string.trends_row_premium),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -96,30 +130,21 @@ fun ReportsScreen(
  * sentence is drawn when its count is zero, which is nearly always.
  */
 @Composable
-private fun Footnotes(state: ReportsUiState) {
-    if (state.otherCurrencyCount == 0 && state.needsReviewCount == 0) return
+internal fun Footnotes(
+    otherCurrencyCount: Int,
+    needsReviewCount: Int,
+) {
+    if (otherCurrencyCount == 0 && needsReviewCount == 0) return
 
     Column(
         Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (state.otherCurrencyCount > 0) {
-            Footnote(
-                pluralStringResource(
-                    R.plurals.reports_other_currency,
-                    state.otherCurrencyCount,
-                    state.otherCurrencyCount,
-                ),
-            )
+        if (otherCurrencyCount > 0) {
+            Footnote(pluralStringResource(R.plurals.reports_other_currency, otherCurrencyCount, otherCurrencyCount))
         }
-        if (state.needsReviewCount > 0) {
-            Footnote(
-                pluralStringResource(
-                    R.plurals.reports_awaiting_review,
-                    state.needsReviewCount,
-                    state.needsReviewCount,
-                ),
-            )
+        if (needsReviewCount > 0) {
+            Footnote(pluralStringResource(R.plurals.reports_awaiting_review, needsReviewCount, needsReviewCount))
         }
     }
 }
@@ -139,4 +164,4 @@ private fun Footnote(text: String) {
  * actually on screen.
  */
 @Composable
-private fun currentLocale(): Locale = LocalConfiguration.current.locales[0]
+internal fun currentLocale(): Locale = LocalConfiguration.current.locales[0]

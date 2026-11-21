@@ -36,6 +36,7 @@ If a decision can be read off the code in thirty seconds, it does not need a rec
 | [0024](0024-a-merchant-gives-each-kind-its-own-category.md) | A merchant gives each kind its own category | Accepted — implemented |
 | [0025](0025-a-review-code-turns-premium-on-for-one-install.md) | A review code turns Premium on for one install | Accepted — implemented |
 | [0026](0026-the-ledger-says-where-the-month-lands.md) | The ledger says where the month lands | Accepted — implemented |
+| [0027](0027-a-trend-counts-what-a-report-counts-month-by-month.md) | A trend counts what a report counts, month by month | Accepted — implemented |
 
 0001 through 0004 are the calls that were the product owner's to make during Phase 2, backfilled from the phase plan.
 Each record after them was written with the branch that made the decision.

@@ -181,37 +181,15 @@ private fun ComparisonLine(
     unit: PeriodUnit,
     judged: Boolean,
 ) {
-    when (comparison) {
-        Comparison.NothingEither -> {
-            Unit
-        }
-
-        Comparison.NothingBefore -> {
-            Text(
-                stringResource(unit.nothingBeforeRes),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        is Comparison.Change -> {
-            Text(
-                (if (comparison.percent >= 0) "▲ " else "▼ ") +
-                    stringResource(
-                        R.string.reports_change,
-                        kotlin.math.abs(comparison.percent),
-                        stringResource(unit.versusRes),
-                    ),
-                style = MaterialTheme.typography.bodySmall,
-                color =
-                    when {
-                        !judged -> MaterialTheme.colorScheme.onSurfaceVariant
-                        comparison.percent >= 0 -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.tertiary
-                    },
-            )
-        }
-    }
+    val line =
+        comparison.movement()?.let { stringResource(R.string.reports_change, it, stringResource(unit.versusRes)) }
+            ?: stringResource(unit.nothingBeforeRes).takeIf { comparison == Comparison.NothingBefore }
+            ?: return
+    Text(
+        line,
+        style = MaterialTheme.typography.bodySmall,
+        color = if (judged) comparison.judgedColor() else MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /**

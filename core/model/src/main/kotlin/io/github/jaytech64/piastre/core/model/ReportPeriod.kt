@@ -18,9 +18,9 @@ enum class PeriodUnit { DAY, WEEK, MONTH }
  */
 data class ReportPeriod(
     val unit: PeriodUnit,
-    val start: LocalDate,
-) {
-    val endInclusive: LocalDate
+    override val start: LocalDate,
+) : DaySpan {
+    override val endInclusive: LocalDate
         get() =
             when (unit) {
                 PeriodUnit.DAY -> start
