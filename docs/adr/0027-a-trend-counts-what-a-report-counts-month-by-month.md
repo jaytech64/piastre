@@ -1,7 +1,7 @@
 # 27. A trend counts what a report counts, month by month
 
 - **Status:** Accepted — implemented.
-- **Decided:** 2026-11-16, while planning Premium idea 3 (forks A to K).
+- **Decided:** 2026-11-16, while planning Premium idea 3 (forks A to K); what a comparison opens on on 2026-11-21, after running it on a real ledger.
 - **Touches:** `:core:model` (`DaySpan`), `:core:database` (`ReportDao.monthlyTotals`, `firstConfirmedDay`), `:core:data` (`ReportRepository.monthlySpending`, `firstDay`), `:feature:reports` (the Trends row, page and view model).
 
 ## Context
@@ -31,9 +31,15 @@ A month after that row with nothing spent is zero, and is drawn as zero.
 It stays out of the average, which is of complete months only, and it is not compared with the whole of the same month a year before.
 Either would make a figure fall every day until the 1st.
 
-**Two spans of different lengths are compared per day.**
+**A comparison opens on the same days of each month.**
+This month so far stands against the same days of last month, or of the same month a year earlier, up to the last day of a shorter month.
+Spans that are the same days of their own months compare their totals, whole months of different lengths included, because a bill paid once a month falls in both.
+
+**Any other two spans of different lengths are compared per day.**
 Both totals are shown as they are, and the change compares what went out per day, with a line under the table saying so.
-Equal lengths compare the totals.
+
+**A figure that did not move says so.**
+Exactly the same amount reads *No change* / *Aucun écart*, and a move under a whole percent reads `▲ < 1 %`, both in a neutral colour, on every screen that compares.
 
 **A budget shows on the months it judged.**
 Each month's tick is the amount `budgetsIn` gives for that month, so a change shows as a step from the month it was made ([ADR-0023](0023-a-budget-counts-what-a-report-counts-from-the-month-it-was-set.md)).
@@ -44,6 +50,8 @@ What is chosen on the page lives in saved state, so there is no migration, no ex
 Rejected: counting income and the balance as subjects too.
 Income swings with the months that hold three paydays ([ADR-0009](0009-a-report-says-what-its-balance-is-made-of.md)), a balance can change sign, and a percentage change across a sign change means nothing.
 Rejected: drawing the months before the ledger as zero, which would divide three months of spending by eleven.
+Rejected: opening on the whole of last month against this month so far, per day.
+On a real ledger, a bill of the same amount in both months read ▲ 93 % in the middle of the month.
 Rejected: a chart library, which would be a dependency for one screen; the bars are drawn on a Compose `Canvas`.
 
 ## Consequences
@@ -56,13 +64,13 @@ A change to what a report counts has to reach `monthlyTotals` too, which it does
 Until a ledger is a year old, the twelve months show *not yet* over the months it does not reach, and the year before shows nothing.
 Comparing two spans is the part that is useful from the first day.
 
-**A whole month against part of one reads per day.**
-That keeps a half month from looking like a fall nobody made, and it makes a bill paid once a month look higher in the shorter span.
+**Spans you pick of different lengths still read per day.**
+That keeps a half month from looking like a fall nobody made, and it makes a bill paid once a month look higher in the shorter span, which the line under the table is there to explain.
 
 ## Where this lives in the code
 
 - `ReportDao.monthlyTotals` and `firstConfirmedDay` in `core/database/src/main/kotlin/.../Daos.kt`.
 - `ReportRepository.monthlySpending`, `firstDay` and `SpentOn` in `core/data/src/main/kotlin/.../ReportRepository.kt`.
-- `trendYear` and `compared` in `feature/reports/src/main/kotlin/.../Trends.kt`, and `comparisonOf` in `Comparison.kt`.
+- `trendYear`, `compared` and `sameDaysOfTheirMonths` in `feature/reports/src/main/kotlin/.../Trends.kt`, `comparisonOf` in `Comparison.kt`, and `movement` in `ComparisonText.kt`.
 - `TrendsViewModel`, `TrendsScreen`, `TrendChart` and `TrendsCompareTab` in `feature/reports/src/main/kotlin/.../`.
 - `TrendsViewModelTest`, and the monthly tests in `ReportRepositoryTest`.
