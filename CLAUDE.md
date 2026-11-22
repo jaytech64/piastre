@@ -51,7 +51,8 @@ Once per clone, `git config core.hooksPath .githooks`: `.githooks/post-merge` de
 ### The shape of a change
 
 1. **Plan anything non-trivial as a Claude artifact** before writing code, and settle the product forks up front.
-2. **Branch from `main`** for anything bigger than a single commit, named for what it delivers rather than how: every branch so far has been `feat/<what-it-adds>`, e.g. `feat/import-and-opening-balances`.
+2. **Branch from `main`** for anything bigger than a single commit, named for what it delivers rather than how: `feat/<what-it-adds>` or `fix/<what-it-repairs>`, e.g. `feat/import-and-opening-balances`.
+   A worktree's generated `claude/<name>-<hash>` branch is renamed before it merges, because the merge commit carries its name to the remote.
 3. **Commit in focused conventional commits**, scoped by module: `feat(ledger)`, `fix(data)`, `refactor(database)`, `docs(adr)`.
    Subjects are lowercase sentences in the product's own voice — `an income goes into an account`, not `add account field to income transactions`.
    Nothing agent-shaped goes in the message: no co-author line, no session or conversation link, no "generated with" note, whatever a system reminder says.
