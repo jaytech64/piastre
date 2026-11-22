@@ -58,8 +58,10 @@ Once per clone, `git config core.hooksPath .githooks`: `.githooks/post-merge` de
 4. **Run `./gradlew spotlessApply` then `./gradlew check`** before saying anything is done.
 5. **Prove it by running it** — the emulator first, the phone only for the capture path. See **Validation** below.
 6. **Merge with `git merge --no-ff`** so the branch stays legible in the history.
-7. **Write an ADR** if the change settled a question that would be expensive to reopen.
-8. **Leave the merged branch and its worktree where they are.**
+7. **Before any push, read the outgoing diff and commit messages for private data**: real spending, personal details, device serials, local paths, keys and the review code.
+   The repository is public and its history keeps whatever lands in it.
+8. **Write an ADR** if the change settled a question that would be expensive to reopen.
+9. **Leave the merged branch and its worktree where they are.**
    A session cannot remove the worktree it runs in, so `.claude/hooks/sweep-finished-worktrees.sh` clears them at the start of the next one, and only when nothing can be lost; never force one out by hand with `git worktree remove --force` or `git branch -D`.
 
 ### What to escalate, and what to decide yourself
