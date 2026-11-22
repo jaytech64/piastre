@@ -3,6 +3,7 @@
 package io.github.jaytech64.piastre.capture.listener
 
 import android.content.Intent
+import io.github.jaytech64.piastre.core.data.CaptureHealthSource
 import io.github.jaytech64.piastre.core.data.SettingsRepository
 import io.github.jaytech64.piastre.core.model.CaptureHealth
 import kotlinx.coroutines.flow.Flow
@@ -25,8 +26,8 @@ class CaptureHealthRepository
         private val access: NotificationAccess,
         private val settings: SettingsRepository,
         private val clock: Clock,
-    ) {
-        val health: Flow<CaptureHealth> =
+    ) : CaptureHealthSource {
+        override val health: Flow<CaptureHealth> =
             combine(
                 access.granted,
                 settings.captureEnabled,

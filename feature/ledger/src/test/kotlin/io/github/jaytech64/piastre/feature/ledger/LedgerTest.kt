@@ -4,6 +4,7 @@ package io.github.jaytech64.piastre.feature.ledger
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.jaytech64.piastre.core.data.AccountRepository
+import io.github.jaytech64.piastre.core.data.CaptureHealthSource
 import io.github.jaytech64.piastre.core.data.CategoryRepository
 import io.github.jaytech64.piastre.core.data.LocalDateTicker
 import io.github.jaytech64.piastre.core.data.MerchantRepository
@@ -16,6 +17,7 @@ import io.github.jaytech64.piastre.core.database.MerchantEntity
 import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.model.AccountOrigin
 import io.github.jaytech64.piastre.core.model.AccountType
+import io.github.jaytech64.piastre.core.model.CaptureHealth
 import io.github.jaytech64.piastre.core.model.Category
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.TransactionKind
@@ -23,6 +25,8 @@ import io.github.jaytech64.piastre.core.model.TransactionSource
 import io.github.jaytech64.piastre.core.model.TransactionStatus
 import io.github.jaytech64.piastre.core.testing.inMemoryDatabase
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -51,6 +55,9 @@ abstract class LedgerTest {
     /** What time it is for the ledger: noon on [TODAY], unless a test moves it. */
     protected open val clock: Clock = Clock.fixed(TODAY.atTime(NOON, 0).atZone(ZONE).toInstant(), ZONE)
 
+    /** What capture reports to the ledger: listening, unless a test says otherwise. */
+    protected val captureHealth = MutableStateFlow<CaptureHealth>(CaptureHealth.Listening(null))
+
     @Before
     fun setUp() {
         Dispatchers.setMain(StandardTestDispatcher())
@@ -76,6 +83,10 @@ abstract class LedgerTest {
                 ),
             recurring = database.recurringRepository(clock, ZONE),
             ticker = LocalDateTicker(clock, Provider { ZONE }),
+            captureHealthSource =
+                object : CaptureHealthSource {
+                    override val health: Flow<CaptureHealth> = captureHealth
+                },
             savedState = state,
         )
 

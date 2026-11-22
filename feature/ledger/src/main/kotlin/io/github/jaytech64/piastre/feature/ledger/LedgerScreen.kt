@@ -10,12 +10,10 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -50,7 +48,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -73,6 +70,7 @@ fun LedgerScreen(
     viewModel: LedgerViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val captureHealth by viewModel.captureHealth.collectAsStateWithLifecycle()
     val today = state.today
     var choosingFilters by rememberSaveable { mutableStateOf(false) }
     var acting by rememberSaveable { mutableStateOf(SelectionAction.NONE) }
@@ -95,7 +93,7 @@ fun LedgerScreen(
 
             when {
                 state.isEmpty -> {
-                    EmptyLedger(state.filter)
+                    EmptyLedger(state.filter, captureHealth)
                 }
 
                 today != null -> {
@@ -379,35 +377,6 @@ private fun DayList(
 }
 
 /**
- * An empty ledger and an empty filter are different facts. Telling someone who
- * narrowed the screen that a Wallet payment will appear on its own answers a
- * question they did not ask.
- */
-@Composable
-private fun EmptyLedger(filter: LedgerFilter) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        if (filter.isActive) {
-            Text(stringResource(R.string.ledger_empty_filtered), style = MaterialTheme.typography.titleMedium)
-            return@Column
-        }
-        Text(stringResource(R.string.ledger_empty_title), style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.size(8.dp))
-        Text(
-            stringResource(R.string.ledger_empty_body),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-/**
  * Compose's configuration rather than [Locale.getDefault]: the two differ the
  * moment the user sets a per-app language, and the formatter must follow what is
  * actually on screen.
@@ -436,4 +405,4 @@ private const val YEAR_KEY = "year"
  * 16 dp margin, and 16 dp of air. Without it the newest-first list ends with the
  * oldest purchase's amount hidden under the button, unreachable by scrolling.
  */
-private val ADD_BUTTON_CLEARANCE = 88.dp
+internal val ADD_BUTTON_CLEARANCE = 88.dp
