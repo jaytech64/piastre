@@ -16,6 +16,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -147,7 +148,14 @@ private fun CaptureSection(
         )
     }
 
-    health.health?.let { CaptureHealthRow(it, health.checkedAt) }
+    val context = LocalContext.current
+    health.health?.let {
+        CaptureHealthRow(
+            health = it,
+            checkedAt = health.checkedAt,
+            onAllowAccess = { context.startActivity(healthViewModel.notificationAccessIntent()) },
+        )
+    }
 
     health.walletInstalled?.let { WalletNotificationsRow(it, healthViewModel::walletNotificationsIntent) }
 
@@ -180,18 +188,25 @@ private fun TemplatesRow(
  * The banner only appears when something is broken, which leaves no way to tell
  * a working capture from one whose alarm has itself failed. This line is that
  * way — it is the screen you come to precisely when you are not sure.
+ *
+ * Access that was never granted has no banner to explain it and no moment to
+ * report, so this row carries the explanation and the way to grant it.
  */
 @Composable
 private fun CaptureHealthRow(
     health: CaptureHealth,
     checkedAt: Instant,
+    onAllowAccess: () -> Unit,
 ) {
     val headline =
         when (health) {
             is CaptureHealth.Listening -> stringResource(R.string.health_listening)
             is CaptureHealth.Paused -> stringResource(R.string.health_paused)
+            is CaptureHealth.AccessNeverGranted -> stringResource(R.string.health_not_granted)
             is CaptureHealth.AccessRevoked, is CaptureHealth.Silent -> stringResource(R.string.health_interrupted)
         }
+    val neverGranted = health is CaptureHealth.AccessNeverGranted
+    val detail = if (neverGranted) health.explanation(checkedAt) else health.lastSeen(checkedAt)
     val color =
         if (health.needsAttention) {
             MaterialTheme.colorScheme.error
@@ -207,10 +222,15 @@ private fun CaptureHealthRow(
     ) {
         Text(headline, style = MaterialTheme.typography.bodyLarge, color = color)
         Text(
-            health.lastSeen(checkedAt),
+            detail,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+    if (neverGranted) {
+        TextButton(onClick = onAllowAccess, modifier = Modifier.padding(horizontal = 4.dp)) {
+            Text(stringResource(R.string.health_allow_access))
+        }
     }
 }
 

@@ -82,6 +82,28 @@ class CaptureHealthRepositoryTest {
         }
 
     @Test
+    fun `an install that never had access is not told it was revoked`() =
+        runTest {
+            grantAccess(false)
+            repository.refresh()
+
+            assertEquals(CaptureHealth.AccessNeverGranted, repository.health.first())
+        }
+
+    @Test
+    fun `erasing the heartbeat while access is off leaves nothing to call revoked`() =
+        runTest {
+            settings.noteListenerEvent(NOW.minusSeconds(60))
+            grantAccess(false)
+            repository.refresh()
+            assertEquals(CaptureHealth.AccessRevoked(NOW.minusSeconds(60)), repository.health.first())
+
+            settings.forgetListenerEvent()
+
+            assertEquals(CaptureHealth.AccessNeverGranted, repository.health.first())
+        }
+
+    @Test
     fun `three days of silence with access granted is an alarm`() =
         runTest {
             val silentSince = NOW.minus(Duration.ofDays(3))
