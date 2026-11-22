@@ -6,6 +6,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import java.time.Instant
+import java.time.ZoneId
 
 @Database(
     entities = [
@@ -50,7 +52,7 @@ abstract class PiastreDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
 
     companion object {
-        const val VERSION: Int = 22
+        const val VERSION: Int = 23
 
         /**
          * Migrations are listed here rather than passed at the call site so that
@@ -79,6 +81,7 @@ abstract class PiastreDatabase : RoomDatabase() {
                 MIGRATION_19_20,
                 MIGRATION_20_21,
                 MIGRATION_21_22,
+                MIGRATION_22_23,
             )
 
         const val NAME: String = "piastre.db"
@@ -644,6 +647,68 @@ private val MIGRATION_21_22 =
                 )
                 """,
             )
+        }
+    }
+
+/**
+ * Schema 23 puts each captured purchase back on the first time Wallet reported
+ * it. The tables do not change, only what a re-post had overwritten (ADR-0028).
+ *
+ * A row moves only while its time is still exactly one of its own posts. An edit
+ * that left the time alone saves it to the millisecond, so such a row moves too,
+ * and a time picked by hand matches no post and stays. Only a post read as a
+ * purchase counts: a tagless "Preparing your receipt" can share a key with one.
+ *
+ * The day is worked out here rather than through a shared helper, so this step
+ * keeps meaning what it meant when it was written.
+ */
+private val MIGRATION_22_23 =
+    object : Migration(22, 23) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val firstPosts =
+                db
+                    .query(
+                        """
+                        SELECT t.id, earliest.postedAtUtcMillis, COALESCE(earliest.zoneId, t.zoneId)
+                        FROM expense_transaction t
+                        JOIN raw_notification_event own ON own.id = t.rawEventId
+                        JOIN raw_notification_event earliest ON earliest.id = (
+                            SELECT post.id FROM raw_notification_event post
+                            WHERE post.sourcePackage = own.sourcePackage
+                                AND post.notificationKey = own.notificationKey
+                                AND post.parseState = 'PARSED'
+                            ORDER BY post.postedAtUtcMillis LIMIT 1
+                        )
+                        WHERE t.source = 'NOTIFICATION'
+                            AND earliest.postedAtUtcMillis < t.occurredAtUtcMillis
+                            AND EXISTS (
+                                SELECT 1 FROM raw_notification_event post
+                                WHERE post.sourcePackage = own.sourcePackage
+                                    AND post.notificationKey = own.notificationKey
+                                    AND post.parseState = 'PARSED'
+                                    AND post.postedAtUtcMillis = t.occurredAtUtcMillis
+                            )
+                        """,
+                    ).use { cursor ->
+                        buildList {
+                            while (cursor.moveToNext()) {
+                                add(Triple(cursor.getLong(0), cursor.getLong(1), cursor.getString(2)))
+                            }
+                        }
+                    }
+            firstPosts.forEach { (id, postedAtUtcMillis, zoneId) ->
+                val day =
+                    Instant
+                        .ofEpochMilli(postedAtUtcMillis)
+                        .atZone(ZoneId.of(zoneId))
+                        .toLocalDate()
+                        .toEpochDay()
+                db.execSQL(
+                    "UPDATE expense_transaction SET occurredAtUtcMillis = ?, zoneId = ?, localDateEpochDay = ? " +
+                        "WHERE id = ?",
+                    arrayOf<Any>(postedAtUtcMillis, zoneId, day, id),
+                )
+            }
         }
     }
 
