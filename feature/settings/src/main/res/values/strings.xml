@@ -34,6 +34,9 @@
     <string name="health_paused_body">You turned capture off. Nothing is being recorded.</string>
     <string name="health_interrupted">Capture interrupted</string>
     <string name="health_revoked_body">Notification access has been revoked. No payment can be recorded.</string>
+    <string name="health_not_granted">Notification access not granted</string>
+    <string name="health_not_granted_body">Your Google Wallet payments won\'t record themselves. You can add them by hand.</string>
+    <string name="health_allow_access">Allow access</string>
     <string name="health_silent_body">No notification received in %1$s. Notification access may have been revoked by the system.</string>
     <string name="health_last_event">Last notification received %1$s</string>
     <string name="health_never">Waiting for the first notification</string>

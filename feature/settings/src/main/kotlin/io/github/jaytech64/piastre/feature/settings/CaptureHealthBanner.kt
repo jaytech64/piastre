@@ -48,10 +48,11 @@ import java.time.Instant
  *
  * Silence sits above every destination rather than on the ledger alone, because
  * a listener Android unbound without asking makes *all* the numbers in the app
- * quietly wrong, not just the ones on one screen. Refused access is raised only
- * [onSettings]: it was a choice, the app works without it, and every other screen
- * carries only the badge on the Settings tab ([captureAlarm]). It renders nothing
- * while capture is working, which is nearly always.
+ * quietly wrong, not just the ones on one screen. Revoked access is raised only
+ * [onSettings]: it may have been a choice, the app works without it, and every
+ * other screen carries only the badge on the Settings tab ([captureAlarm]). It
+ * renders nothing while capture is working, which is nearly always, nor for
+ * access that was never granted, which the Settings row states without alarm.
  *
  * It can be collapsed to a strip but never dismissed (ADR-0004): the strip keeps
  * the alarm and the fix, and gives up only the explanation. The collapse lives in
@@ -139,7 +140,7 @@ private fun ExpandedBanner(
 /**
  * The alarm's words while capture needs fixing, and null while it works: what
  * the Settings tab wears as a badge, which every other screen shows in place of
- * the banner when access was refused.
+ * the banner when access was revoked.
  *
  * Any failure counts, silence included, because Settings is where either one is
  * fixed.
@@ -216,6 +217,10 @@ private fun CollapsedBanner(
 @Composable
 internal fun CaptureHealth.explanation(checkedAt: Instant): String =
     when (this) {
+        is CaptureHealth.AccessNeverGranted -> {
+            stringResource(R.string.health_not_granted_body)
+        }
+
         is CaptureHealth.AccessRevoked -> {
             stringResource(R.string.health_revoked_body)
         }

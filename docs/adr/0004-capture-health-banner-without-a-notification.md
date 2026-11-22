@@ -1,6 +1,6 @@
 # 4. A banner for broken capture, and no notification
 
-- **Status:** Accepted, revised four times — implemented in `35024ee` (Phase 2, commit 7); the collapse on `feat/room-at-large-font-sizes`.
+- **Status:** Accepted, revised five times — implemented in `35024ee` (Phase 2, commit 7); the collapse on `feat/room-at-large-font-sizes`.
 - **Decided:** 2026-09-07, during Phase 2 planning (`32caf07`).
   Revised 2026-09-09 (`e18c3ae`), before any of it was built, and again 2026-09-23.
 - **Touches:** `:core:model` (`CaptureHealth`), `:capture:listener`, `:feature:settings`, and the manifest that was not changed.
@@ -82,6 +82,21 @@ Silence keeps the banner on every screen.
 Nobody chose a listener Android unbound on its own, it is the failure this record was written for, and a badge would let it live out of sight for weeks.
 Access cannot tell a refusal from a revocation by a system update, so a revocation nobody made now waits behind the badge too; that is accepted, because the badge still points at the fix, and the alternative is nagging everyone who said no.
 
+## Revision — access never granted is not an alarm
+
+- **Decided:** 2026-11-22.
+
+Someone who chose « Plus tard » at onboarding was told in red that access « a été révoqué », and offered to « Réactiver » something they had never turned on.
+The previous revision held that access cannot tell a refusal from a revocation, but the heartbeat can tell one case: the listener stamps it every time it binds, so no access and no heartbeat means it has never been heard from.
+
+That state now has no banner and no badge.
+The Capture section of Settings says access is not granted, that payments will not record themselves, that they can be added by hand, and offers to allow access.
+Revoked access, with a heartbeat behind it, keeps the banner on Settings and the badge everywhere else.
+
+*Erase everything* drops the heartbeat, so access revoked and then erased reads as never granted.
+That is accepted: the words stay true, since access is not granted, and the data that could have said otherwise is what the user asked to have erased.
+Someone who refused access after having granted it still reads as revoked, because the app cannot tell who turned it off.
+
 ## Consequences
 
 The alarm is only seen by a user who opens the app.
@@ -94,7 +109,7 @@ There is deliberately no "granted at" timestamp: before the first delivery `last
 
 ## Where this lives in the code
 
-- `core/model/src/main/kotlin/.../CaptureHealth.kt` — the rule, the four states, `SILENT_AFTER = 48h`, and `alarmsEveryScreen`.
+- `core/model/src/main/kotlin/.../CaptureHealth.kt` — the rule, the five states, `SILENT_AFTER = 48h`, and `alarmsEveryScreen`.
 - `capture/listener/src/main/kotlin/.../PiastreListenerService.kt` — `noteAlive()`, called before the package filter.
 - `capture/listener/src/main/kotlin/.../CaptureHealthRepository.kt` — the live verdict.
 - `feature/settings/src/main/kotlin/.../CaptureHealthBanner.kt` — the banner and its collapsed strip, above the nav host in `PiastreApp`, and `captureAlarm`, which the Settings tab's badge reads.

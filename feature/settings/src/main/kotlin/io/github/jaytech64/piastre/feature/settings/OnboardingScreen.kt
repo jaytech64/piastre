@@ -45,7 +45,6 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.jaytech64.piastre.core.designsystem.BrandMark
 import io.github.jaytech64.piastre.core.designsystem.PiastreBrandScreen
-import io.github.jaytech64.piastre.core.model.CaptureHealth
 import kotlinx.coroutines.launch
 
 /** What the first run goes through, in the order it does. */
@@ -95,7 +94,7 @@ fun OnboardingScreen(
     // health state changing while this screen is in the background. Moving on is
     // tied to having just been sent there, and saved, because Android may well
     // have dropped this process by the time the answer comes back.
-    val granted = state.health?.let { it !is CaptureHealth.AccessRevoked } == true
+    val granted = state.health?.accessMissing == false
     var sentToGrant by rememberSaveable { mutableStateOf(false) }
     // Keyed on the grant alone: clearing the flag must not restart the effect,
     // which would cancel the very scroll it has just begun.

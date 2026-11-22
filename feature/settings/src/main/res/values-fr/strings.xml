@@ -34,6 +34,9 @@
     <string name="health_paused_body">Vous avez interrompu la capture. Rien n\'est enregistré.</string>
     <string name="health_interrupted">Capture interrompue</string>
     <string name="health_revoked_body">L\'accès aux notifications a été révoqué. Aucun paiement ne peut être enregistré.</string>
+    <string name="health_not_granted">Accès aux notifications non accordé</string>
+    <string name="health_not_granted_body">Vos paiements Google Portefeuille ne s\'inscrivent pas tout seuls. Vous pouvez les ajouter à la main.</string>
+    <string name="health_allow_access">Autoriser l\'accès</string>
     <string name="health_silent_body">Aucune notification reçue depuis %1$s. L\'accès aux notifications a peut-être été révoqué par le système.</string>
     <string name="health_last_event">Dernière notification reçue %1$s</string>
     <string name="health_never">En attente de la première notification</string>

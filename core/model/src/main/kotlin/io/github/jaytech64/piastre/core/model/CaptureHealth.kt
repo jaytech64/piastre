@@ -17,7 +17,7 @@ sealed interface CaptureHealth {
     /**
      * When anything last reached the listener — null only before it has ever
      * bound. Carried by every state, because "when did this app last hear
-     * anything" is the useful fact in all four of them.
+     * anything" is the useful fact in all of them.
      */
     val lastEventAt: Instant?
 
@@ -31,9 +31,18 @@ sealed interface CaptureHealth {
         override val lastEventAt: Instant?,
     ) : CaptureHealth
 
-    /** Notification access is not granted, so nothing can arrive at all. */
+    /**
+     * Access is off and the listener has no heartbeat: it has never been granted,
+     * or everything was erased since. The app works without it, so this is a
+     * choice to state calmly and never an alarm (ADR-0004).
+     */
+    data object AccessNeverGranted : CaptureHealth {
+        override val lastEventAt: Instant? = null
+    }
+
+    /** The listener has been heard from and access is now off, so nothing can arrive. */
     data class AccessRevoked(
-        override val lastEventAt: Instant?,
+        override val lastEventAt: Instant,
     ) : CaptureHealth
 
     /** Access is granted, yet nothing has reached the listener since then. */
@@ -44,12 +53,15 @@ sealed interface CaptureHealth {
     /** Whether this is something the user has to go and fix. */
     val needsAttention: Boolean get() = this is AccessRevoked || this is Silent
 
+    /** Whether this verdict was reached because Android is not granting access. */
+    val accessMissing: Boolean get() = this is AccessNeverGranted || this is AccessRevoked
+
     /**
      * Whether the alarm belongs on every screen, rather than on Settings alone.
      *
-     * Only silence does: nobody chose a listener Android unbound on its own. The
-     * app works without access, so refusing it is a choice, raised where it can
-     * be undone and nowhere else (ADR-0004).
+     * Only silence does: nobody chose a listener Android unbound on its own.
+     * Revoked access may have been a choice, so it is raised where it can be
+     * undone and nowhere else (ADR-0004).
      */
     val alarmsEveryScreen: Boolean get() = this is Silent
 
@@ -79,7 +91,7 @@ sealed interface CaptureHealth {
         ): CaptureHealth =
             when {
                 !captureEnabled -> Paused(lastEventAt)
-                !accessGranted -> AccessRevoked(lastEventAt)
+                !accessGranted -> lastEventAt?.let(::AccessRevoked) ?: AccessNeverGranted
                 lastEventAt != null && Duration.between(lastEventAt, now) >= SILENT_AFTER -> Silent(lastEventAt)
                 else -> Listening(lastEventAt)
             }

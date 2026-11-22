@@ -25,6 +25,29 @@ class CaptureHealthTest {
     }
 
     @Test
+    fun `access that was never granted is not reported as revoked`() {
+        assertEquals(
+            CaptureHealth.AccessNeverGranted,
+            health(accessGranted = false, lastEventAt = null),
+        )
+    }
+
+    @Test
+    fun `never having granted access raises no alarm anywhere`() {
+        assertFalse(CaptureHealth.AccessNeverGranted.needsAttention)
+        assertFalse(CaptureHealth.AccessNeverGranted.alarmsEveryScreen)
+    }
+
+    @Test
+    fun `only the two states without access count as missing it`() {
+        assertTrue(CaptureHealth.AccessNeverGranted.accessMissing)
+        assertTrue(CaptureHealth.AccessRevoked(NOW).accessMissing)
+        assertFalse(CaptureHealth.Silent(NOW).accessMissing)
+        assertFalse(CaptureHealth.Paused(NOW).accessMissing)
+        assertFalse(CaptureHealth.Listening(NOW).accessMissing)
+    }
+
+    @Test
     fun `capture turned off outranks revoked access`() {
         assertEquals(
             CaptureHealth.Paused(NOW),
