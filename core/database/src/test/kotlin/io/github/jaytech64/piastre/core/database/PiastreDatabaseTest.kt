@@ -52,6 +52,40 @@ class PiastreDatabaseTest {
         }
 
     @Test
+    fun `a re-post keeps the time, zone and day of the first capture`() =
+        runTest {
+            val dao = database.transactionDao()
+            dao.insertOrUpdate(transaction(amountMinor = 929))
+            dao.insertOrUpdate(
+                transaction(
+                    amountMinor = 929,
+                    day = 20_001,
+                    occurredAtUtcMillis = FIRST_POST + HALF_AN_HOUR,
+                    zoneId = "America/Vancouver",
+                ),
+            )
+
+            val stored = dao.bySourceKey(WALLET, TAG)
+            assertEquals(FIRST_POST, stored?.occurredAtUtcMillis)
+            assertEquals("America/Toronto", stored?.zoneId)
+            assertEquals(20_000, stored?.localDateEpochDay)
+        }
+
+    @Test
+    fun `an earlier post delivered after a later one moves the purchase back to it`() =
+        runTest {
+            val dao = database.transactionDao()
+            dao.insertOrUpdate(
+                transaction(amountMinor = 929, day = 20_001, occurredAtUtcMillis = FIRST_POST + HALF_AN_HOUR),
+            )
+            dao.insertOrUpdate(transaction(amountMinor = 929))
+
+            val stored = dao.bySourceKey(WALLET, TAG)
+            assertEquals(FIRST_POST, stored?.occurredAtUtcMillis)
+            assertEquals(20_000, stored?.localDateEpochDay)
+        }
+
+    @Test
     fun `two purchases of the same amount at the same merchant stay separate`() =
         runTest {
             val dao = database.transactionDao()
@@ -173,12 +207,14 @@ class PiastreDatabaseTest {
         status: TransactionStatus = TransactionStatus.CONFIRMED,
         kind: TransactionKind = TransactionKind.EXPENSE,
         currency: String = Money.CAD,
+        occurredAtUtcMillis: Long = FIRST_POST,
+        zoneId: String = "America/Toronto",
     ) = ExpenseTransactionEntity(
         rawEventId = null,
         amountMinor = amountMinor,
         currency = currency,
-        occurredAtUtcMillis = 1_788_740_166_564,
-        zoneId = "America/Toronto",
+        occurredAtUtcMillis = occurredAtUtcMillis,
+        zoneId = zoneId,
         localDateEpochDay = day,
         merchantId = merchantId,
         merchantRaw = "MARCHE ST JOSEPH  1234",
@@ -201,5 +237,7 @@ class PiastreDatabaseTest {
     private companion object {
         const val WALLET = "com.google.android.apps.walletnfcrel"
         const val TAG = "tag-1"
+        const val FIRST_POST = 1_788_740_166_564L
+        const val HALF_AN_HOUR = 1_800_000L
     }
 }

@@ -17,11 +17,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 
-/** What the form is about, and — on a new transaction — the way to the templates that can fill it. */
+/**
+ * What the form is about, and the way to what stands behind it: on a new
+ * transaction the templates that can fill it, on a captured one its history.
+ */
 @Composable
 internal fun FormTitle(
     state: ExpenseFormUiState,
     onOpenTemplates: () -> Unit,
+    onOpenCaptureHistory: () -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -34,6 +38,14 @@ internal fun FormTitle(
                 Icon(
                     painterResource(R.drawable.ic_template),
                     contentDescription = stringResource(R.string.templates_title),
+                )
+            }
+        }
+        if (state.captureHistory != null) {
+            IconButton(onClick = onOpenCaptureHistory) {
+                Icon(
+                    painterResource(R.drawable.ic_history),
+                    contentDescription = stringResource(R.string.capture_history_title),
                 )
             }
         }

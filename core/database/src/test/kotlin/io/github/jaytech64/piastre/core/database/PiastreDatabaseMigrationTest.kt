@@ -519,6 +519,72 @@ class PiastreDatabaseMigrationTest {
         )
     }
 
+    @Test
+    fun `migrating to schema 23 puts a purchase back on its first post, and on that post's day`() {
+        helper.createDatabase(NAME, 22).use { database ->
+            database.insertRawEvent(postedAtUtcMillis = BEFORE_MIDNIGHT)
+            database.insertRawEvent(postedAtUtcMillis = AFTER_MIDNIGHT)
+            database.execSQL("UPDATE raw_notification_event SET parseState = 'PARSED'")
+            database.insertCapturedAt(rawPost = AFTER_MIDNIGHT, occurredAt = AFTER_MIDNIGHT)
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 23, true, *PiastreDatabase.MIGRATIONS)
+
+        assertEquals(BEFORE_MIDNIGHT to DAY_BEFORE_MIDNIGHT, migrated.capturedMoment())
+    }
+
+    @Test
+    fun `migrating to schema 23 leaves a time picked by hand where it is`() {
+        val pickedByHand = AFTER_MIDNIGHT + 60_000
+        helper.createDatabase(NAME, 22).use { database ->
+            database.insertRawEvent(postedAtUtcMillis = BEFORE_MIDNIGHT)
+            database.insertRawEvent(postedAtUtcMillis = AFTER_MIDNIGHT)
+            database.execSQL("UPDATE raw_notification_event SET parseState = 'PARSED'")
+            database.insertCapturedAt(rawPost = AFTER_MIDNIGHT, occurredAt = pickedByHand)
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 23, true, *PiastreDatabase.MIGRATIONS)
+
+        assertEquals(pickedByHand to DAY_AFTER_MIDNIGHT, migrated.capturedMoment())
+    }
+
+    @Test
+    fun `migrating to schema 23 ignores an earlier notification that was not read as a purchase`() {
+        helper.createDatabase(NAME, 22).use { database ->
+            database.insertRawEvent(postedAtUtcMillis = BEFORE_MIDNIGHT)
+            database.insertRawEvent(postedAtUtcMillis = AFTER_MIDNIGHT)
+            database.execSQL("UPDATE raw_notification_event SET parseState = 'IGNORED'")
+            database.execSQL(
+                "UPDATE raw_notification_event SET parseState = 'PARSED' WHERE postedAtUtcMillis = ?",
+                arrayOf<Any>(AFTER_MIDNIGHT),
+            )
+            database.insertCapturedAt(rawPost = AFTER_MIDNIGHT, occurredAt = AFTER_MIDNIGHT)
+        }
+
+        val migrated = helper.runMigrationsAndValidate(NAME, 23, true, *PiastreDatabase.MIGRATIONS)
+
+        assertEquals(AFTER_MIDNIGHT to DAY_AFTER_MIDNIGHT, migrated.capturedMoment())
+    }
+
+    private fun SupportSQLiteDatabase.insertCapturedAt(
+        rawPost: Long,
+        occurredAt: Long,
+    ) = execSQL(
+        "INSERT INTO expense_transaction " +
+            "(rawEventId, amountMinor, currency, occurredAtUtcMillis, zoneId, localDateEpochDay, " +
+            "merchantId, merchantRaw, categoryId, source, status, confidence, sourcePackage, sourceKey, " +
+            "kind) VALUES ((SELECT id FROM raw_notification_event WHERE postedAtUtcMillis = ?), 2342, " +
+            "'CAD', ?, 'America/Toronto', ?, NULL, 'MARCHE ST JOSEPH', NULL, 'NOTIFICATION', " +
+            "'CONFIRMED', 1.0, ?, 'tag-1', 'EXPENSE')",
+        arrayOf<Any?>(rawPost, occurredAt, DAY_AFTER_MIDNIGHT, WALLET),
+    )
+
+    private fun SupportSQLiteDatabase.capturedMoment(): Pair<Long, Long> =
+        query("SELECT occurredAtUtcMillis, localDateEpochDay FROM expense_transaction").use { cursor ->
+            cursor.moveToFirst()
+            cursor.getLong(0) to cursor.getLong(1)
+        }
+
     private fun SupportSQLiteDatabase.merchantCategories(): List<Pair<String, Pair<Long?, Long?>>> =
         query("SELECT displayName, expenseCategoryId, incomeCategoryId FROM merchant ORDER BY id").use { cursor ->
             generateSequence {
@@ -617,5 +683,11 @@ class PiastreDatabaseMigrationTest {
         const val KEY = "0|com.google.android.apps.walletnfcrel|1001|tag-1|10123"
         const val FIRST_POST = 1_788_740_166_564L
         const val RE_POST = 1_788_740_169_732L
+
+        /** 23:50 on 11 October 2026 in Toronto, and the re-post half an hour later, on the 12th. */
+        const val BEFORE_MIDNIGHT = 1_791_777_000_000L
+        const val AFTER_MIDNIGHT = BEFORE_MIDNIGHT + 1_800_000L
+        const val DAY_BEFORE_MIDNIGHT = 20_737L
+        const val DAY_AFTER_MIDNIGHT = 20_738L
     }
 }

@@ -232,6 +232,10 @@ Due days are caught up at process start, midnight and listener bind (`RecurringP
 
 `source = RECURRING` says a row has a day and no hour, not that a schedule wrote it: a typed row can be marked so and has no `recurringId`, and a schedule's row given an hour is `MANUAL` and keeps its own, so never read one from the other.
 
+### A captured purchase is dated by its first post
+
+A re-post updates what the parser owns and never moves the row's time, zone or day off the earliest post ([ADR-0028](docs/adr/0028-a-captured-purchase-is-dated-by-its-first-post.md), `TransactionDao.insertOrUpdate`).
+
 ### A parser fix repairs history
 
 Bump `NotificationParser.version` on **any** behaviour change.

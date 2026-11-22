@@ -100,7 +100,11 @@ private fun EntryForm(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        FormTitle(state, onOpenTemplates = { onPick(Picking.TEMPLATES) })
+        FormTitle(
+            state,
+            onOpenTemplates = { onPick(Picking.TEMPLATES) },
+            onOpenCaptureHistory = { onPick(Picking.CAPTURE_HISTORY) },
+        )
 
         if (state.isTemplate) TemplateNameField(state.templateName, viewModel.template::onNameChange)
 
