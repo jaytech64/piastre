@@ -37,8 +37,8 @@ android {
     defaultConfig {
         applicationId = "io.github.jaytech64.piastre"
         // 1 is the billing spike's bundle, still on Play's internal track.
-        versionCode = 6
-        versionName = "0.1.3"
+        versionCode = 7
+        versionName = "0.1.4"
         resourceConfigurations += setOf("en", "fr")
     }
 
