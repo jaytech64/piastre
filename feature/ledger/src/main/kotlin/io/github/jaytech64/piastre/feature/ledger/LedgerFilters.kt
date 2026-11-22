@@ -12,9 +12,9 @@ import kotlin.math.abs
 
 /**
  * The navigation arguments of a ledger opened on something a report showed:
- * which of [OPENED_ON_CATEGORY], [OPENED_ON_GROUP] or [OPENED_ON_NO_CATEGORY]
- * it is narrowed to, the id of that category or group, and its first and last
- * day. A ledger opened without them starts unfiltered, as the tab does.
+ * which of [OPENED_ON_CATEGORY], [OPENED_ON_GROUP], [OPENED_ON_NO_CATEGORY] or
+ * [OPENED_ON_MERCHANT] it is narrowed to, the id of that category, group or
+ * merchant, and its first and last day. A ledger opened without them starts unfiltered, as the tab does.
  */
 const val OPENED_ON_ARG = "openedOn"
 const val OPENED_ID_ARG = "openedId"
@@ -23,6 +23,7 @@ const val OPENED_TO_ARG = "openedToEpochDay"
 const val OPENED_ON_CATEGORY = "category"
 const val OPENED_ON_GROUP = "group"
 const val OPENED_ON_NO_CATEGORY = "none"
+const val OPENED_ON_MERCHANT = "merchant"
 
 /**
  * What the filter controls last set, as saved-state keys. A class of its own,
@@ -78,6 +79,7 @@ class LedgerFilters internal constructor(
         savedState[UNCATEGORISED_ONLY] = openedOn == OPENED_ON_NO_CATEGORY
         savedState[SELECTED_CATEGORY_ID] = id.takeIf { openedOn == OPENED_ON_CATEGORY }
         savedState[SELECTED_CATEGORY_GROUP_ID] = id.takeIf { openedOn == OPENED_ON_GROUP }
+        savedState[SELECTED_MERCHANT_ID] = id.takeIf { openedOn == OPENED_ON_MERCHANT }
         savedState[FROM_EPOCH_DAY] = savedState.get<Long>(OPENED_FROM_ARG)
         savedState[TO_EPOCH_DAY] = savedState.get<Long>(OPENED_TO_ARG)
         savedState[OPENING_APPLIED] = true

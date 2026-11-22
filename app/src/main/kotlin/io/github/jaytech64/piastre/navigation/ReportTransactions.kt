@@ -4,12 +4,13 @@ package io.github.jaytech64.piastre.navigation
 
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import io.github.jaytech64.piastre.core.model.ReportPeriod
+import io.github.jaytech64.piastre.core.model.DaySpan
 import io.github.jaytech64.piastre.feature.ledger.OPENED_FROM_ARG
 import io.github.jaytech64.piastre.feature.ledger.OPENED_ID_ARG
 import io.github.jaytech64.piastre.feature.ledger.OPENED_ON_ARG
 import io.github.jaytech64.piastre.feature.ledger.OPENED_ON_CATEGORY
 import io.github.jaytech64.piastre.feature.ledger.OPENED_ON_GROUP
+import io.github.jaytech64.piastre.feature.ledger.OPENED_ON_MERCHANT
 import io.github.jaytech64.piastre.feature.ledger.OPENED_ON_NO_CATEGORY
 import io.github.jaytech64.piastre.feature.ledger.OPENED_TO_ARG
 import io.github.jaytech64.piastre.feature.reports.SpendingOf
@@ -36,13 +37,14 @@ internal val reportTransactionsArguments =
 /** The whole period, first day to last, even while it is still running. */
 internal fun reportTransactionsRoute(
     of: SpendingOf,
-    period: ReportPeriod,
+    period: DaySpan,
 ): String {
     val (openedOn, id) =
         when (of) {
             is SpendingOf.OneCategory -> OPENED_ON_CATEGORY to of.categoryId
             is SpendingOf.OneGroup -> OPENED_ON_GROUP to of.groupId
             SpendingOf.NoCategory -> OPENED_ON_NO_CATEGORY to 0L
+            is SpendingOf.OneMerchant -> OPENED_ON_MERCHANT to of.merchantId
         }
     return "reports/transactions/$openedOn/$id/${period.start.toEpochDay()}/${period.endInclusive.toEpochDay()}"
 }

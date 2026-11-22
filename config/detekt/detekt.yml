@@ -17,7 +17,7 @@ complexity:
     # Formatters is deliberately the only object allowed to decide what money and
     # dates look like, so it grows a function every time the app learns to say a
     # new kind of date. Splitting it to satisfy a count would undo the invariant.
-    thresholdInObjects: 20
+    thresholdInObjects: 25
 
 style:
   MagicNumber:

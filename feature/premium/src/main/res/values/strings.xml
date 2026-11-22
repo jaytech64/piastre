@@ -4,6 +4,7 @@
     <string name="premium_free_lead">Premium adds what goes beyond keeping the ledger.</string>
     <string name="premium_benefit_budgets">Budgets: a monthly amount for a category or a group, and what is left of it</string>
     <string name="premium_benefit_trends">Trends: each category over a year, the year before, and any two periods side by side</string>
+    <string name="premium_benefit_merchants">Merchants: where your money goes, with visits and average purchase</string>
     <string name="premium_benefit_future">Every Premium feature to come</string>
     <string name="premium_buy_trial">%1$d days free, then %2$s a month</string>
     <string name="premium_buy_monthly">%1$s a month</string>

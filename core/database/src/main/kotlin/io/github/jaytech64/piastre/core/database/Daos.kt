@@ -1302,6 +1302,18 @@ data class CategoryTotal(
     val count: Int,
 )
 
+/**
+ * What went out at one merchant over a period, and in how many transactions.
+ * The id and the name are null on the row for what was recorded with no
+ * merchant: a typed purchase left blank, and a transfer entered as its own row.
+ */
+data class MerchantTotal(
+    val merchantId: Long?,
+    val merchantName: String?,
+    val totalMinor: Long,
+    val count: Int,
+)
+
 /** What [ReportDao.monthlyTotals] can be asked about: every row it counts. */
 const val SPENT_ON_EVERYTHING = "EVERYTHING"
 
@@ -1348,14 +1360,14 @@ private const val MOVEMENTS =
     (
         SELECT e.id AS transactionId, e.localDateEpochDay AS day, e.currency AS currency,
                e.categoryId AS categoryId, e.amountMinor AS amountMinor, e.kind AS kind,
-               e.accountId AS fromAccountId, e.toAccountId AS intoAccountId
+               e.accountId AS fromAccountId, e.toAccountId AS intoAccountId, e.merchantId AS merchantId
         FROM expense_transaction e
         WHERE e.status = 'CONFIRMED' AND e.localDateEpochDay BETWEEN :fromDay AND :toDay
           AND NOT EXISTS (SELECT 1 FROM transaction_part p WHERE p.transactionId = e.id)
         UNION ALL
         SELECT e.id, e.localDateEpochDay, e.currency, p.categoryId, p.amountMinor,
                CASE WHEN p.toAccountId IS NULL THEN e.kind ELSE 'TRANSFER' END,
-               e.accountId, COALESCE(p.toAccountId, e.toAccountId)
+               e.accountId, COALESCE(p.toAccountId, e.toAccountId), e.merchantId
         FROM expense_transaction e
         JOIN transaction_part p ON p.transactionId = e.id
         WHERE e.status = 'CONFIRMED' AND e.localDateEpochDay BETWEEN :fromDay AND :toDay
@@ -1485,6 +1497,32 @@ interface ReportDao {
         onKind: String,
         onId: Long,
     ): Flow<List<MonthlyTotal>>
+
+    /**
+     * What [categoryTotals] counts, by merchant instead of by category, so the
+     * rows add up to the period's total. A merchant's name is joined here
+     * rather than copied, so renaming a merchant renames its history.
+     *
+     * A visit is a transaction: a split is one visit to its merchant whatever
+     * its parts, which is why the count is `COUNT(DISTINCT)` and the amount is
+     * the parts' that went out (ADR-0019, ADR-0029).
+     */
+    @Query(
+        """
+        SELECT m.id AS merchantId, m.displayName AS merchantName,
+               SUM(t.amountMinor) AS totalMinor, COUNT(DISTINCT t.transactionId) AS count
+        FROM """ + MOVEMENTS + """
+        LEFT JOIN merchant m ON m.id = t.merchantId
+        WHERE """ + MONEY_OUT + """
+          AND t.currency = :currency
+        GROUP BY m.id
+        """,
+    )
+    fun merchantTotals(
+        fromDay: Int,
+        toDay: Int,
+        currency: String,
+    ): Flow<List<MerchantTotal>>
 
     /**
      * The day of the ledger's earliest confirmed row, of any kind and in any

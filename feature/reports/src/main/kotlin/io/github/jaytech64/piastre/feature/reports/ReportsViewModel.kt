@@ -39,7 +39,7 @@ data class CategoryShare(
     val share: Float,
 )
 
-/** What a tap in the ranking asks to see the transactions of, over the period the report is on. */
+/** What a tap in a report asks to see the transactions of, over the period the report is on. */
 sealed interface SpendingOf {
     data class OneCategory(
         val categoryId: Long,
@@ -50,6 +50,11 @@ sealed interface SpendingOf {
     ) : SpendingOf
 
     data object NoCategory : SpendingOf
+
+    /** What went out at one merchant, which the merchant report opens. */
+    data class OneMerchant(
+        val merchantId: Long,
+    ) : SpendingOf
 }
 
 /**

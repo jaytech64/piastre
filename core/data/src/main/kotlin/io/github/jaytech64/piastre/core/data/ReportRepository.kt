@@ -48,6 +48,18 @@ sealed interface SpentOn {
     data object NoCategory : SpentOn
 }
 
+/**
+ * What went out at one merchant over a period, and in how many visits: a
+ * visit is one transaction, a split included. A null [merchantId] is
+ * everything recorded with none, and then [name] is null too.
+ */
+data class MerchantSpending(
+    val merchantId: Long?,
+    val name: String?,
+    val total: Money,
+    val visits: Int,
+)
+
 /** What went out over a period, and how many transactions that was. */
 data class PeriodSpending(
     val total: Money,
@@ -179,6 +191,29 @@ class ReportRepository
                                 },
                             total = Money(row.totalMinor, currency),
                             count = row.count,
+                        )
+                    }
+                }
+
+        /**
+         * What [spending] counts, by merchant, in no particular order: the rows
+         * add up to its total, and its count, since a transaction has one
+         * merchant or none. The name is the merchant's as it is now.
+         */
+        fun merchantSpending(
+            span: DaySpan,
+            today: LocalDate,
+            currency: String = Money.CAD,
+        ): Flow<List<MerchantSpending>> =
+            reports
+                .merchantTotals(span.start.epochDay, span.lastDayThrough(today), currency)
+                .map { rows ->
+                    rows.map { row ->
+                        MerchantSpending(
+                            merchantId = row.merchantId,
+                            name = row.merchantName,
+                            total = Money(row.totalMinor, currency),
+                            visits = row.count,
                         )
                     }
                 }

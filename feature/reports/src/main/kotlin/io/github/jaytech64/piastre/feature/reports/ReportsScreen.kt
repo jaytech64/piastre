@@ -29,10 +29,10 @@ import java.time.YearMonth
 import java.util.Locale
 
 /**
- * One scroll: the period, what its balance is made of, the ways into budgets
- * and trends, where the spending went, and the month it sits in. A category, a group or what has no category opens
- * its transactions through [onOpenTransactions], which is all this screen knows
- * of where they are shown.
+ * One scroll: the period, what its balance is made of, the ways into budgets,
+ * trends and merchants, where the spending went, and the month it sits in. A
+ * category, a group or what has no category opens its transactions through
+ * [onOpenTransactions], which is all this screen knows of where they are shown.
  *
  * The calendar is last rather than on a screen of its own because it is a
  * breakdown of what the header says was spent — and because it doubles as the day picker,
@@ -43,6 +43,7 @@ fun ReportsScreen(
     onOpenTransactions: (SpendingOf, ReportPeriod) -> Unit,
     onOpenBudgets: (YearMonth) -> Unit,
     onOpenTrends: (groupId: Long?) -> Unit,
+    onOpenMerchants: (YearMonth) -> Unit,
     onOpenPremium: () -> Unit,
     viewModel: ReportsViewModel = hiltViewModel(),
 ) {
@@ -73,6 +74,9 @@ fun ReportsScreen(
             BudgetsRow(state) { if (state.premiumOn) onOpenBudgets(state.period.month) else onOpenPremium() }
         }
         TrendsRow(state.premiumOn) { if (state.premiumOn) onOpenTrends(null) else onOpenPremium() }
+        MerchantsRow(state.premiumOn) {
+            if (state.premiumOn) onOpenMerchants(state.period.month) else onOpenPremium()
+        }
 
         CategoryRanking(
             state = state,
@@ -115,6 +119,32 @@ internal fun TrendsRow(
         Text(stringResource(R.string.trends_title), style = MaterialTheme.typography.bodyLarge)
         Text(
             stringResource(if (premiumOn) R.string.trends_row else R.string.trends_row_premium),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * The way into the merchant report, which opens on the month the report is on
+ * whatever its unit, since a merchant's average means little over a day.
+ */
+@Composable
+internal fun MerchantsRow(
+    premiumOn: Boolean,
+    onClick: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(stringResource(R.string.merchants_title), style = MaterialTheme.typography.bodyLarge)
+        Text(
+            stringResource(if (premiumOn) R.string.merchants_row else R.string.merchants_row_premium),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

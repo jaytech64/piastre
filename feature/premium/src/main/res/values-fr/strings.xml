@@ -4,6 +4,7 @@
     <string name="premium_free_lead">Premium ajoute ce qui va au-delà de tenir le registre.</string>
     <string name="premium_benefit_budgets">Budgets : un montant par mois pour une catégorie ou un groupe, et ce qu\'il en reste</string>
     <string name="premium_benefit_trends">Tendances : chaque catégorie sur un an, l\'année précédente, et deux périodes côte à côte</string>
+    <string name="premium_benefit_merchants">Marchands : où va votre argent, avec le nombre de visites et l\'achat moyen</string>
     <string name="premium_benefit_future">Chaque fonction Premium à venir</string>
     <string name="premium_buy_trial">%1$d jours gratuits, puis %2$s par mois</string>
     <string name="premium_buy_monthly">%1$s par mois</string>
