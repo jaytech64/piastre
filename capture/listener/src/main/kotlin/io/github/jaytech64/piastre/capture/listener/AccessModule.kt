@@ -8,6 +8,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.github.jaytech64.piastre.core.data.CaptureHealthSource
 import javax.inject.Singleton
 
 @Module
@@ -24,4 +25,7 @@ object AccessModule {
     fun walletNotifications(
         @ApplicationContext context: Context,
     ): WalletNotifications = WalletNotifications(context)
+
+    @Provides
+    fun captureHealthSource(repository: CaptureHealthRepository): CaptureHealthSource = repository
 }
