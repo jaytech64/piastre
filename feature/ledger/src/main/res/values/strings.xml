@@ -54,6 +54,8 @@
     <string name="ledger_unknown_merchant">Unknown merchant</string>
     <string name="ledger_empty_title">No expenses yet</string>
     <string name="ledger_empty_body">A payment made with Google Wallet appears here on its own, within seconds.</string>
+    <string name="ledger_empty_body_no_access">Tap + to add a transaction. To have your Google Wallet payments appear on their own, allow notification access in Settings.</string>
+    <string name="ledger_empty_body_paused">Tap + to add a transaction. Capture is paused, so your Google Wallet payments won\'t appear until you turn it back on in Settings.</string>
     <plurals name="ledger_needs_review">
         <item quantity="one">%d to review</item>
         <item quantity="other">%d to review</item>

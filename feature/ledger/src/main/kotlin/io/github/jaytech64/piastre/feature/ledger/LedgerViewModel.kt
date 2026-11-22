@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jaytech64.piastre.core.data.AccountRepository
+import io.github.jaytech64.piastre.core.data.CaptureHealthSource
 import io.github.jaytech64.piastre.core.data.CategoryGroupRepository
 import io.github.jaytech64.piastre.core.data.CategoryRepository
 import io.github.jaytech64.piastre.core.data.LocalDateTicker
@@ -16,6 +17,7 @@ import io.github.jaytech64.piastre.core.data.TransactionEditor
 import io.github.jaytech64.piastre.core.data.TransactionRepository
 import io.github.jaytech64.piastre.core.designsystem.Formatters
 import io.github.jaytech64.piastre.core.model.Account
+import io.github.jaytech64.piastre.core.model.CaptureHealth
 import io.github.jaytech64.piastre.core.model.Category
 import io.github.jaytech64.piastre.core.model.CategoryGroup
 import io.github.jaytech64.piastre.core.model.CategoryUsage
@@ -271,8 +273,17 @@ class LedgerViewModel
         editor: TransactionEditor,
         recurring: RecurringRepository,
         ticker: LocalDateTicker,
+        captureHealthSource: CaptureHealthSource,
         private val savedState: SavedStateHandle,
     ) : ViewModel() {
+        /** Null until capture has answered, so an empty ledger promises nothing it has not checked. */
+        val captureHealth: StateFlow<CaptureHealth?> =
+            captureHealthSource.health.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+                initialValue = null,
+            )
+
         /** What the ledger is narrowed to, as the filter controls last set it. */
         val filters = LedgerFilters(savedState)
 

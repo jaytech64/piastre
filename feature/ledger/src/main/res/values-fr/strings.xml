@@ -56,6 +56,8 @@
     <string name="ledger_unknown_merchant">Marchand inconnu</string>
     <string name="ledger_empty_title">Aucune dépense enregistrée</string>
     <string name="ledger_empty_body">Un paiement fait avec Google Portefeuille apparaît ici tout seul, en quelques secondes.</string>
+    <string name="ledger_empty_body_no_access">Touchez + pour ajouter une transaction. Pour que vos paiements Google Portefeuille s\'inscrivent tout seuls, autorisez l\'accès aux notifications dans les Réglages.</string>
+    <string name="ledger_empty_body_paused">Touchez + pour ajouter une transaction. La capture est en pause\u00A0: vos paiements Google Portefeuille ne s\'inscriront pas tant que vous ne la réactiverez pas dans les Réglages.</string>
     <plurals name="ledger_needs_review">
         <item quantity="one">%d à réviser</item>
         <item quantity="other">%d à réviser</item>
