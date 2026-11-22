@@ -157,8 +157,12 @@ interface TransactionDao : RowWithParts {
      * carries, which is its merchant's, so a category given to a merchant since
      * the first reading reaches a purchase Wallet re-posts. A split never does: its
      * parts already say what it was for.
-     * Everything the parser owns is overwritten, which is what makes fixing a
+     * Everything else the parser owns is overwritten, which is what makes fixing a
      * parser repair history.
+     *
+     * The moment is the exception: a purchase happened when Wallet first reported
+     * it, so its time, zone and day stay those of the earliest post, whatever order
+     * a listener rebind delivers them in (ADR-0028).
      *
      * A row a human has already ruled on is left entirely alone: without that,
      * the next re-post would silently undo the correction made in the review
@@ -172,9 +176,13 @@ interface TransactionDao : RowWithParts {
             bySourceKey(transaction.sourcePackage, transaction.sourceKey)
                 ?: return insert(transaction)
         if (existing.reviewedAtUtcMillis != null) return existing.id
+        val earliest = minOf(existing, transaction, compareBy { it.occurredAtUtcMillis })
         update(
             transaction.copy(
                 id = existing.id,
+                occurredAtUtcMillis = earliest.occurredAtUtcMillis,
+                zoneId = earliest.zoneId,
+                localDateEpochDay = earliest.localDateEpochDay,
                 note = existing.note,
                 categoryId = existing.categoryId ?: transaction.categoryId.takeUnless { isSplit(existing.id) },
                 kind = existing.kind,
