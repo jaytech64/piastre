@@ -321,6 +321,29 @@ class LedgerFilterTest : LedgerTest() {
         }
 
     @Test
+    fun `a ledger opened on a merchant shows that merchant over the days it was opened on`() =
+        runTest {
+            val metro = merchant("Metro Plus")
+            insert(amountMinor = 4_000, day = TODAY, merchantId = metro)
+            insert(amountMinor = 3_000, day = YESTERDAY, merchantId = metro)
+            insert(amountMinor = 500, day = TODAY, merchantId = merchant("Zoo Cafe"))
+            val opened =
+                SavedStateHandle(
+                    mapOf(
+                        OPENED_ON_ARG to OPENED_ON_MERCHANT,
+                        OPENED_ID_ARG to metro,
+                        OPENED_FROM_ARG to TODAY.toEpochDay(),
+                        OPENED_TO_ARG to TODAY.toEpochDay(),
+                    ),
+                )
+
+            val state = ledgerViewModel(opened).uiState.first { it.filter.merchant != null }
+
+            assertEquals("Metro Plus", state.filter.merchant?.displayName)
+            assertEquals(Money(4_000, Money.CAD), state.headline.expenses)
+        }
+
+    @Test
     fun `clearing the filter a ledger was opened on does not bring it back`() =
         runTest {
             val power = category("Électricité")
