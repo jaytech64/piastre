@@ -127,4 +127,24 @@
         <item quantity="many">%d jours</item>
     </plurals>
     <string name="reports_over_a_year">%1$s sur un an</string>
+    <string name="merchants_title">Marchands</string>
+    <string name="merchants_row">Principaux marchands, visites et achat moyen</string>
+    <string name="merchants_row_premium">Où va votre argent, par marchand, avec Premium</string>
+    <string name="merchants_premium_off">Le rapport par marchand vient avec Premium.</string>
+    <string name="merchants_span_month">Mois</string>
+    <string name="merchants_span_year">Année</string>
+    <string name="merchants_rank_by">Classer par</string>
+    <string name="merchants_rank_total">Total</string>
+    <string name="merchants_rank_visits">Visites</string>
+    <string name="merchants_rank_average">Moyenne</string>
+    <plurals name="merchants_visits">
+        <item quantity="one">%d visite</item>
+        <item quantity="other">%d visites</item>
+        <item quantity="many">%d de visites</item>
+    </plurals>
+    <string name="merchants_per_visit">%1$s par visite</string>
+    <string name="merchants_visits_and_average">%1$s · %2$s</string>
+    <string name="merchants_without_merchant">%1$s sans marchand</string>
+    <string name="merchants_nothing">Aucun achat chez un marchand dans cette période</string>
+    <string name="merchants_see_transactions">Voir les transactions chez %1$s</string>
 </resources>

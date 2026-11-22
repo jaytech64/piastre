@@ -9,6 +9,7 @@ import java.text.DecimalFormat
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
+import java.time.Year
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -237,6 +238,12 @@ object Formatters {
         locale: Locale = Locale.getDefault(),
     ): String = MONTH_AND_YEAR.withLocale(locale).format(month)
 
+    /** A calendar year, as a merchant report heads one: `2026` in both languages. */
+    fun year(
+        year: Year,
+        locale: Locale = Locale.getDefault(),
+    ): String = YEAR.withLocale(locale).format(year)
+
     /**
      * A month in a word short enough for one end of a span of months: `Dec 2025`
      * and `déc. 2025`.
@@ -257,6 +264,7 @@ object Formatters {
     ): String = MONTH_INITIAL.withLocale(locale).format(month).uppercase(locale)
 
     private val SHORT_MONTH_AND_YEAR = DateTimeFormatter.ofPattern("MMM yyyy")
+    private val YEAR = DateTimeFormatter.ofPattern("uuuu")
 
     private val MONTH_INITIAL = DateTimeFormatter.ofPattern("MMMMM")
 

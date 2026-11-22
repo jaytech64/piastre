@@ -120,4 +120,23 @@
         <item quantity="other">%d days</item>
     </plurals>
     <string name="reports_over_a_year">%1$s over a year</string>
+    <string name="merchants_title">Merchants</string>
+    <string name="merchants_row">Top merchants, visits and average purchase</string>
+    <string name="merchants_row_premium">Where your money goes, by merchant, with Premium</string>
+    <string name="merchants_premium_off">The merchant report comes with Premium.</string>
+    <string name="merchants_span_month">Month</string>
+    <string name="merchants_span_year">Year</string>
+    <string name="merchants_rank_by">Rank by</string>
+    <string name="merchants_rank_total">Total</string>
+    <string name="merchants_rank_visits">Visits</string>
+    <string name="merchants_rank_average">Average</string>
+    <plurals name="merchants_visits">
+        <item quantity="one">%d visit</item>
+        <item quantity="other">%d visits</item>
+    </plurals>
+    <string name="merchants_per_visit">%1$s per visit</string>
+    <string name="merchants_visits_and_average">%1$s · %2$s</string>
+    <string name="merchants_without_merchant">%1$s with no merchant</string>
+    <string name="merchants_nothing">Nothing spent at a merchant in this period</string>
+    <string name="merchants_see_transactions">See transactions at %1$s</string>
 </resources>

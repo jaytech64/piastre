@@ -50,6 +50,7 @@ import io.github.jaytech64.piastre.feature.ledger.TemplateListScreen
 import io.github.jaytech64.piastre.feature.premium.PremiumScreen
 import io.github.jaytech64.piastre.feature.reports.BUDGET_MONTH_ARG
 import io.github.jaytech64.piastre.feature.reports.BudgetsScreen
+import io.github.jaytech64.piastre.feature.reports.MERCHANTS_ROUTE
 import io.github.jaytech64.piastre.feature.reports.ReportsScreen
 import io.github.jaytech64.piastre.feature.reports.TRENDS_ID_ARG
 import io.github.jaytech64.piastre.feature.reports.TRENDS_ON_ARG
@@ -85,7 +86,7 @@ private enum class Destination(
 
     /** The pages that are not this tab and still belong under it, because back from them returns to it. */
     val pagesOverIt: Set<String>
-        get() = if (this == REPORTS) setOf(REPORT_TRANSACTIONS_ROUTE, TRENDS_ROUTE) else emptySet()
+        get() = if (this == REPORTS) setOf(REPORT_TRANSACTIONS_ROUTE, TRENDS_ROUTE, MERCHANTS_ROUTE) else emptySet()
 }
 
 /**
