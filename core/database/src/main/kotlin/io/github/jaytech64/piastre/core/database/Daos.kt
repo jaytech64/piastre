@@ -99,6 +99,27 @@ interface RawNotificationEventDao {
         exempt: List<ParseState>,
     ): Int
 
+    /**
+     * Every time the notification behind a ledger row was posted and read as a
+     * purchase, oldest first.
+     *
+     * The row points at only one post, so the others are found through the key
+     * they share. A post time outlives the 90-day redaction, so this stays whole
+     * until the raw log itself is cleared.
+     */
+    @Query(
+        """
+        SELECT post.postedAtUtcMillis
+        FROM expense_transaction t
+        JOIN raw_notification_event own ON own.id = t.rawEventId
+        JOIN raw_notification_event post
+            ON post.sourcePackage = own.sourcePackage AND post.notificationKey = own.notificationKey
+        WHERE t.id = :transactionId AND post.parseState = 'PARSED'
+        ORDER BY post.postedAtUtcMillis
+        """,
+    )
+    suspend fun postTimesBehind(transactionId: Long): List<Long>
+
     @Query("SELECT COUNT(*) FROM raw_notification_event")
     fun count(): Flow<Int>
 

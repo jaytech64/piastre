@@ -8,6 +8,7 @@ import io.github.jaytech64.piastre.core.database.PiastreDatabase
 import io.github.jaytech64.piastre.core.database.TransactionDao
 import io.github.jaytech64.piastre.core.database.TransactionWithMerchant
 import io.github.jaytech64.piastre.core.database.inTransaction
+import io.github.jaytech64.piastre.core.model.CaptureHistory
 import io.github.jaytech64.piastre.core.model.Money
 import io.github.jaytech64.piastre.core.model.Transaction
 import io.github.jaytech64.piastre.core.model.TransactionKind
@@ -142,6 +143,22 @@ class TransactionRepository
 
         suspend fun byId(id: Long): Transaction? =
             transactions.withMerchantById(id)?.let { toDomain(it, parts.ofTransaction(id)) }
+
+        /**
+         * The notifications behind a captured purchase, or null when none ever
+         * stood behind it: a typed row, or one restored from an export, which
+         * carries no raw log.
+         */
+        suspend fun captureHistory(id: Long): CaptureHistory? =
+            transactions
+                .byId(id)
+                ?.takeIf { it.source == TransactionSource.NOTIFICATION && it.rawEventId != null }
+                ?.let { row ->
+                    CaptureHistory(
+                        posts = database.rawNotificationEventDao().postTimesBehind(id).map(Instant::ofEpochMilli),
+                        zoneId = ZoneId.of(row.zoneId),
+                    )
+                }
 
         private suspend fun manualEntry(
             amount: Money,
