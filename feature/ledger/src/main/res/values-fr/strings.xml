@@ -180,6 +180,11 @@
     </plurals>
     <string name="ledger_upcoming_show">Afficher ce qui est à venir</string>
     <string name="ledger_upcoming_hide">Masquer ce qui est à venir</string>
+    <string name="capture_history_title">Historique de capture</string>
+    <string name="capture_history_first">Première capture</string>
+    <string name="capture_history_update">Mise à jour</string>
+    <string name="capture_history_moment">%1$s, %2$s</string>
+    <string name="capture_history_unavailable">Cet historique n\'est plus disponible, car le journal des notifications a été effacé.</string>
     <string name="templates_title">Modèles</string>
     <string name="templates_empty">Aucun modèle encore. Cochez Enregistrer comme modèle en ajoutant une transaction.</string>
     <string name="templates_new">Nouveau modèle</string>

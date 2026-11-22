@@ -172,6 +172,11 @@
     </plurals>
     <string name="ledger_upcoming_show">Show what\'s upcoming</string>
     <string name="ledger_upcoming_hide">Hide what\'s upcoming</string>
+    <string name="capture_history_title">Capture history</string>
+    <string name="capture_history_first">First captured</string>
+    <string name="capture_history_update">Updated</string>
+    <string name="capture_history_moment">%1$s, %2$s</string>
+    <string name="capture_history_unavailable">This history is no longer available because the notification log was cleared.</string>
     <string name="templates_title">Templates</string>
     <string name="templates_empty">No template yet. Tick Save as template when you add a transaction.</string>
     <string name="templates_new">New template</string>

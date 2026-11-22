@@ -17,6 +17,7 @@ import io.github.jaytech64.piastre.core.data.TransactionRepository
 import io.github.jaytech64.piastre.core.designsystem.Formatters
 import io.github.jaytech64.piastre.core.model.Account
 import io.github.jaytech64.piastre.core.model.AccountType
+import io.github.jaytech64.piastre.core.model.CaptureHistory
 import io.github.jaytech64.piastre.core.model.Merchant
 import io.github.jaytech64.piastre.core.model.MerchantNormaliser
 import io.github.jaytech64.piastre.core.model.Money
@@ -116,6 +117,8 @@ data class ExpenseFormUiState(
     val fromNowOnChoice: Boolean? = null,
     /** A transaction a notification recorded: its account is the bank's to say, so it is shown, not offered. */
     val isCaptured: Boolean = false,
+    /** The notifications behind a captured transaction, or null when none ever stood behind it. */
+    val captureHistory: CaptureHistory? = null,
     /**
      * How often the transaction comes back, or null when it does not. Offered only
      * on a transaction typed by hand that is not already a schedule's: see
@@ -397,9 +400,11 @@ class ExpenseFormViewModel
             editingId?.let { id ->
                 viewModelScope.launch {
                     val transaction = transactions.byId(id)
+                    val history = transactions.captureHistory(id)
                     original = transaction
                     _uiState.update { state ->
-                        transaction?.let { state.filledFrom(it) } ?: state.copy(loading = false, done = true)
+                        transaction?.let { state.filledFrom(it).copy(captureHistory = history) }
+                            ?: state.copy(loading = false, done = true)
                     }
                 }
             }

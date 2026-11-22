@@ -117,6 +117,10 @@ internal fun FormDialog(
             TemplateSheet(viewModel.template, onClose)
         }
 
+        Picking.CAPTURE_HISTORY -> {
+            state.captureHistory?.let { CaptureHistorySheet(it, onClose) }
+        }
+
         Picking.NOTHING -> {
             Unit
         }
@@ -186,6 +190,7 @@ internal enum class Picking {
     ADD_CATEGORY,
     ADD_PART_CATEGORY,
     TEMPLATES,
+    CAPTURE_HISTORY,
 }
 
 /**
